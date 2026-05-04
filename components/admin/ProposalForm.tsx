@@ -1,0 +1,528 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { mockProposal } from '@/lib/mockData'
+import { proposalStore } from '@/lib/proposalStore'
+import {
+  getPlansForScope,
+  LP_CONFIGS,
+  SITE_PAGES,
+  LpConfig,
+  SitePages,
+} from '@/lib/scopeTemplates'
+import { Plan, Proposal, ProjectType } from '@/lib/types'
+import { Eye, Copy, Check, ArrowLeft, ChevronRight } from 'lucide-react'
+import { ImageUpload } from './ImageUpload'
+
+/* ── style helpers ───────────────────────────────────── */
+
+const INPUT =
+  'w-full bg-[#F4F3EF] border border-[#DFE0DB] rounded-xl px-4 py-3 text-sm text-[#162322] placeholder-[#A8B5B0] focus:outline-none focus:border-[#0D3839] transition-colors'
+
+const LABEL =
+  'block text-[10px] font-bold uppercase tracking-[0.13em] text-[#8AA09A] mb-1.5'
+
+function Field({ label, children, span2 = false }: { label: string; children: React.ReactNode; span2?: boolean }) {
+  return (
+    <div className={span2 ? 'sm:col-span-2' : ''}>
+      <label className={LABEL}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function SectionCard({ step, title, desc, children }: { step: string; title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#E6E6E1] p-8 mb-4">
+      <div className="flex items-start gap-4 mb-7">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold"
+          style={{ background: '#0D3839', color: '#F4F99D' }}>
+          {step}
+        </div>
+        <div>
+          <p className="text-[15px] font-bold text-[#162322] tracking-tight">{title}</p>
+          <p className="text-xs text-[#8AA09A] mt-0.5">{desc}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/* ── scope selector ──────────────────────────────────── */
+
+const SCOPE_TYPES: { value: ProjectType; label: string; icon: string; desc: string }[] = [
+  { value: 'landing_page',  label: 'Landing Page', icon: '⚡', desc: 'Uma página focada em conversão' },
+  { value: 'site_completo', label: 'Site Completo', icon: '🏛', desc: 'Múltiplas páginas e seções' },
+  { value: 'mensal',        label: 'Mensal',        icon: '🔄', desc: 'Gestão recorrente' },
+  { value: 'custom',        label: 'Custom',        icon: '✏️', desc: 'Escopo personalizado' },
+]
+
+/* ── plan editor ─────────────────────────────────────── */
+
+function PlanEditor({
+  plan,
+  index,
+  onChange,
+  onToggleRecommended,
+}: {
+  plan: Plan
+  index: number
+  onChange: (id: string, field: keyof Plan, value: unknown) => void
+  onToggleRecommended: (id: string) => void
+}) {
+  const [open, setOpen] = useState(index === 0)
+
+  return (
+    <div
+      className="rounded-xl border transition-all"
+      style={{
+        borderColor: plan.is_recommended ? '#0D3839' : '#E6E6E1',
+        background: plan.is_recommended ? '#F4FAF8' : '#FAFAF8',
+      }}
+    >
+      {/* header */}
+      <button
+        type="button"
+        className="w-full flex items-center justify-between p-5 text-left"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+            style={{ background: '#0D3839', color: '#F4F99D' }}>
+            {index + 1}
+          </div>
+          <div>
+            <p className="text-[13px] font-bold text-[#162322]">{plan.name}</p>
+            <p className="text-[11px] text-[#8AA09A]">{plan.tagline}</p>
+          </div>
+          {plan.is_recommended && (
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{ background: '#F4F99D', color: '#162322' }}>
+              Recomendado
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          {/* toggle recommended */}
+          <div className="flex items-center gap-2" onClick={e => { e.stopPropagation(); onToggleRecommended(plan.id) }}>
+            <span className="text-[11px] text-[#8AA09A]">Recomendar</span>
+            <div className="w-9 h-5 rounded-full relative transition-colors"
+              style={{ background: plan.is_recommended ? '#0D3839' : '#DFE0DB' }}>
+              <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all"
+                style={{ left: plan.is_recommended ? '18px' : '2px' }} />
+            </div>
+          </div>
+          <ChevronRight size={14} className="text-[#8AA09A] transition-transform"
+            style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+        </div>
+      </button>
+
+      {/* fields */}
+      {open && (
+        <div className="px-5 pb-5 border-t border-[#E6E6E1] pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <Field label="Nome do plano">
+              <input className={INPUT} value={plan.name}
+                onChange={e => onChange(plan.id, 'name', e.target.value)} />
+            </Field>
+            <Field label="Tagline">
+              <input className={INPUT} value={plan.tagline}
+                onChange={e => onChange(plan.id, 'tagline', e.target.value)} />
+            </Field>
+            <Field label="Descrição" span2>
+              <textarea className={`${INPUT} resize-none`} rows={3} value={plan.description}
+                onChange={e => onChange(plan.id, 'description', e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <Field label="Valor à vista (R$)">
+              <input className={INPUT} type="number" value={plan.price_cash}
+                onChange={e => onChange(plan.id, 'price_cash', Number(e.target.value))} />
+            </Field>
+            <Field label="Nº parcelas">
+              <input className={INPUT} type="number" value={plan.price_installments_count}
+                onChange={e => onChange(plan.id, 'price_installments_count', Number(e.target.value))} />
+            </Field>
+            <Field label="Valor parcela (R$)">
+              <input className={INPUT} type="number" value={plan.price_installment_value}
+                onChange={e => onChange(plan.id, 'price_installment_value', Number(e.target.value))} />
+            </Field>
+            <Field label="Prazo (dias úteis)">
+              <input className={INPUT} type="number" value={plan.delivery_days}
+                onChange={e => onChange(plan.id, 'delivery_days', Number(e.target.value))} />
+            </Field>
+          </div>
+          {/* features */}
+          <div>
+            <label className={LABEL}>Itens inclusos (um por linha)</label>
+            <textarea
+              className={`${INPUT} resize-none`}
+              rows={plan.features.length + 1}
+              value={plan.features.join('\n')}
+              onChange={e =>
+                onChange(plan.id, 'features', e.target.value.split('\n').filter(Boolean))
+              }
+            />
+          </div>
+          <div className="mt-4">
+            <Field label="Frase de destaque">
+              <input className={INPUT} value={plan.highlight_phrase}
+                onChange={e => onChange(plan.id, 'highlight_phrase', e.target.value)} />
+            </Field>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── main form ───────────────────────────────────────── */
+
+interface ProposalFormProps {
+  initial?: Proposal
+  mode: 'new' | 'edit'
+}
+
+const defaultForm = {
+  client_name: '',
+  client_email: '',
+  client_company: '',
+  client_whatsapp: '',
+  project_type: 'landing_page' as ProjectType,
+  hero_title: 'Proposta Landing Page',
+  hero_subtitle: 'Além do design comum.',
+  hero_description: mockProposal.hero_description,
+  valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+}
+
+export default function ProposalForm({ initial, mode }: ProposalFormProps) {
+  const router = useRouter()
+
+  const [form, setForm] = useState(
+    initial
+      ? {
+          client_name:     initial.client_name,
+          client_email:    initial.client_email,
+          client_company:  initial.client_company ?? '',
+          client_whatsapp: initial.client_whatsapp ?? '',
+          project_type:    initial.project_type,
+          hero_title:      initial.hero_title,
+          hero_subtitle:   initial.hero_subtitle,
+          hero_description:initial.hero_description,
+          valid_until:     initial.valid_until.slice(0, 10),
+        }
+      : defaultForm
+  )
+
+  const [lpConfig, setLpConfig] = useState<LpConfig>('sem_copy_com_copy')
+  const [sitePages, setSitePages] = useState<SitePages>('3-5')
+  const [plans, setPlans] = useState<Plan[]>(
+    initial?.selected_plans ?? getPlansForScope('landing_page', 'sem_copy_com_copy')
+  )
+  const [photoUrl, setPhotoUrl] = useState(
+    initial?.agency_settings.photo_url ?? mockProposal.agency_settings.photo_url
+  )
+  const [copied, setCopied] = useState(false)
+
+  // when scope type changes, refresh plans with template
+  function handleScopeType(type: ProjectType) {
+    setForm(f => ({ ...f, project_type: type }))
+    setPlans(getPlansForScope(type, lpConfig, sitePages))
+  }
+
+  function handleLpConfig(cfg: LpConfig) {
+    setLpConfig(cfg)
+    setPlans(getPlansForScope('landing_page', cfg, sitePages))
+  }
+
+  function handleSitePages(pages: SitePages) {
+    setSitePages(pages)
+    setPlans(getPlansForScope('site_completo', lpConfig, pages))
+  }
+
+  const set = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const updatePlan = (id: string, field: keyof Plan, value: unknown) =>
+    setPlans(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)))
+
+  const setRecommended = (id: string) =>
+    setPlans(prev => prev.map(p => ({ ...p, is_recommended: p.id === id ? !p.is_recommended : false })))
+
+  function buildProposal(): Proposal {
+    const base = initial ?? mockProposal
+    return {
+      ...base,
+      ...form,
+      id: initial?.id ?? '',
+      slug: initial?.slug ?? '',
+      valid_until: new Date(form.valid_until + 'T23:59:00').toISOString(),
+      selected_plans: plans,
+      status: initial?.status ?? 'draft',
+      agency_settings: {
+        ...base.agency_settings,
+        photo_url: photoUrl,
+      },
+    }
+  }
+
+  function handleSave() {
+    const saved = proposalStore.save(buildProposal())
+    router.push('/admin')
+  }
+
+  function handlePreview() {
+    localStorage.setItem('fysi_draft', JSON.stringify(buildProposal()))
+    window.open('/p/preview', '_blank')
+  }
+
+  async function handleCopy() {
+    localStorage.setItem('fysi_draft', JSON.stringify(buildProposal()))
+    await navigator.clipboard.writeText(`${window.location.origin}/p/preview`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+  }
+
+  const done1 = !!(form.client_name && form.client_email)
+  const done2 = !!(form.hero_title && form.hero_subtitle)
+  const done3 = plans.length > 0
+  const completedCount = [done1, done2, done3].filter(Boolean).length
+
+  return (
+    <div className="min-h-screen" style={{ background: '#ECEAE3', fontFamily: 'var(--font-inter)' }}>
+      {/* top bar */}
+      <div style={{ borderBottom: '1px solid #DFE0DB', background: '#ECEAE3' }}>
+        <div className="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
+          <button
+            onClick={() => router.push('/admin')}
+            className="flex items-center gap-2 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
+          >
+            <ArrowLeft size={13} />
+            Voltar ao painel
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: '#0D3839' }} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8AA09A]">
+              Fysi Lab Digital
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 pb-32 pt-10">
+        {/* header */}
+        <div className="mb-10">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#A8B5B0] mb-2">
+            {mode === 'new' ? 'NOVA PROPOSTA' : 'EDITAR PROPOSTA'}
+          </p>
+          <h1 className="text-[2rem] font-bold text-[#162322] tracking-tight">
+            {mode === 'new' ? 'Criar proposta' : form.client_name || 'Editar proposta'}
+          </h1>
+        </div>
+
+        {/* ── SEÇÃO 0: Escopo ── */}
+        <SectionCard step="◈" title="Escopo da proposta" desc="Define quais planos serão apresentados ao cliente">
+          {/* scope type */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {SCOPE_TYPES.map(s => (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => handleScopeType(s.value)}
+                className="rounded-xl p-4 text-left transition-all"
+                style={{
+                  background: form.project_type === s.value ? '#0D3839' : '#F4F3EF',
+                  border: `1px solid ${form.project_type === s.value ? '#0D3839' : '#DFE0DB'}`,
+                  color: form.project_type === s.value ? '#FFFFFF' : '#162322',
+                }}
+              >
+                <div className="text-lg mb-2">{s.icon}</div>
+                <p className="text-[12px] font-bold">{s.label}</p>
+                <p className="text-[10px] mt-0.5"
+                  style={{ color: form.project_type === s.value ? '#8BB7AF' : '#8AA09A' }}>
+                  {s.desc}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {/* lp config */}
+          {form.project_type === 'landing_page' && (
+            <div>
+              <p className={LABEL}>Configuração dos planos</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {LP_CONFIGS.map(c => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => handleLpConfig(c.value)}
+                    className="rounded-xl px-4 py-3 text-left transition-all"
+                    style={{
+                      background: lpConfig === c.value ? '#F4FAF8' : '#F4F3EF',
+                      border: `1px solid ${lpConfig === c.value ? '#0D3839' : '#DFE0DB'}`,
+                    }}
+                  >
+                    <p className="text-[12px] font-bold text-[#162322]">{c.label}</p>
+                    <p className="text-[10px] text-[#8AA09A] mt-0.5">{c.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* site pages */}
+          {form.project_type === 'site_completo' && (
+            <div>
+              <p className={LABEL}>Número de páginas</p>
+              <div className="grid grid-cols-3 gap-2">
+                {SITE_PAGES.map(s => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => handleSitePages(s.value)}
+                    className="rounded-xl px-4 py-3 text-left transition-all"
+                    style={{
+                      background: sitePages === s.value ? '#F4FAF8' : '#F4F3EF',
+                      border: `1px solid ${sitePages === s.value ? '#0D3839' : '#DFE0DB'}`,
+                    }}
+                  >
+                    <p className="text-[12px] font-bold text-[#162322]">{s.label}</p>
+                    <p className="text-[10px] text-[#8AA09A] mt-0.5">{s.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* plans preview chips */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="text-[10px] text-[#8AA09A] self-center">Planos:</span>
+            {plans.map(p => (
+              <span key={p.id}
+                className="text-[10px] font-semibold px-3 py-1 rounded-full"
+                style={{
+                  background: p.is_recommended ? '#F4F99D' : '#E8E7E1',
+                  color: '#162322',
+                }}>
+                {p.name}
+                {p.is_recommended && ' ★'}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+
+        {/* ── SEÇÃO 1: Cliente ── */}
+        <SectionCard step="1" title="Dados do Cliente" desc="Informações básicas que identificam o cliente na proposta">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Nome completo">
+              <input className={INPUT} value={form.client_name} onChange={set('client_name')}
+                placeholder="Dr. Rodrigo Mendes" />
+            </Field>
+            <Field label="Email">
+              <input className={INPUT} type="email" value={form.client_email} onChange={set('client_email')}
+                placeholder="cliente@email.com" />
+            </Field>
+            <Field label="Empresa / Clínica">
+              <input className={INPUT} value={form.client_company} onChange={set('client_company')}
+                placeholder="Clínica Mendes" />
+            </Field>
+            <Field label="WhatsApp (com DDI)">
+              <input className={INPUT} value={form.client_whatsapp} onChange={set('client_whatsapp')}
+                placeholder="5511999999999" />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* ── SEÇÃO 2: Conteúdo ── */}
+        <SectionCard step="2" title="Conteúdo da Proposta" desc="Textos que aparecem no hero da proposta do cliente">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Badge do hero">
+              <input className={INPUT} value={form.hero_title} onChange={set('hero_title')}
+                placeholder="Proposta Landing Page" />
+            </Field>
+            <Field label="Válido até">
+              <input className={INPUT} type="date" value={form.valid_until} onChange={set('valid_until')} />
+            </Field>
+            <Field label="Título principal" span2>
+              <input className={INPUT} value={form.hero_subtitle} onChange={set('hero_subtitle')}
+                placeholder="Além do design comum." />
+            </Field>
+            <Field label="Descrição" span2>
+              <textarea className={`${INPUT} resize-none`} rows={4} value={form.hero_description}
+                onChange={set('hero_description')} />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* ── SEÇÃO 3: Imagens ── */}
+        <SectionCard step="3" title="Imagens" desc="Sua foto de perfil para a proposta">
+          <ImageUpload
+            label="Sua foto"
+            value={photoUrl}
+            onChange={setPhotoUrl}
+            folder=""
+            hint="Proporção 3×4 recomendada"
+            aspect="3/4"
+          />
+        </SectionCard>
+
+        {/* ── SEÇÃO 4: Planos ── */}
+        <SectionCard step="4" title="Planos e Investimento" desc="Ajuste preços, prazos e itens de cada plano">
+          <div className="space-y-3">
+            {plans.map((plan, i) => (
+              <PlanEditor
+                key={plan.id}
+                plan={plan}
+                index={i}
+                onChange={updatePlan}
+                onToggleRecommended={setRecommended}
+              />
+            ))}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── sticky bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 px-6 pb-6 pt-2 pointer-events-none">
+        <div
+          className="max-w-5xl mx-auto rounded-2xl px-5 py-4 flex items-center justify-between gap-4 pointer-events-auto"
+          style={{ background: '#162322', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
+        >
+          <div>
+            <p className="text-[13px] font-bold text-white leading-snug">
+              {form.client_name || 'Sem cliente'}
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: '#6BA89E' }}>
+              {completedCount}/3 seções · válida até{' '}
+              {form.valid_until
+                ? new Date(form.valid_until + 'T12:00:00').toLocaleDateString('pt-BR')
+                : '—'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={handleCopy}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-semibold transition-all"
+              style={{ background: 'rgba(255,255,255,0.07)', color: '#8BB7AF', border: '1px solid rgba(255,255,255,0.07)' }}>
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? 'Copiado!' : 'Copiar link'}
+            </button>
+            <button onClick={handlePreview}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-semibold transition-all"
+              style={{ background: 'rgba(255,255,255,0.07)', color: '#8BB7AF', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <Eye size={12} />
+              Prévia
+            </button>
+            <button onClick={handleSave}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all hover:opacity-90 active:scale-95"
+              style={{ background: '#F4F99D', color: '#162322' }}>
+              {mode === 'new' ? 'Salvar proposta' : 'Salvar alterações'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
