@@ -269,9 +269,14 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
     }
   }
 
-  function handleSave() {
-    const saved = proposalStore.save(buildProposal())
-    router.push('/admin')
+  async function handleSave() {
+    try {
+      await proposalStore.save(buildProposal())
+      router.push('/admin')
+    } catch (err) {
+      console.error('[handleSave]', err)
+      alert('Erro ao salvar a proposta. Veja o console.')
+    }
   }
 
   function handlePreview() {

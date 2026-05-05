@@ -136,12 +136,13 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
 
             {/* Main headline */}
             <motion.h1
-              className="text-gradient-hero font-display"
+              className="font-display"
               style={{
                 fontSize: 'clamp(2.5rem, 5vw, 3.75rem)',
                 lineHeight: 1.1,
                 fontWeight: 300,
                 marginBottom: '1.25rem',
+                color: '#ef4444',
               }}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -153,7 +154,7 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
             {/* Description */}
             <motion.p
               style={{
-                color: 'var(--text-secondary)',
+                color: '#ef4444',
                 fontSize: 'clamp(0.9rem, 2.5vw, 1.0625rem)',
                 lineHeight: 1.75,
                 marginBottom: '1.75rem',

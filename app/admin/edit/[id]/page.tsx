@@ -11,7 +11,7 @@ export default function EditProposalPage() {
   const [proposal, setProposal] = useState<Proposal | null | undefined>(undefined)
 
   useEffect(() => {
-    setProposal(proposalStore.get(id) ?? null)
+    proposalStore.get(id).then(p => setProposal(p ?? null))
   }, [id])
 
   if (proposal === undefined) {

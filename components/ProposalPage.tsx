@@ -11,6 +11,7 @@ import { BannerEmocional } from './cliente/BannerEmocional'
 import { FAQSection } from './cliente/FAQSection'
 import { PlansSection } from './proposta/PlansSection'
 import { InfraSection } from './proposta/InfraSection'
+import { PortfolioCarousel } from './proposta/PortfolioCarousel'
 import { CTASection } from './proposta/CTASection'
 import { FasesSection } from './proposta/FasesSection'
 import { CasesCarousel } from './cliente/CasesCarousel'
@@ -80,6 +81,7 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           onAccept={(planId) => handleAccept(planId)}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
+        <PortfolioCarousel />
         {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
           <ExpertsSection experts={proposal.agency_settings.experts} />
         )}

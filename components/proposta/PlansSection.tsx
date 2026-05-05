@@ -47,7 +47,7 @@ function PlanCard({
           borderRadius: '28px',
           background: isRec
             ? `
-              radial-gradient(ellipse 100% 55% at 50% 115%, rgba(244,249,157,0.28) 0%, transparent 60%),
+              radial-gradient(ellipse 100% 55% at 50% 115%, rgba(195,225,219,0.32) 0%, transparent 60%),
               radial-gradient(ellipse 70% 50% at 15% 0%,  rgba(139,183,175,0.22) 0%, transparent 55%),
               radial-gradient(ellipse 60% 40% at 90% 10%, rgba(107,168,158,0.18) 0%, transparent 50%),
               linear-gradient(170deg, #0E3C3D 0%, #082828 45%, #051A1A 100%)
@@ -303,9 +303,9 @@ function PlanCard({
             borderRadius: '999px',
             background: isRec
               ? 'linear-gradient(135deg, #C8E6E0 0%, var(--green-pastel) 50%, #A8D4CC 100%)'
-              : 'rgba(139,183,175,0.08)',
-            color: isRec ? '#071F20' : 'var(--teal)',
-            border: isRec ? 'none' : '1px solid rgba(139,183,175,0.22)',
+              : 'linear-gradient(135deg, #C3E0DB 0%, #A8D4CC 100%)',
+            color: '#071F20',
+            border: 'none',
             fontFamily: 'var(--font-inter)',
             fontWeight: 700,
             fontSize: isRec ? '0.75rem' : '0.72rem',
@@ -313,17 +313,17 @@ function PlanCard({
             textTransform: 'uppercase',
             cursor: 'pointer',
             transition: 'all 0.25s ease',
-            boxShadow: isRec ? '0 4px 24px rgba(184,212,208,0.3), 0 0 0 1px rgba(184,212,208,0.15) inset' : 'none',
+            boxShadow: isRec ? '0 4px 24px rgba(184,212,208,0.3), 0 0 0 1px rgba(184,212,208,0.15) inset' : '0 4px 16px rgba(195,224,219,0.18)',
           }}
           onMouseEnter={e => {
             const el = e.currentTarget
             if (isRec) { el.style.boxShadow = '0 8px 40px rgba(184,212,208,0.5), 0 0 0 1px rgba(184,212,208,0.2) inset'; el.style.transform = 'translateY(-2px)' }
-            else { el.style.background = 'rgba(139,183,175,0.14)'; el.style.borderColor = 'rgba(139,183,175,0.4)' }
+            else { el.style.boxShadow = '0 8px 28px rgba(195,224,219,0.32)'; el.style.transform = 'translateY(-2px)' }
           }}
           onMouseLeave={e => {
             const el = e.currentTarget
             if (isRec) { el.style.boxShadow = '0 4px 24px rgba(184,212,208,0.3), 0 0 0 1px rgba(184,212,208,0.15) inset'; el.style.transform = 'none' }
-            else { el.style.background = 'rgba(139,183,175,0.08)'; el.style.borderColor = 'rgba(139,183,175,0.22)' }
+            else { el.style.boxShadow = '0 4px 16px rgba(195,224,219,0.18)'; el.style.transform = 'none' }
           }}
         >
           Escolher plano

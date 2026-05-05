@@ -1,56 +1,81 @@
 import { Proposal } from './types'
-
-const KEY = 'fysi_proposals'
-
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
-}
+import { supabase } from './supabase'
 
 function genSlug() {
   return Math.random().toString(36).slice(2, 9)
 }
 
+interface Row {
+  id: string
+  slug: string
+  data: Proposal
+  status: Proposal['status']
+}
+
+function rowToProposal(row: Row): Proposal {
+  return { ...row.data, id: row.id, slug: row.slug, status: row.status }
+}
+
 export const proposalStore = {
-  getAll(): Proposal[] {
-    if (typeof window === 'undefined') return []
-    try {
-      return JSON.parse(localStorage.getItem(KEY) ?? '[]')
-    } catch {
+  async getAll(): Promise<Proposal[]> {
+    const { data, error } = await supabase
+      .from('proposals')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) {
+      console.error('[proposalStore.getAll]', error)
       return []
     }
+    return (data as Row[]).map(rowToProposal)
   },
 
-  get(id: string): Proposal | null {
-    return this.getAll().find(p => p.id === id) ?? null
+  async get(id: string): Promise<Proposal | null> {
+    const { data, error } = await supabase.from('proposals').select('*').eq('id', id).maybeSingle()
+    if (error || !data) return null
+    return rowToProposal(data as Row)
   },
 
-  save(proposal: Proposal): Proposal {
-    const all = this.getAll()
-    const isNew = !proposal.id
-    const saved: Proposal = {
-      ...proposal,
-      id: proposal.id || genId(),
-      slug: proposal.slug || genSlug(),
+  async getBySlug(slug: string): Promise<Proposal | null> {
+    const { data, error } = await supabase.from('proposals').select('*').eq('slug', slug).maybeSingle()
+    if (error || !data) return null
+    return rowToProposal(data as Row)
+  },
+
+  async save(proposal: Proposal): Promise<Proposal> {
+    const slug = proposal.slug || genSlug()
+    const status = proposal.status || 'draft'
+    const data = { ...proposal, slug, status }
+
+    if (proposal.id) {
+      const { data: row, error } = await supabase
+        .from('proposals')
+        .update({ slug, data, status, updated_at: new Date().toISOString() })
+        .eq('id', proposal.id)
+        .select()
+        .single()
+      if (error) throw error
+      return rowToProposal(row as Row)
     }
-    const idx = all.findIndex(p => p.id === saved.id)
-    if (idx >= 0) {
-      all[idx] = saved
-    } else {
-      all.unshift(saved)
-    }
-    localStorage.setItem(KEY, JSON.stringify(all))
-    return saved
+
+    const { data: row, error } = await supabase
+      .from('proposals')
+      .insert({ slug, data, status })
+      .select()
+      .single()
+    if (error) throw error
+    return rowToProposal(row as Row)
   },
 
-  remove(id: string): void {
-    const all = this.getAll().filter(p => p.id !== id)
-    localStorage.setItem(KEY, JSON.stringify(all))
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('proposals').delete().eq('id', id)
+    if (error) throw error
   },
 
-  updateStatus(id: string, status: Proposal['status']): void {
-    const all = this.getAll().map(p =>
-      p.id === id ? { ...p, status } : p
-    )
-    localStorage.setItem(KEY, JSON.stringify(all))
+  async updateStatus(id: string, status: Proposal['status']): Promise<void> {
+    const { error } = await supabase
+      .from('proposals')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
   },
 }

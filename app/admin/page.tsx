@@ -188,8 +188,12 @@ export default function AdminDashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
-    setProposals(proposalStore.getAll())
+    proposalStore.getAll().then(setProposals)
   }, [])
+
+  async function refresh() {
+    setProposals(await proposalStore.getAll())
+  }
 
   const filtered =
     filter === 'all'
@@ -207,10 +211,10 @@ export default function AdminDashboard() {
     accepted: proposals.filter(p => p.status === 'accepted').length,
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm('Deletar esta proposta?')) return
-    proposalStore.remove(id)
-    setProposals(proposalStore.getAll())
+    await proposalStore.remove(id)
+    await refresh()
   }
 
   async function handleCopy(p: Proposal) {
@@ -220,9 +224,9 @@ export default function AdminDashboard() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  function handlePublish(id: string) {
-    proposalStore.updateStatus(id, 'sent')
-    setProposals(proposalStore.getAll())
+  async function handlePublish(id: string) {
+    await proposalStore.updateStatus(id, 'sent')
+    await refresh()
   }
 
   const FILTERS: { value: ProposalStatus | 'all'; label: string }[] = [

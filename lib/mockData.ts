@@ -24,7 +24,7 @@ export const mockProposal: Proposal = {
     {
       id: '1',
       name: 'Fysilab Start',
-      tagline: 'Página Profissional (você fornece textos)',
+      tagline: 'Você fornece textos',
       description:
         'Ideal para quem já tem o conteúdo definido e precisa de uma presença digital de alto impacto com rapidez.',
       delivery_days: 6,
@@ -37,7 +37,7 @@ export const mockProposal: Proposal = {
         'Você fornece textos e fotos',
         'Integração pixel Facebook/Google',
         'SEO técnico básico',
-        'Até 2 revisões',
+        '3 levas de alterações',
       ],
     },
     {
@@ -58,7 +58,7 @@ export const mockProposal: Proposal = {
         'Design exclusivo responsivo',
         'Integração pixel Facebook/Google',
         'SEO Premium completo',
-        'Até 4 revisões',
+        '3 levas de alterações',
       ],
     },
     {

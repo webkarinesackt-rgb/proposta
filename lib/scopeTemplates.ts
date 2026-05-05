@@ -9,7 +9,7 @@ function pid(n: number) {
 const LP_START: Plan = {
   id: pid(1),
   name: 'Fysilab Start',
-  tagline: 'Você fornece textos e fotos',
+  tagline: 'Você fornece textos',
   description:
     'Ideal para quem já tem o conteúdo definido e precisa de uma presença digital de alto impacto com rapidez.',
   delivery_days: 6,
@@ -19,7 +19,7 @@ const LP_START: Plan = {
   highlight_phrase: 'Escolhido por quem quer começar rápido e bem',
   features: [
     'Design exclusivo responsivo',
-    'Você fornece textos e fotos',
+    'Você fornece textos',
     'Integração pixel Facebook/Google',
     'SEO técnico básico',
     'Até 2 revisões',
@@ -101,7 +101,7 @@ function sitePlan(pages: '3-5' | '6-10' | '10+'): Plan[] {
       features: [
         `Até ${pages === '3-5' ? '5' : pages === '6-10' ? '10' : '15'} páginas`,
         'Design exclusivo responsivo',
-        'Você fornece textos e fotos',
+        'Você fornece textos',
         'Integração Google Analytics',
         'SEO técnico básico',
         'Até 3 revisões',
