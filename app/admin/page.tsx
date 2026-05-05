@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProposalStatus } from '@/lib/types'
-import { Plus, Eye, Copy, Trash2, ExternalLink, FileText, Clock, CheckCircle2, XCircle, Mail } from 'lucide-react'
+import { Plus, Eye, Copy, Trash2, FileText, Clock, CheckCircle2, XCircle, Mail, Send } from 'lucide-react'
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -57,14 +57,17 @@ function ProposalCard({
   proposal,
   onDelete,
   onCopy,
+  onPublish,
 }: {
   proposal: Proposal
   onDelete: (id: string) => void
   onCopy: (p: Proposal) => void
+  onPublish: (id: string) => void
 }) {
   const router = useRouter()
   const meta = STATUS_META[proposal.status] ?? STATUS_META.draft
   const expired = isExpired(proposal.valid_until)
+  const isDraft = proposal.status === 'draft'
 
   return (
     <div
@@ -144,14 +147,26 @@ function ProposalCard({
           <Eye size={11} />
           Prévia
         </button>
-        <button
-          onClick={() => onCopy(proposal)}
-          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
-          style={{ color: '#6BA89E' }}
-        >
-          <Copy size={11} />
-          Link
-        </button>
+        {!isDraft && (
+          <button
+            onClick={() => onCopy(proposal)}
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
+            style={{ color: '#6BA89E' }}
+          >
+            <Copy size={11} />
+            Link
+          </button>
+        )}
+        {isDraft && (
+          <button
+            onClick={() => onPublish(proposal.id)}
+            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
+            style={{ background: '#0D3839', color: '#F4F99D' }}
+          >
+            <Send size={11} />
+            Publicar
+          </button>
+        )}
         <button
           onClick={() => onDelete(proposal.id)}
           className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors hover:bg-[#FFF0F0]"
@@ -199,10 +214,15 @@ export default function AdminDashboard() {
   }
 
   async function handleCopy(p: Proposal) {
-    localStorage.setItem('fysi_draft', JSON.stringify(p))
-    await navigator.clipboard.writeText(`${window.location.origin}/p/preview`)
+    const url = `${window.location.origin}/p/${p.slug}`
+    await navigator.clipboard.writeText(url)
     setCopiedId(p.id)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  function handlePublish(id: string) {
+    proposalStore.updateStatus(id, 'sent')
+    setProposals(proposalStore.getAll())
   }
 
   const FILTERS: { value: ProposalStatus | 'all'; label: string }[] = [
@@ -311,6 +331,7 @@ export default function AdminDashboard() {
                 proposal={p}
                 onDelete={handleDelete}
                 onCopy={handleCopy}
+                onPublish={handlePublish}
               />
             ))}
           </div>
