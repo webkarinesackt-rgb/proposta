@@ -25,7 +25,7 @@ interface RadialOrbitalTimelineProps {
 export default function RadialOrbitalTimeline({ timelineData, className }: RadialOrbitalTimelineProps) {
   const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
   const [rotationAngle, setRotationAngle] = useState<number>(0);
-  const [autoRotate, setAutoRotate] = useState<boolean>(true);
+  const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [pulseEffect, setPulseEffect] = useState<Record<number, boolean>>({});
   const [centerOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [activeNodeId, setActiveNodeId] = useState<number | null>(null);

@@ -83,7 +83,7 @@ export function FasesSection() {
         src="/logo_fysi.png"
         alt=""
         aria-hidden
-        className="spin-slow-reverse absolute pointer-events-none select-none"
+        className="absolute pointer-events-none select-none"
         style={{
           width: '500px',
           height: '500px',
