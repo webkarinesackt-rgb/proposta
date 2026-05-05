@@ -76,7 +76,7 @@ const FASES = [
 export function FasesSection() {
   return (
     <section
-      style={{ background: 'var(--bg-void)', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
+      style={{ background: 'var(--bg-void)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
     >
       {/* Logo decorativo estático */}
       <img
@@ -132,7 +132,7 @@ export function FasesSection() {
       {/* Orbital */}
       <RadialOrbitalTimeline
         timelineData={FASES}
-        className="h-[55vh] md:h-[70vh]"
+        className="h-[420px] md:h-[70vh]"
       />
     </section>
   )

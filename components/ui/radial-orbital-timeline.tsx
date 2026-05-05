@@ -29,9 +29,19 @@ export default function RadialOrbitalTimeline({ timelineData, className }: Radia
   const [pulseEffect, setPulseEffect] = useState<Record<number, boolean>>({});
   const [centerOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
+  const [orbitRadius, setOrbitRadius] = useState<number>(200);
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const updateRadius = () => {
+      setOrbitRadius(window.innerWidth < 768 ? 130 : 200);
+    };
+    updateRadius();
+    window.addEventListener('resize', updateRadius);
+    return () => window.removeEventListener('resize', updateRadius);
+  }, []);
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === containerRef.current || e.target === orbitRef.current) {
@@ -82,7 +92,7 @@ export default function RadialOrbitalTimeline({ timelineData, className }: Radia
 
   const calculateNodePosition = (index: number, total: number) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 200;
+    const radius = orbitRadius;
     const radian = (angle * Math.PI) / 180;
     const x = radius * Math.cos(radian) + centerOffset.x;
     const y = radius * Math.sin(radian) + centerOffset.y;
@@ -149,7 +159,7 @@ export default function RadialOrbitalTimeline({ timelineData, className }: Radia
               fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
               fontWeight: 300,
               fontStyle: 'italic',
-              fontSize: '1.6rem',
+              fontSize: 'clamp(1.6rem, 5vw, 2.2rem)',
               lineHeight: 1.2,
               color: 'var(--text-primary)',
               letterSpacing: '-0.01em',
@@ -160,7 +170,14 @@ export default function RadialOrbitalTimeline({ timelineData, className }: Radia
           </div>
 
           {/* Orbit ring */}
-          <div className="absolute w-96 h-96 rounded-full" style={{ border: '1px solid rgba(139,183,175,0.12)' }} />
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: orbitRadius * 2,
+              height: orbitRadius * 2,
+              border: '1px solid rgba(139,183,175,0.12)',
+            }}
+          />
 
           {timelineData.map((item, index) => {
             const position = calculateNodePosition(index, timelineData.length);

@@ -280,9 +280,9 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
         }}
       />
 
-      {/* Scroll indicator — hidden on mobile */}
+      {/* Scroll indicator — desktop only */}
       <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 hidden md:flex"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 items-center gap-2 hidden md:flex md:flex-col"
         style={{ zIndex: 20 }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
