@@ -10,7 +10,8 @@ export const mockProposal: Proposal = {
   project_type: 'landing_page',
   hero_title: 'Proposta Landing Page',
   hero_subtitle: 'Além do design comum.',
-  hero_description: 'teste',
+  hero_description:
+    'Uma presença digital construída com estratégia, não apenas estética. Combinamos psicologia de conversão e performance para transformar visitantes em clientes.',
   valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   status: 'sent',
   page_items: [
