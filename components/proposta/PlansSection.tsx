@@ -46,24 +46,37 @@ function PlanCard({
         style={{
           borderRadius: '28px',
           background: isRec
-            ? 'linear-gradient(170deg, #0F3A3B 0%, #071F20 60%, #0A2B2C 100%)'
+            ? `
+              radial-gradient(ellipse 100% 55% at 50% 115%, rgba(244,249,157,0.28) 0%, transparent 60%),
+              radial-gradient(ellipse 70% 50% at 15% 0%,  rgba(139,183,175,0.22) 0%, transparent 55%),
+              radial-gradient(ellipse 60% 40% at 90% 10%, rgba(107,168,158,0.18) 0%, transparent 50%),
+              linear-gradient(170deg, #0E3C3D 0%, #082828 45%, #051A1A 100%)
+            `
             : 'linear-gradient(170deg, rgba(15,57,58,0.6) 0%, rgba(7,31,32,0.8) 100%)',
           border: isRec
-            ? '1px solid rgba(139,183,175,0.25)'
+            ? '1px solid rgba(184,212,208,0.30)'
             : '1px solid rgba(139,183,175,0.1)',
           backdropFilter: 'blur(32px)',
           boxShadow: isRec
-            ? '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(184,212,208,0.12)'
+            ? '0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(244,249,157,0.08), 0 0 80px rgba(244,249,157,0.06)'
             : '0 8px 32px rgba(0,0,0,0.3)',
         }}
       >
-        {/* Top gradient line */}
+        {/* Top gradient line — neon shimmer for recommended */}
         <div className="absolute top-0 left-0 right-0" style={{
           height: '1px',
           background: isRec
-            ? 'linear-gradient(90deg, transparent, rgba(184,212,208,0.6) 30%, rgba(244,249,157,0.4) 50%, rgba(184,212,208,0.6) 70%, transparent)'
+            ? 'linear-gradient(90deg, transparent 0%, rgba(139,183,175,0.5) 20%, rgba(244,249,157,0.9) 50%, rgba(139,183,175,0.5) 80%, transparent 100%)'
             : 'linear-gradient(90deg, transparent, rgba(139,183,175,0.2) 50%, transparent)',
         }} />
+
+        {/* Bottom neon glow layer */}
+        {isRec && (
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
+            height: '180px',
+            background: 'linear-gradient(to top, rgba(244,249,157,0.07) 0%, transparent 100%)',
+          }} />
+        )}
 
         {/* ── TOP BODY ── */}
         <div style={{ padding: 'clamp(1.5rem, 4vw, 2.25rem)', paddingBottom: '1.5rem' }}>
