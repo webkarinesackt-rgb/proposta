@@ -78,20 +78,20 @@ export function FasesSection() {
     <section
       style={{ background: 'var(--bg-void)', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
     >
-      {/* Spinning logo decorativo */}
+      {/* Logo decorativo estático */}
       <img
         src="/logo_fysi.png"
         alt=""
         aria-hidden
-        className="absolute pointer-events-none select-none"
+        className="absolute pointer-events-none select-none hidden md:block"
         style={{
-          width: '500px',
-          height: '500px',
+          width: '420px',
+          height: '420px',
           objectFit: 'contain',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          opacity: 0.03,
+          opacity: 0.025,
           filter: 'brightness(0) invert(1)',
           zIndex: 0,
         }}
@@ -132,7 +132,7 @@ export function FasesSection() {
       {/* Orbital */}
       <RadialOrbitalTimeline
         timelineData={FASES}
-        className="h-[70vh]"
+        className="h-[55vh] md:h-[70vh]"
       />
     </section>
   )
