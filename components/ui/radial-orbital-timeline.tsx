@@ -137,7 +137,7 @@ export default function RadialOrbitalTimeline({ timelineData, className }: Radia
 
   return (
     <div
-      className={`w-full flex flex-col items-center justify-center overflow-hidden ${className ?? 'h-screen'}`}
+      className={`w-full flex flex-col items-center justify-center ${className ?? 'h-screen'}`}
       style={{ background: 'var(--bg-void)' }}
       ref={containerRef}
       onClick={handleContainerClick}

@@ -76,7 +76,7 @@ const FASES = [
 export function FasesSection() {
   return (
     <section
-      style={{ background: 'var(--bg-void)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
+      style={{ background: 'var(--bg-void)', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 10 }}
     >
       {/* Logo decorativo estático */}
       <img
@@ -97,7 +97,7 @@ export function FasesSection() {
         }}
       />
       {/* Header */}
-      <div className="text-center pt-12 pb-4 flex-shrink-0 px-4" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="text-center pt-6 md:pt-12 pb-4 flex-shrink-0 px-4" style={{ position: 'relative', zIndex: 1 }}>
         <motion.span
           className="badge-teal mb-4 inline-block"
           initial={{ opacity: 0 }}

@@ -165,12 +165,7 @@ export function ExpertsSection({ experts }: ExpertsSectionProps) {
                 className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                {(() => {
-                  const filename = expert.photo_url.split('/').pop()?.replace(/\.[^.]+$/, '') ?? ''
-                  const fromFile = /^[\d.,]+[MKmk]?$/.test(filename) ? filename : null
-                  const count = fromFile ?? expert.followers
-                  return `${count} seguidores`
-                })()}
+                {expert.followers} seguidores
               </span>
             </div>
 
