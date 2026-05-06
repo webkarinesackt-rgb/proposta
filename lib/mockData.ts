@@ -167,7 +167,7 @@ export const mockProposal: Proposal = {
       { id: '7', name: 'Ana Flávia Moraes',     handle: '@anaflaviamoraes',   role: 'Coach de Carreira',        followers: '315K', photo_url: '/experts/315.png' },
     ],
     final_cta_text: 'Ainda com dúvidas? Não hesite em nos contatar!',
-    contact_whatsapp: '5511999999999',
+    contact_whatsapp: '5547997371477',
     infra_blocks: [
       {
         category: 'incluso',

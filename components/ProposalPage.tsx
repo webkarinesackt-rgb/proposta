@@ -34,13 +34,23 @@ interface ProposalPageProps {
 
 export function ProposalPage({ proposal }: ProposalPageProps) {
   const plansRef = useRef<HTMLDivElement>(null)
+  const casesRef = useRef<HTMLDivElement>(null)
+  const ctaRef = useRef<HTMLDivElement>(null)
 
   const scrollToPlans = () => {
     plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const handleAccept = (planId?: string) => {
-    console.log('Proposal accepted, plan:', planId ?? 'no specific plan')
+  const scrollToCases = () => {
+    casesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const scrollToCta = () => {
+    ctaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleAccept = (_planId?: string) => {
+    scrollToCta()
   }
 
   const isExpired =
@@ -59,7 +69,7 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
         >
           Esta proposta expirou.{' '}
           <a
-            href={`https://wa.me/${proposal.agency_settings.contact_whatsapp}`}
+            href={`https://api.whatsapp.com/send/?phone=${proposal.agency_settings.contact_whatsapp}&text&type=phone_number&app_absent=0`}
             className="underline"
           >
             Entre em contato
@@ -68,11 +78,19 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
         </div>
       )}
 
-      <HeroSection proposal={proposal} onSeeProposal={scrollToPlans} />
-      <CasesCarousel />
+      <HeroSection
+        proposal={proposal}
+        onSeeProposal={scrollToPlans}
+        onSeeCases={scrollToCases}
+      />
+      <div ref={casesRef}>
+        <CasesCarousel />
+      </div>
       <DepoimentosSection testimonials={proposal.testimonials} />
 
       <FasesSection />
+
+      <JackMarqueeSection />
 
       <div ref={plansRef}>
         <PlansSection
@@ -80,6 +98,9 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           onAccept={(planId) => handleAccept(planId)}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
+        {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
+          <ExpertsSection experts={proposal.agency_settings.experts} />
+        )}
         <ImageCarouselHero
           title=""
           subtitle=""
@@ -89,17 +110,14 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           images={PORTFOLIO_IMAGES}
           features={[]}
         />
-        {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
-          <ExpertsSection experts={proposal.agency_settings.experts} />
-        )}
-        <CTASection
-          contactWhatsapp={proposal.agency_settings.contact_whatsapp}
-          validUntil={proposal.valid_until}
-          onAccept={() => handleAccept()}
-        />
+        <div ref={ctaRef}>
+          <CTASection
+            contactWhatsapp={proposal.agency_settings.contact_whatsapp}
+            validUntil={proposal.valid_until}
+            onAccept={() => handleAccept()}
+          />
+        </div>
       </div>
-
-      <JackMarqueeSection />
 
       <QuemSection settings={proposal.agency_settings} />
 <FAQSection
@@ -127,7 +145,7 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
         Sistema Estruturado de Conversão ™
         {' · '}
         <a
-          href={`https://wa.me/${proposal.agency_settings.contact_whatsapp}`}
+          href={`https://api.whatsapp.com/send/?phone=${proposal.agency_settings.contact_whatsapp}&text&type=phone_number&app_absent=0`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--teal)' }}
