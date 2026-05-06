@@ -13,7 +13,17 @@ interface Row {
 }
 
 function rowToProposal(row: Row): Proposal {
-  return { ...row.data, id: row.id, slug: row.slug, status: row.status }
+  const data = (row.data ?? {}) as Partial<Proposal>
+  return {
+    ...data,
+    id: row.id,
+    slug: row.slug,
+    status: row.status,
+    // defaults defensivos: se a row antiga não tem o campo, evita crash no render
+    selected_plans: data.selected_plans ?? [],
+    cases: data.cases ?? [],
+    testimonials: data.testimonials ?? [],
+  } as Proposal
 }
 
 export const proposalStore = {

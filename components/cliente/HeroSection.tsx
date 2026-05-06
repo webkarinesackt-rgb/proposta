@@ -142,7 +142,7 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
                 lineHeight: 1.1,
                 fontWeight: 300,
                 marginBottom: '1.25rem',
-                color: '#ef4444',
+                color: 'var(--text-primary)',
               }}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -154,7 +154,7 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
             {/* Description */}
             <motion.p
               style={{
-                color: '#ef4444',
+                color: 'var(--text-secondary)',
                 fontSize: 'clamp(0.9rem, 2.5vw, 1.0625rem)',
                 lineHeight: 1.75,
                 marginBottom: '1.75rem',
