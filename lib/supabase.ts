@@ -6,9 +6,18 @@ function getClient(): SupabaseClient {
   if (_client) return _client
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (typeof window !== 'undefined') {
+    console.log('[supabase] init', {
+      url: url ?? '(undefined)',
+      keyPresent: !!key,
+      keyLen: key?.length ?? 0,
+    })
+  }
+
   if (!url || !key) {
     throw new Error(
-      '[supabase] Missing env vars. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+      `[supabase] Missing env vars. URL=${url ?? 'undefined'} keyPresent=${!!key}`
     )
   }
   _client = createClient(url, key)
