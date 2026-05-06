@@ -13,7 +13,6 @@ import { PlansSection } from './proposta/PlansSection'
 import { InfraSection } from './proposta/InfraSection'
 import { CTASection } from './proposta/CTASection'
 import { FasesSection } from './proposta/FasesSection'
-import { PortfolioCarousel } from './proposta/PortfolioCarousel'
 import { CasesCarousel } from './cliente/CasesCarousel'
 import { JackMarqueeSection } from './jack/JackMarqueeSection'
 import { HeroGeometric } from './ui/shape-landing-hero'
@@ -81,10 +80,6 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           onAccept={(planId) => handleAccept(planId)}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
-        <PortfolioCarousel />
-        {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
-          <ExpertsSection experts={proposal.agency_settings.experts} />
-        )}
         <ImageCarouselHero
           title=""
           subtitle=""
@@ -94,6 +89,9 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           images={PORTFOLIO_IMAGES}
           features={[]}
         />
+        {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
+          <ExpertsSection experts={proposal.agency_settings.experts} />
+        )}
         <CTASection
           contactWhatsapp={proposal.agency_settings.contact_whatsapp}
           validUntil={proposal.valid_until}

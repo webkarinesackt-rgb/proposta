@@ -32,7 +32,7 @@ const LP_PERSUASIVO: Plan = {
   tagline: 'Landing Page + Textos Inclusos',
   description:
     'Nós cuidamos de tudo: estratégia, copy persuasivo, design e performance. Você só aprova.',
-  delivery_days: 10,
+  delivery_days: 12,
   price_cash: 2800,
   price_installments_count: 6,
   price_installment_value: 490,
