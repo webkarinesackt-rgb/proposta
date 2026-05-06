@@ -8,9 +8,10 @@ import { RadialGlowBackground } from '@/components/ui/radial-glow-background'
 interface HeroSectionProps {
   proposal: Proposal
   onSeeProposal: () => void
+  onSeeCases?: () => void
 }
 
-export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
+export function HeroSection({ proposal, onSeeProposal, onSeeCases }: HeroSectionProps) {
   const { hero_title, hero_subtitle, hero_description, client_name, agency_settings } = proposal
 
   return (
@@ -179,7 +180,7 @@ export function HeroSection({ proposal, onSeeProposal }: HeroSectionProps) {
                 Ver proposta
                 <ArrowRight size={15} />
               </button>
-              <button className="btn-ghost">
+              <button className="btn-ghost" onClick={onSeeCases}>
                 Nossos cases
                 <ChevronDown size={15} />
               </button>

@@ -20,7 +20,7 @@ export function ExpertsSection({ experts }: ExpertsSectionProps) {
   return (
     <section
       className="relative overflow-hidden"
-      style={{ background: '#060E0F', paddingTop: 'clamp(3rem, 8vw, 6rem)', paddingBottom: 'clamp(3rem, 8vw, 6rem)' }}
+      style={{ background: 'var(--bg-void)', paddingTop: 'clamp(3rem, 8vw, 6rem)', paddingBottom: 'clamp(3rem, 8vw, 6rem)' }}
     >
       {/* Ambient */}
       <div

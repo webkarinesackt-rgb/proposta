@@ -231,7 +231,7 @@ export function PagePricingSection({
           <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
             Ou{' '}
             <a
-              href={`https://wa.me/${contactWhatsapp}`}
+              href={`https://api.whatsapp.com/send/?phone=${contactWhatsapp}&text&type=phone_number&app_absent=0`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: 'var(--teal)', textDecoration: 'underline' }}

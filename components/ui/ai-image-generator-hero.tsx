@@ -62,7 +62,7 @@ export function ImageCarouselHero({
   }
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ background: '#060E0F', minHeight: '50vh' }}>
+    <div className="relative w-full overflow-hidden" style={{ background: 'var(--bg-void)', minHeight: '50vh' }}>
       {/* Ambient glows */}
       <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none animate-pulse"
         style={{ background: 'radial-gradient(circle, rgba(139,183,175,0.08) 0%, transparent 70%)' }} />

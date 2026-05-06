@@ -104,7 +104,7 @@ export function FAQSection({ items, contactWhatsapp }: FAQSectionProps) {
             Ainda com dúvidas? Não hesite em nos contatar!
           </p>
           <a
-            href={`https://wa.me/${contactWhatsapp}`}
+            href={`https://api.whatsapp.com/send/?phone=${contactWhatsapp}&text&type=phone_number&app_absent=0`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-outline inline-flex"

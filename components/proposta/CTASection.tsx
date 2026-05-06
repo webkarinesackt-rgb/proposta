@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, ArrowRight, MessageCircle, Shield, Clock } from 'lucide-react'
+import { CheckCircle2, ArrowRight, MessageCircle, Clock } from 'lucide-react'
 
 interface CTASectionProps {
   contactWhatsapp: string
@@ -91,15 +91,9 @@ export function CTASection({ contactWhatsapp, validUntil, onAccept }: CTASection
                 </span>
               </h2>
 
-              <p className="text-sm mb-10" style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                Clique abaixo para aceitar a proposta.<br />
-                Entraremos em contato em até 24h para alinhar os próximos passos.
-              </p>
-
               {/* Trust signals */}
-              <div className="flex flex-wrap justify-center gap-4 mb-10">
+              <div className="flex flex-wrap justify-center gap-4 mb-10 mt-6">
                 {[
-                  { icon: Shield, text: 'Sem compromisso de longo prazo' },
                   { icon: CheckCircle2, text: 'Processo 100% transparente' },
                   { icon: Clock, text: 'Início em até 48h' },
                 ].map(({ icon: Icon, text }, i) => (
@@ -126,7 +120,7 @@ export function CTASection({ contactWhatsapp, validUntil, onAccept }: CTASection
                 </button>
 
                 <a
-                  href={`https://wa.me/${contactWhatsapp}?text=Olá! Tenho dúvidas sobre a proposta.`}
+                  href={`https://api.whatsapp.com/send/?phone=${contactWhatsapp}&text=${encodeURIComponent('Olá! Tenho dúvidas sobre a proposta.')}&type=phone_number&app_absent=0`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-outline flex-1"
@@ -170,12 +164,55 @@ export function CTASection({ contactWhatsapp, validUntil, onAccept }: CTASection
                 Proposta aceita! 🎉
               </h2>
               <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                Incrível! Karine receberá uma notificação agora. Você vai receber
-                um e-mail com os próximos passos em breve.
+                Agora os próximos passos:
               </p>
 
+              <ol
+                className="text-left text-sm mx-auto mb-8"
+                style={{
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.7,
+                  maxWidth: '420px',
+                  listStyle: 'none',
+                  padding: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                }}
+              >
+                {[
+                  'Vamos criar um grupo no WhatsApp com a equipe agora',
+                  'Você recebe o contrato pra assinatura digital',
+                  'Preenche um briefing curto (estratégia + identidade)',
+                  'Kickoff: começamos em até 48h',
+                ].map((step, i) => (
+                  <li key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: 'rgba(244,249,157,0.12)',
+                        border: '1px solid rgba(244,249,157,0.4)',
+                        color: 'var(--neon)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: '1px',
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+
               <a
-                href={`https://wa.me/${contactWhatsapp}?text=Acabei de aceitar a proposta! Quando podemos começar?`}
+                href={`https://api.whatsapp.com/send/?phone=${contactWhatsapp}&text=${encodeURIComponent('Acabei de aceitar a proposta! Quando podemos começar?')}&type=phone_number&app_absent=0`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-neon inline-flex"

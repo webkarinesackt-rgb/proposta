@@ -217,7 +217,7 @@ function PlanCard({
         position: 'relative',
         overflow: 'hidden',
         background: isRec
-          ? 'linear-gradient(160deg, rgba(18,62,64,0.98) 0%, rgba(8,34,36,1) 100%)'
+          ? 'linear-gradient(160deg, #082828 0%, #051A1A 100%)'
           : 'rgba(15,57,58,0.55)',
         border: isRec
           ? '1px solid rgba(184,212,208,0.28)'
