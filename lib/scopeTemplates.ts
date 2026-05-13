@@ -33,9 +33,9 @@ const LP_PERSUASIVO: Plan = {
   description:
     'Nós cuidamos de tudo: estratégia, copy persuasivo, design e performance. Você só aprova.',
   delivery_days: 12,
-  price_cash: 2800,
-  price_installments_count: 6,
-  price_installment_value: 490,
+  price_cash: 2300,
+  price_installments_count: 8,
+  price_installment_value: 300,
   highlight_phrase: 'Escolhido por quem leva a presença digital a sério',
   is_recommended: true,
   features: [
