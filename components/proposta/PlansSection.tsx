@@ -238,7 +238,7 @@ function PlanCard({
 
       {/* ── CARD INFERIOR — Investimento + CTA ── */}
       <div
-        className={`mt-[3px] ${isSingle ? 'md:mt-0 md:ml-[3px] md:w-[340px] md:flex-shrink-0 md:flex md:flex-col md:justify-center' : ''}`}
+        className={`mt-[3px] ${isSingle ? 'md:mt-0 md:ml-[3px] md:w-[340px] md:flex-shrink-0 md:flex md:flex-col md:justify-start' : ''}`}
         style={{
         borderRadius: '24px',
         position: 'relative',
