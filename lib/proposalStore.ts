@@ -1,8 +1,33 @@
 import { Proposal } from './types'
 import { supabase } from './supabase'
 
-function genSlug() {
-  return Math.random().toString(36).slice(2, 9)
+function slugify(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+}
+
+function randomSuffix() {
+  return Math.random().toString(36).slice(2, 6)
+}
+
+async function uniqueSlug(base: string, ignoreId?: string): Promise<string> {
+  const root = base || randomSuffix()
+  let candidate = root
+  for (let i = 0; i < 6; i++) {
+    const { data } = await supabase
+      .from('proposals')
+      .select('id')
+      .eq('slug', candidate)
+      .maybeSingle()
+    if (!data || data.id === ignoreId) return candidate
+    candidate = `${root}-${randomSuffix()}`
+  }
+  return `${root}-${randomSuffix()}`
 }
 
 interface Row {
@@ -52,7 +77,11 @@ export const proposalStore = {
   },
 
   async save(proposal: Proposal): Promise<Proposal> {
-    const slug = proposal.slug || genSlug()
+    const desiredSlug = slugify(proposal.client_name ?? '')
+    const slug =
+      proposal.slug && (!desiredSlug || proposal.slug.startsWith(desiredSlug))
+        ? proposal.slug
+        : await uniqueSlug(desiredSlug, proposal.id)
     const status = proposal.status || 'draft'
     const data = { ...proposal, slug, status }
 

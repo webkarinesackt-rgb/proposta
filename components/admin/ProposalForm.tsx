@@ -12,7 +12,7 @@ import {
   SitePages,
 } from '@/lib/scopeTemplates'
 import { Plan, Proposal, ProjectType } from '@/lib/types'
-import { Eye, Copy, Check, ArrowLeft, ChevronRight } from 'lucide-react'
+import { Eye, Copy, Check, ArrowLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { ImageUpload } from './ImageUpload'
 
 /* ── style helpers ───────────────────────────────────── */
@@ -66,11 +66,15 @@ function PlanEditor({
   index,
   onChange,
   onToggleRecommended,
+  onRemove,
+  expandedScope = false,
 }: {
   plan: Plan
   index: number
   onChange: (id: string, field: keyof Plan, value: unknown) => void
   onToggleRecommended: (id: string) => void
+  onRemove?: (id: string) => void
+  expandedScope?: boolean
 }) {
   const [open, setOpen] = useState(index === 0)
 
@@ -114,6 +118,17 @@ function PlanEditor({
                 style={{ left: plan.is_recommended ? '18px' : '2px' }} />
             </div>
           </div>
+          {onRemove && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={e => { e.stopPropagation(); onRemove(plan.id) }}
+              className="text-[#8AA09A] hover:text-[#B83B3B] transition-colors p-1 -m-1"
+              aria-label="Remover plano"
+            >
+              <Trash2 size={14} />
+            </span>
+          )}
           <ChevronRight size={14} className="text-[#8AA09A] transition-transform"
             style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
         </div>
@@ -154,17 +169,41 @@ function PlanEditor({
                 onChange={e => onChange(plan.id, 'delivery_days', Number(e.target.value))} />
             </Field>
           </div>
+          <div className="mb-4">
+            <Field label="Texto do prazo (prefixo)">
+              <input
+                className={INPUT}
+                value={plan.delivery_label ?? ''}
+                onChange={e => onChange(plan.id, 'delivery_label', e.target.value)}
+                placeholder="Primeira versão em"
+              />
+              <p className="text-[10px] text-[#8AA09A] mt-1.5">
+                Aparece antes do nº de dias. Ex.: &quot;Prazo total de&quot;, &quot;Entrega em&quot;, &quot;Projeto pronto em&quot;.
+              </p>
+            </Field>
+          </div>
           {/* features */}
           <div>
-            <label className={LABEL}>Itens inclusos (um por linha)</label>
+            <label className={LABEL}>
+              {expandedScope ? 'Escopo detalhado (um item por linha)' : 'Itens inclusos (um por linha)'}
+            </label>
             <textarea
-              className={`${INPUT} resize-none`}
-              rows={plan.features.length + 1}
+              className={`${INPUT} ${expandedScope ? 'resize-y' : 'resize-none'}`}
+              rows={expandedScope ? Math.max(plan.features.length + 4, 14) : plan.features.length + 1}
+              style={expandedScope ? { minHeight: 340 } : undefined}
+              placeholder={
+                expandedScope
+                  ? 'Estratégia:\nSEO técnico inicial\nEstrutura amigável para indexação\n\nPáginas principais:\nHome\nEmpresa\nPortfólio'
+                  : undefined
+              }
               value={plan.features.join('\n')}
               onChange={e =>
                 onChange(plan.id, 'features', e.target.value.split('\n').filter(Boolean))
               }
             />
+            <p className="text-[10px] text-[#8AA09A] mt-1.5">
+              Dica: termine uma linha com <strong>:</strong> para virar título de seção (sem check).
+            </p>
           </div>
           <div className="mt-4">
             <Field label="Frase de destaque">
@@ -251,6 +290,26 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
 
   const setRecommended = (id: string) =>
     setPlans(prev => prev.map(p => ({ ...p, is_recommended: p.id === id ? !p.is_recommended : false })))
+
+  const addPlan = () =>
+    setPlans(prev => [
+      ...prev,
+      {
+        id: `tpl_${Date.now()}`,
+        name: 'Novo plano',
+        tagline: '',
+        description: '',
+        delivery_days: 7,
+        price_cash: 0,
+        price_installments_count: 6,
+        price_installment_value: 0,
+        highlight_phrase: '',
+        features: [],
+      },
+    ])
+
+  const removePlan = (id: string) =>
+    setPlans(prev => (prev.length > 1 ? prev.filter(p => p.id !== id) : prev))
 
   function buildProposal(): Proposal {
     const base = initial ?? mockProposal
@@ -484,9 +543,23 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
                 index={i}
                 onChange={updatePlan}
                 onToggleRecommended={setRecommended}
+                onRemove={form.project_type === 'custom' && plans.length > 1 ? removePlan : undefined}
+                expandedScope={form.project_type === 'custom'}
               />
             ))}
           </div>
+
+          {form.project_type === 'custom' && plans.length < 3 && (
+            <button
+              type="button"
+              onClick={addPlan}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-[12px] font-semibold transition-colors hover:bg-[#F4FAF8]"
+              style={{ borderColor: '#0D3839', color: '#0D3839', background: '#FAFAF8' }}
+            >
+              <Plus size={14} />
+              Adicionar outro plano
+            </button>
+          )}
         </SectionCard>
       </div>
 

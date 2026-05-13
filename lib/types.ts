@@ -7,6 +7,7 @@ export interface Plan {
   tagline: string
   description: string
   delivery_days: number
+  delivery_label?: string
   price_cash: number
   price_installments_count: number
   price_installment_value: number

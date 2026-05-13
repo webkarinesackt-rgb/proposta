@@ -3,32 +3,35 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Clock, Check, ArrowRight } from 'lucide-react'
-import { Plan } from '@/lib/types'
+import { Plan, ProjectType } from '@/lib/types'
 
 interface PlansSectionProps {
   plans: Plan[]
   onAccept: (planId: string) => void
+  projectType?: ProjectType
 }
 
 function PlanCard({
   plan,
   index,
   onAccept,
+  isSingle = false,
 }: {
   plan: Plan
   index: number
   onAccept: (id: string) => void
+  isSingle?: boolean
 }) {
   const isRec = plan.is_recommended
 
   return (
     <motion.div
-      className="relative flex flex-col"
+      className={`relative flex flex-col ${isSingle ? 'md:flex-row md:items-stretch' : ''}`}
       initial={{ opacity: 0, y: 48 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.65, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
-      style={{ zIndex: isRec ? 2 : 1, transform: isRec ? 'translateY(-12px)' : 'none' }}
+      style={{ zIndex: isRec ? 2 : 1, transform: isRec && !isSingle ? 'translateY(-12px)' : 'none' }}
     >
       {/* Outer glow for recommended */}
       {isRec && (
@@ -183,36 +186,60 @@ function PlanCard({
           }}>
             <Clock size={10} style={{ color: 'var(--teal)' }} />
             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-              Primeira versão em{' '}
+              {plan.delivery_label?.trim() || 'Primeira versão em'}{' '}
               <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                 {plan.delivery_days} dias úteis
               </strong>
             </span>
           </div>
 
-          {/* Features */}
+          {/* Features — linhas terminadas com `:` viram cabeçalhos de seção */}
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-            {plan.features.map((f, i) => (
-              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                <div style={{
-                  width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, marginTop: '1px',
-                  background: isRec ? 'rgba(184,212,208,0.08)' : 'rgba(139,183,175,0.06)',
-                  border: isRec ? '1px solid rgba(184,212,208,0.2)' : '1px solid rgba(139,183,175,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Check size={8} style={{ color: isRec ? 'var(--green-pastel)' : 'var(--teal)' }} />
-                </div>
-                <span style={{ fontSize: '0.775rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
-              </li>
-            ))}
+            {plan.features.map((f, i) => {
+              const trimmed = f.trim()
+              const isHeading = trimmed.endsWith(':') && trimmed.length > 1
+              if (isHeading) {
+                return (
+                  <li
+                    key={i}
+                    style={{
+                      listStyle: 'none',
+                      marginTop: i === 0 ? 0 : '0.85rem',
+                      marginBottom: '0.15rem',
+                      fontSize: '0.62rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      color: isRec ? 'var(--green-pastel)' : 'var(--teal)',
+                    }}
+                  >
+                    {trimmed.slice(0, -1)}
+                  </li>
+                )
+              }
+              return (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                  <div style={{
+                    width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, marginTop: '1px',
+                    background: isRec ? 'rgba(184,212,208,0.08)' : 'rgba(139,183,175,0.06)',
+                    border: isRec ? '1px solid rgba(184,212,208,0.2)' : '1px solid rgba(139,183,175,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Check size={8} style={{ color: isRec ? 'var(--green-pastel)' : 'var(--teal)' }} />
+                  </div>
+                  <span style={{ fontSize: '0.775rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
+                </li>
+              )
+            })}
           </ul>
         </div>
 
       </div>
 
       {/* ── CARD INFERIOR — Investimento + CTA ── */}
-      <div style={{
-        marginTop: '3px',
+      <div
+        className={`mt-[3px] ${isSingle ? 'md:mt-0 md:ml-[3px] md:w-[340px] md:flex-shrink-0 md:flex md:flex-col md:justify-center' : ''}`}
+        style={{
         borderRadius: '24px',
         position: 'relative',
         overflow: 'hidden',
@@ -339,13 +366,17 @@ function PlanCard({
   )
 }
 
-export function PlansSection({ plans, onAccept }: PlansSectionProps) {
-  const gridCols =
-    plans.length === 3
-      ? 'grid-cols-1 md:grid-cols-3'
-      : plans.length === 2
-      ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto'
-      : 'grid-cols-1 max-w-sm mx-auto'
+export function PlansSection({ plans, onAccept, projectType }: PlansSectionProps) {
+  const isCustom = projectType === 'custom'
+  // Para custom: cada card horizontal (escopo/preço lado a lado), empilhados.
+  const isSingle = plans.length === 1 || isCustom
+  const gridCols = isCustom
+    ? 'grid-cols-1 max-w-5xl mx-auto'
+    : plans.length === 3
+    ? 'grid-cols-1 md:grid-cols-3'
+    : plans.length === 2
+    ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto'
+    : 'grid-cols-1 max-w-3xl mx-auto'
 
   return (
     <section
@@ -399,7 +430,7 @@ export function PlansSection({ plans, onAccept }: PlansSectionProps) {
       >
         <div className={`grid gap-4 items-start md:items-end ${gridCols}`}>
           {plans.map((plan, i) => (
-            <PlanCard key={plan.id} plan={plan} index={i} onAccept={onAccept} />
+            <PlanCard key={plan.id} plan={plan} index={i} onAccept={onAccept} isSingle={isSingle} />
           ))}
         </div>
       </div>

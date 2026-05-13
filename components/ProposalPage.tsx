@@ -96,6 +96,7 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
         <PlansSection
           plans={proposal.selected_plans}
           onAccept={(planId) => handleAccept(planId)}
+          projectType={proposal.project_type}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
         {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
