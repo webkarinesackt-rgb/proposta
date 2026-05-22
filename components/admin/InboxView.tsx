@@ -113,6 +113,7 @@ export default function InboxView() {
   const [search, setSearch] = useState('')
   const [showModels, setShowModels] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
+  const [chatFilter, setChatFilter] = useState<'all' | 'unanswered'>('all')
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   // poll: status + lista de conversas
@@ -199,9 +200,13 @@ export default function InboxView() {
     }
   }
 
-  const filtered = search.trim()
-    ? chats.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    : chats
+  // "não respondida" = conversa individual cuja última mensagem é do contato
+  const unansweredCount = chats.filter((c) => !c.isGroup && !c.fromMeLast).length
+  const filtered = chats.filter((c) => {
+    if (search.trim() && !c.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast)) return false
+    return true
+  })
 
   const connLabel =
     conn === 'open' ? 'conectado' : conn === 'qr' ? 'aguardando QR' : 'conectando…'
@@ -267,11 +272,38 @@ export default function InboxView() {
                 className="flex-1 bg-transparent text-[13px] text-[#162322] outline-none placeholder-[#A8B5B0]"
               />
             </div>
+            <div className="flex gap-1.5 mt-2">
+              {(
+                [
+                  { id: 'all', label: 'Todas' },
+                  {
+                    id: 'unanswered',
+                    label: `Não respondidas${unansweredCount ? ` · ${unansweredCount}` : ''}`,
+                  },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setChatFilter(f.id)}
+                  className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                  style={{
+                    background: chatFilter === f.id ? '#0D3839' : '#F4F3EF',
+                    color: chatFilter === f.id ? '#F4F99D' : '#8AA09A',
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-[12px] text-[#A8B5B0] text-center px-4 py-8">
-                {chats.length === 0 ? 'Sincronizando conversas…' : 'Nada encontrado.'}
+                {chats.length === 0
+                  ? 'Sincronizando conversas…'
+                  : chatFilter === 'unanswered'
+                  ? 'Tudo respondido! 🎉'
+                  : 'Nada encontrado.'}
               </p>
             ) : (
               filtered.map((c) => (
