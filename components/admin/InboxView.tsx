@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage } from '@/lib/waServer'
-import { Search, Send, Users, ArrowLeft } from 'lucide-react'
+import { Search, Send, Users, ArrowLeft, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import ModelsPanel from './ModelsPanel'
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -109,6 +110,7 @@ export default function InboxView() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [search, setSearch] = useState('')
+  const [showModels, setShowModels] = useState(false)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   // poll: status + lista de conversas
@@ -162,6 +164,16 @@ export default function InboxView() {
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function refreshMessages() {
+    if (!selectedId) return
+    try {
+      const r = await waServer.messages(selectedId)
+      setMessages(r.messages || [])
+    } catch {
+      /* o poll de status sinaliza servidor offline */
+    }
+  }
 
   async function handleSend() {
     const text = draft.trim()
@@ -300,6 +312,17 @@ export default function InboxView() {
                   {initials(selectedName)}
                 </div>
                 <span className="text-[14px] font-bold text-[#162322]">{selectedName}</span>
+                <button
+                  onClick={() => setShowModels((v) => !v)}
+                  className="ml-auto flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                  style={{
+                    background: showModels ? '#0D3839' : '#F4F3EF',
+                    color: showModels ? '#F4F99D' : '#0D3839',
+                  }}
+                >
+                  <Zap size={12} />
+                  Modelos
+                </button>
               </div>
 
               {/* mensagens */}
@@ -345,6 +368,14 @@ export default function InboxView() {
             </>
           )}
         </div>
+
+        {showModels && selectedId && (
+          <ModelsPanel
+            chatId={selectedId}
+            onClose={() => setShowModels(false)}
+            onSent={refreshMessages}
+          />
+        )}
       </div>
     </div>
   )

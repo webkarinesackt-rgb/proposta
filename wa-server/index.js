@@ -507,12 +507,17 @@ app.get('/library', async (_req, res) => {
 
 // salvar nova mensagem
 app.post('/library/snippet', async (req, res) => {
-  const { name, content } = req.body || {}
+  const { name, content, category } = req.body || {}
   if (!name || !content) {
     return res.status(400).json({ ok: false, error: 'Informe nome e conteúdo.' })
   }
   const lib = await readLibrary()
-  const snippet = { id: randomUUID(), name: String(name), content: String(content) }
+  const snippet = {
+    id: randomUUID(),
+    name: String(name),
+    category: String(category || ''),
+    content: String(content),
+  }
   lib.snippets.push(snippet)
   await writeLibrary(lib)
   res.json({ ok: true, snippet })
@@ -528,7 +533,7 @@ app.delete('/library/snippet/:id', async (req, res) => {
 
 // salvar novo áudio (converte p/ Opus e guarda no disco)
 app.post('/library/audio', upload.single('audio'), async (req, res) => {
-  const { name } = req.body || {}
+  const { name, category } = req.body || {}
   if (!name) return res.status(400).json({ ok: false, error: 'Informe um nome.' })
   if (!req.file) return res.status(400).json({ ok: false, error: 'Envie um arquivo de áudio.' })
   try {
@@ -538,7 +543,13 @@ app.post('/library/audio', upload.single('audio'), async (req, res) => {
     await mkdir(LIB_AUDIO_DIR, { recursive: true })
     await writeFile(path.join(LIB_AUDIO_DIR, file), buffer)
     const lib = await readLibrary()
-    const audio = { id, name: String(name), file, seconds }
+    const audio = {
+      id,
+      name: String(name),
+      category: String(category || ''),
+      file,
+      seconds,
+    }
     lib.audios.push(audio)
     await writeLibrary(lib)
     res.json({ ok: true, audio })

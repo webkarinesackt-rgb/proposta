@@ -28,6 +28,21 @@ export interface WaStatus {
   me: string | null
 }
 
+export interface WaSnippet {
+  id: string
+  name: string
+  category: string
+  content: string
+}
+
+export interface WaAudio {
+  id: string
+  name: string
+  category: string
+  file: string
+  seconds: number
+}
+
 export const waServer = {
   base: WA,
 
@@ -53,6 +68,48 @@ export const waServer = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     })
+    return r.json()
+  },
+
+  // ── biblioteca de modelos ──
+
+  async library(): Promise<{ snippets: WaSnippet[]; audios: WaAudio[] }> {
+    const r = await fetch(`${WA}/library`)
+    const j = await r.json()
+    return { snippets: j.snippets || [], audios: j.audios || [] }
+  },
+
+  async addSnippet(name: string, category: string, content: string) {
+    const r = await fetch(`${WA}/library/snippet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, category, content }),
+    })
+    return r.json()
+  },
+
+  async delSnippet(id: string) {
+    await fetch(`${WA}/library/snippet/${id}`, { method: 'DELETE' })
+  },
+
+  async addAudio(name: string, category: string, file: File) {
+    const fd = new FormData()
+    fd.append('name', name)
+    fd.append('category', category)
+    fd.append('audio', file)
+    const r = await fetch(`${WA}/library/audio`, { method: 'POST', body: fd })
+    return r.json()
+  },
+
+  async delAudio(id: string) {
+    await fetch(`${WA}/library/audio/${id}`, { method: 'DELETE' })
+  },
+
+  async sendSavedAudio(chatId: string, audioId: string) {
+    const r = await fetch(
+      `${WA}/chats/${encodeURIComponent(chatId)}/send-audio/${audioId}`,
+      { method: 'POST' }
+    )
     return r.json()
   },
 }
