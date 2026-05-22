@@ -1,0 +1,4 @@
+node_modules/
+# auth/ guarda as credenciais da sessão do WhatsApp — NUNCA versionar
+auth/
+*.log
