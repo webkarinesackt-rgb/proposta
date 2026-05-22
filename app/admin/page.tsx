@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProposalStatus } from '@/lib/types'
-import { Plus, Eye, Copy, Trash2, FileText, Clock, CheckCircle2, XCircle, Mail, Send } from 'lucide-react'
+import { Plus, Eye, Copy, Trash2, FileText, Clock, CheckCircle2, XCircle, Mail, Send, Inbox, BarChart3 } from 'lucide-react'
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -247,6 +247,22 @@ export default function AdminDashboard() {
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8AA09A]">
               Fysi Lab Digital
             </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => router.push('/admin/inbox')}
+              className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg text-[#8AA09A] hover:bg-[#F4F3EF] hover:text-[#0D3839] transition-colors"
+            >
+              <Inbox size={13} />
+              Inbox
+            </button>
+            <button
+              onClick={() => router.push('/admin/dashboard')}
+              className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg text-[#8AA09A] hover:bg-[#F4F3EF] hover:text-[#0D3839] transition-colors"
+            >
+              <BarChart3 size={13} />
+              Dashboard
+            </button>
           </div>
         </div>
       </div>

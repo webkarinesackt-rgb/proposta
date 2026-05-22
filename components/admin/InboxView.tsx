@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage } from '@/lib/waServer'
-import { Search, Send, Users, ArrowLeft, Zap, FileText } from 'lucide-react'
+import { Search, Send, Users, ArrowLeft, Zap, FileText, BarChart3 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
@@ -245,6 +245,13 @@ export default function InboxView() {
           <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8AA09A]">
             · Inbox WhatsApp
           </span>
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
+          >
+            <BarChart3 size={13} />
+            Dashboard
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: connColor }} />

@@ -364,6 +364,79 @@ async function loadStore() {
   }
 }
 
+// ─── Métricas do dashboard ───────────────────────────────────────
+
+/** Timestamp (em segundos) de início do período. */
+function periodStart(period) {
+  if (period === 'today') {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d.getTime() / 1000
+  }
+  if (period === 'week') return (Date.now() - 7 * 24 * 3600 * 1000) / 1000
+  if (period === 'month') return (Date.now() - 30 * 24 * 3600 * 1000) / 1000
+  return 0 // tudo
+}
+
+/** Calcula as métricas do dashboard para um período. */
+function computeMetrics(period) {
+  const since = periodStart(period)
+  const now = Date.now() / 1000
+  let received = 0
+  let sent = 0
+  const activeChats = new Set()
+  const responseGaps = []
+
+  for (const [jid, msgs] of store.messages) {
+    let pendingReceived = null
+    for (const m of msgs) {
+      if (m.time >= since) {
+        if (m.fromMe) sent++
+        else received++
+        activeChats.add(jid)
+      }
+      // tempo de resposta: do 1º recebido sem resposta até o nosso envio
+      if (!m.fromMe) {
+        if (pendingReceived === null) pendingReceived = m.time
+      } else if (pendingReceived !== null) {
+        if (pendingReceived >= since) {
+          const gap = m.time - pendingReceived
+          if (gap >= 0 && gap < 48 * 3600) responseGaps.push(gap)
+        }
+        pendingReceived = null
+      }
+    }
+  }
+
+  let unanswered = 0
+  let longestWait = 0
+  let totalChats = 0
+  for (const c of store.chats.values()) {
+    if (!c.lastTime) continue
+    totalChats++
+    if (c.id.endsWith('@g.us')) continue
+    if (!c.fromMeLast) {
+      unanswered++
+      longestWait = Math.max(longestWait, now - c.lastTime)
+    }
+  }
+
+  const avgResponseMin = responseGaps.length
+    ? Math.round(responseGaps.reduce((a, b) => a + b, 0) / responseGaps.length / 60)
+    : 0
+
+  return {
+    period,
+    totalChats,
+    unanswered,
+    received,
+    sent,
+    activeChats: activeChats.size,
+    avgResponseMin,
+    longestWaitH: Math.round(longestWait / 3600),
+  }
+}
+
 /** Garante que há conexão aberta antes de tentar enviar. */
 function ensureConnected(res) {
   if (connState !== 'open' || !sock) {
@@ -724,6 +797,13 @@ app.post('/chats/:id/send-audio/:audioId', async (req, res) => {
     console.error('[chats/send-audio]', err)
     res.status(500).json({ ok: false, error: err.message })
   }
+})
+
+// métricas do dashboard
+app.get('/dashboard', (req, res) => {
+  const allowed = ['today', 'week', 'month', 'all']
+  const period = allowed.includes(req.query.period) ? req.query.period : 'week'
+  res.json(computeMetrics(period))
 })
 
 app.listen(PORT, () => {

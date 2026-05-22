@@ -44,6 +44,17 @@ export interface WaAudio {
   seconds: number
 }
 
+export interface WaDashboard {
+  period: string
+  totalChats: number
+  unanswered: number
+  received: number
+  sent: number
+  activeChats: number
+  avgResponseMin: number
+  longestWaitH: number
+}
+
 export const waServer = {
   base: WA,
 
@@ -116,6 +127,11 @@ export const waServer = {
       `${WA}/chats/${encodeURIComponent(chatId)}/send-audio/${audioId}`,
       { method: 'POST' }
     )
+    return r.json()
+  },
+
+  async dashboard(period: string): Promise<WaDashboard> {
+    const r = await fetch(`${WA}/dashboard?period=${period}`)
     return r.json()
   },
 }
