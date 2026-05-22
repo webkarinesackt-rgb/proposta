@@ -75,6 +75,8 @@ function PlanEditor({
   onToggleRecommended,
   onRemove,
   expandedScope = false,
+  currency = 'BRL',
+  exchangeRate = 1,
 }: {
   plan: Plan
   index: number
@@ -82,6 +84,8 @@ function PlanEditor({
   onToggleRecommended: (id: string) => void
   onRemove?: (id: string) => void
   expandedScope?: boolean
+  currency?: Currency
+  exchangeRate?: number
 }) {
   const [open, setOpen] = useState(index === 0)
 
@@ -176,6 +180,22 @@ function PlanEditor({
                 onChange={e => onChange(plan.id, 'delivery_days', Number(e.target.value))} />
             </Field>
           </div>
+          {currency !== 'BRL' && (
+            <div className="-mt-1 mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-[#F4FAF8] px-3 py-2 text-[11px]">
+              <span className="font-bold uppercase tracking-wide text-[#8AA09A]">
+                Cliente vê:
+              </span>
+              <span className="font-bold text-[#0D3839]">
+                {formatMoney(plan.price_cash, currency, exchangeRate)} à vista
+              </span>
+              {plan.price_installments_count > 0 && (
+                <span className="text-[#8AA09A]">
+                  · {plan.price_installments_count}× de{' '}
+                  {formatMoney(plan.price_installment_value, currency, exchangeRate)}
+                </span>
+              )}
+            </div>
+          )}
           <div className="mb-4">
             <Field label="Texto do prazo (prefixo)">
               <input
@@ -616,6 +636,8 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
                 onToggleRecommended={setRecommended}
                 onRemove={form.project_type === 'custom' && plans.length > 1 ? removePlan : undefined}
                 expandedScope={form.project_type === 'custom'}
+                currency={form.currency}
+                exchangeRate={form.exchange_rate}
               />
             ))}
           </div>
