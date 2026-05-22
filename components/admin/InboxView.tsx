@@ -72,8 +72,9 @@ function ChatRow({
 
 /* ── message bubble ──────────────────────────────────── */
 
-function Bubble({ msg }: { msg: WaMessage }) {
+function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const mine = msg.fromMe
+  const isAudio = msg.type === 'audio' && msg.hasMedia
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -86,7 +87,18 @@ function Bubble({ msg }: { msg: WaMessage }) {
           borderBottomLeftRadius: mine ? 16 : 4,
         }}
       >
-        <p className="text-[13px] leading-snug whitespace-pre-wrap break-words">{msg.text}</p>
+        {isAudio ? (
+          <audio
+            controls
+            preload="none"
+            src={waServer.mediaUrl(chatId, msg.id)}
+            style={{ height: 38, maxWidth: 240, display: 'block' }}
+          />
+        ) : (
+          <p className="text-[13px] leading-snug whitespace-pre-wrap break-words">
+            {msg.text}
+          </p>
+        )}
         <p
           className="text-[10px] mt-1 text-right"
           style={{ color: mine ? 'rgba(255,255,255,0.5)' : '#A8B5B0' }}
@@ -382,7 +394,9 @@ export default function InboxView() {
                     Sem mensagens nesta conversa.
                   </p>
                 ) : (
-                  messages.map((m) => <Bubble key={m.id} msg={m} />)
+                  messages.map((m) => (
+                    <Bubble key={m.id} msg={m} chatId={selectedId} />
+                  ))
                 )}
                 <div ref={msgEndRef} />
               </div>

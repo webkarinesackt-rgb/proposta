@@ -16,6 +16,8 @@ import makeWASocket, {
   makeCacheableSignalKeyStore,
   fetchLatestBaileysVersion,
   DisconnectReason,
+  downloadMediaMessage,
+  BufferJSON,
 } from '@whiskeysockets/baileys'
 import NodeCache from '@cacheable/node-cache'
 import P from 'pino'
@@ -211,16 +213,22 @@ function numberFromJid(jid) {
   return String(jid || '').split('@')[0]
 }
 
+/** Desembrulha mensagens encapsuladas (efêmeras, ver-uma-vez, etc.). */
+function unwrapMessage(message) {
+  return (
+    message?.ephemeralMessage?.message ||
+    message?.viewOnceMessage?.message ||
+    message?.viewOnceMessageV2?.message ||
+    message?.documentWithCaptionMessage?.message ||
+    message ||
+    {}
+  )
+}
+
 /** Extrai um texto-resumo e o tipo de uma mensagem do WhatsApp. */
 function msgContent(message) {
   if (!message) return { text: '', type: 'outro' }
-  // desembrulha mensagens encapsuladas (efêmeras, ver-uma-vez, etc.)
-  message =
-    message.ephemeralMessage?.message ||
-    message.viewOnceMessage?.message ||
-    message.viewOnceMessageV2?.message ||
-    message.documentWithCaptionMessage?.message ||
-    message
+  message = unwrapMessage(message)
   if (message.conversation) return { text: message.conversation, type: 'texto' }
   if (message.extendedTextMessage?.text)
     return { text: message.extendedTextMessage.text, type: 'texto' }
@@ -286,6 +294,10 @@ function recordMessage(m) {
       time,
       pushName: m.pushName || '',
     }
+    // guarda o conteúdo bruto de mídias para download sob demanda
+    if (['audio', 'imagem', 'video', 'documento'].includes(type)) {
+      rec.raw = unwrapMessage(m.message)
+    }
     let arr = store.messages.get(jid)
     if (!arr) { arr = []; store.messages.set(jid, arr) }
     const i = rec.id ? arr.findIndex((x) => x.id === rec.id) : -1
@@ -325,11 +337,14 @@ async function saveStore() {
     await mkdir(DATA_DIR, { recursive: true })
     await writeFile(
       STORE_FILE,
-      JSON.stringify({
-        chats: [...store.chats.entries()],
-        messages: [...store.messages.entries()],
-        contacts: [...store.contacts.entries()],
-      })
+      JSON.stringify(
+        {
+          chats: [...store.chats.entries()],
+          messages: [...store.messages.entries()],
+          contacts: [...store.contacts.entries()],
+        },
+        BufferJSON.replacer
+      )
     )
   } catch (e) {
     console.error('[saveStore]', e.message)
@@ -339,7 +354,7 @@ async function saveStore() {
 /** Carrega o store do disco no boot. */
 async function loadStore() {
   try {
-    const data = JSON.parse(await readFile(STORE_FILE, 'utf8'))
+    const data = JSON.parse(await readFile(STORE_FILE, 'utf8'), BufferJSON.reviver)
     store.chats = new Map(data.chats || [])
     store.messages = new Map(data.messages || [])
     store.contacts = new Map(data.contacts || [])
@@ -623,11 +638,55 @@ app.get('/chats', (_req, res) => {
 
 // mensagens de uma conversa
 app.get('/chats/:id/messages', (req, res) => {
+  const msgs = (store.messages.get(req.params.id) || []).map((m) => ({
+    id: m.id,
+    fromMe: m.fromMe,
+    text: m.text,
+    type: m.type,
+    time: m.time,
+    pushName: m.pushName,
+    hasMedia: !!m.raw,
+  }))
   res.json({
     id: req.params.id,
     name: chatDisplayName(req.params.id),
-    messages: store.messages.get(req.params.id) || [],
+    messages: msgs,
   })
+})
+
+// baixa a mídia de uma mensagem, sob demanda
+app.get('/chats/:id/media/:messageId', async (req, res) => {
+  if (!sock) return res.status(409).json({ ok: false, error: 'WhatsApp não conectado.' })
+  const arr = store.messages.get(req.params.id) || []
+  const rec = arr.find((m) => m.id === req.params.messageId)
+  if (!rec || !rec.raw) {
+    return res.status(404).json({ ok: false, error: 'Mídia indisponível.' })
+  }
+  try {
+    const buffer = await downloadMediaMessage(
+      {
+        key: { remoteJid: req.params.id, id: rec.id, fromMe: rec.fromMe },
+        message: rec.raw,
+      },
+      'buffer',
+      {},
+      { logger, reuploadRequest: sock.updateMediaMessage }
+    )
+    const ct =
+      rec.type === 'audio'
+        ? 'audio/ogg'
+        : rec.type === 'imagem'
+        ? 'image/jpeg'
+        : rec.type === 'video'
+        ? 'video/mp4'
+        : 'application/octet-stream'
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.send(buffer)
+  } catch (err) {
+    console.error('[media]', err.message)
+    res.status(500).json({ ok: false, error: 'Não foi possível baixar a mídia.' })
+  }
 })
 
 // enviar texto para uma conversa existente

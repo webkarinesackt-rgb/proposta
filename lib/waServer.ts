@@ -21,6 +21,7 @@ export interface WaMessage {
   type: string
   time: number
   pushName: string
+  hasMedia?: boolean
 }
 
 export interface WaStatus {
@@ -45,6 +46,11 @@ export interface WaAudio {
 
 export const waServer = {
   base: WA,
+
+  /** URL para baixar a mídia de uma mensagem (áudio, imagem…). */
+  mediaUrl(chatId: string, messageId: string) {
+    return `${WA}/chats/${encodeURIComponent(chatId)}/media/${encodeURIComponent(messageId)}`
+  },
 
   async status(): Promise<WaStatus> {
     const r = await fetch(`${WA}/status`)
