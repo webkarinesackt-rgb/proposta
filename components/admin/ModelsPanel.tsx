@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { waServer, WaSnippet, WaAudio } from '@/lib/waServer'
-import { X, Plus, Trash2, MessageSquare, Mic, Send } from 'lucide-react'
+import { X, Plus, Trash2, MessageSquare, Mic, Send, Upload } from 'lucide-react'
 
 /* agrupa itens por categoria */
 function groupByCategory<T extends { category: string }>(items: T[]) {
@@ -292,14 +292,26 @@ export default function ModelsPanel({
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
                   Arquivo de áudio
                 </p>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-[11px]"
-                />
+                <label
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-[12px] font-semibold"
+                  style={{
+                    background: '#F4FAF8',
+                    border: '1px dashed #0D3839',
+                    color: '#0D3839',
+                  }}
+                >
+                  <Upload size={14} className="flex-shrink-0" />
+                  <span className="truncate">
+                    {fFile ? fFile.name : 'Escolher arquivo de áudio'}
+                  </span>
+                  <input
+                    type="file"
+                    onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
+                    className="hidden"
+                  />
+                </label>
                 <p className="text-[10px] text-[#A8B5B0] mt-1">
-                  Qualquer formato — vira mensagem de voz automaticamente.
+                  Qualquer formato (mp3, m4a, ogg…) — vira mensagem de voz automaticamente.
                 </p>
               </div>
             )}
