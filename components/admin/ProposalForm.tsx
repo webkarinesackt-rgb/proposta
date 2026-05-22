@@ -11,7 +11,14 @@ import {
   LpConfig,
   SitePages,
 } from '@/lib/scopeTemplates'
-import { Plan, Proposal, ProjectType } from '@/lib/types'
+import { Plan, Proposal, ProjectType, Currency } from '@/lib/types'
+import {
+  CURRENCIES,
+  CURRENCY_OPTIONS,
+  DEFAULT_RATES,
+  currencySymbol,
+  formatMoney,
+} from '@/lib/format'
 import { Eye, Copy, Check, ArrowLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { ImageUpload } from './ImageUpload'
 
@@ -234,6 +241,8 @@ const defaultForm = {
   hero_subtitle: 'Além do design comum.',
   hero_description: mockProposal.hero_description,
   valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  currency: 'BRL' as Currency,
+  exchange_rate: 1,
 }
 
 export default function ProposalForm({ initial, mode }: ProposalFormProps) {
@@ -251,6 +260,8 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
           hero_subtitle:   initial.hero_subtitle,
           hero_description:initial.hero_description,
           valid_until:     initial.valid_until.slice(0, 10),
+          currency:        initial.currency ?? ('BRL' as Currency),
+          exchange_rate:   initial.exchange_rate ?? 1,
         }
       : defaultForm
   )
@@ -279,6 +290,15 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
   function handleSitePages(pages: SitePages) {
     setSitePages(pages)
     setPlans(getPlansForScope('site_completo', lpConfig, pages))
+  }
+
+  function handleCurrency(c: Currency) {
+    setForm(f => ({
+      ...f,
+      currency: c,
+      // ao trocar de moeda, sugere uma taxa de câmbio padrão
+      exchange_rate: c === f.currency ? f.exchange_rate : DEFAULT_RATES[c],
+    }))
   }
 
   const set = (k: keyof typeof form) =>
@@ -535,6 +555,57 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
 
         {/* ── SEÇÃO 4: Planos ── */}
         <SectionCard step="4" title="Planos e Investimento" desc="Ajuste preços, prazos e itens de cada plano">
+          {/* moeda + câmbio */}
+          <div className="mb-5 rounded-xl border border-[#E6E6E1] bg-[#FAFAF8] p-5">
+            <p className={LABEL}>Moeda exibida ao cliente</p>
+            <div className="grid grid-cols-3 gap-2">
+              {CURRENCY_OPTIONS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => handleCurrency(c)}
+                  className="rounded-xl px-4 py-3 text-center transition-all"
+                  style={{
+                    background: form.currency === c ? '#0D3839' : '#F4F3EF',
+                    border: `1px solid ${form.currency === c ? '#0D3839' : '#DFE0DB'}`,
+                    color: form.currency === c ? '#FFFFFF' : '#162322',
+                  }}
+                >
+                  <p className="text-[12px] font-bold">{CURRENCIES[c].label}</p>
+                </button>
+              ))}
+            </div>
+
+            {form.currency !== 'BRL' && (
+              <div className="mt-4">
+                <Field label={`Câmbio — quanto vale 1 ${currencySymbol(form.currency)} em reais`}>
+                  <input
+                    className={INPUT}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.exchange_rate}
+                    onChange={e =>
+                      setForm(f => ({ ...f, exchange_rate: Number(e.target.value) }))
+                    }
+                  />
+                </Field>
+                <p className="text-[10px] text-[#8AA09A] mt-1.5">
+                  Ex.: um plano de R$ 2.300 aparece como{' '}
+                  <strong style={{ color: '#0D3839' }}>
+                    {formatMoney(2300, form.currency, form.exchange_rate)}
+                  </strong>{' '}
+                  para o cliente.
+                </p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-[#8AA09A] mt-3">
+              Os valores abaixo são sempre digitados em reais. A moeda escolhida
+              converte automaticamente o que o cliente vê na proposta.
+            </p>
+          </div>
+
           <div className="space-y-3">
             {plans.map((plan, i) => (
               <PlanEditor

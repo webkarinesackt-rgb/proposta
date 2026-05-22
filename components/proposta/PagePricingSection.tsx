@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
-import { PageItem } from '@/lib/types'
+import { PageItem, Currency } from '@/lib/types'
+import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
 
 interface PagePricingSectionProps {
   items: PageItem[]
@@ -11,10 +12,8 @@ interface PagePricingSectionProps {
   priceInstallmentValue: number
   contactWhatsapp: string
   onAccept: () => void
-}
-
-function fmt(n: number) {
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  currency?: Currency
+  exchangeRate?: number
 }
 
 export function PagePricingSection({
@@ -24,7 +23,13 @@ export function PagePricingSection({
   priceInstallmentValue,
   contactWhatsapp,
   onAccept,
+  currency = 'BRL',
+  exchangeRate = 1,
 }: PagePricingSectionProps) {
+  const symbol = currencySymbol(currency)
+  // recebe valor em BRL, converte e formata no padrão pt-BR (sem símbolo)
+  const fmt = (n: number) => formatNumber(convertFromBRL(n, currency, exchangeRate))
+
   const total = items.reduce<number>((sum, item) => {
     return sum + (item.price === 'incluso' ? 0 : item.price)
   }, 0)
@@ -122,7 +127,7 @@ export function PagePricingSection({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  R$ {fmt(item.price)}
+                  {symbol} {fmt(item.price)}
                 </span>
               )}
             </motion.div>
@@ -167,7 +172,7 @@ export function PagePricingSection({
                 </p>
                 {cashDiscount > 0 && (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Economia de R$ {fmt(cashDiscount)}
+                    Economia de {symbol} {fmt(cashDiscount)}
                   </p>
                 )}
               </div>
@@ -182,7 +187,7 @@ export function PagePricingSection({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {cashDiscount > 0 ? `R$${fmt(cashDiscount)} OFF` : `R$ ${fmt(cashPrice)}`}
+                {cashDiscount > 0 ? `${symbol}${fmt(cashDiscount)} OFF` : `${symbol} ${fmt(cashPrice)}`}
               </span>
             </div>
 
@@ -210,7 +215,7 @@ export function PagePricingSection({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {priceInstallmentsCount}x R$ {fmt(priceInstallmentValue)}
+                  {priceInstallmentsCount}x {symbol} {fmt(priceInstallmentValue)}
                 </span>
               </div>
             )}

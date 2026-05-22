@@ -1,5 +1,6 @@
 export type ProjectType = 'landing_page' | 'site_completo' | 'mensal' | 'custom'
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired'
+export type Currency = 'BRL' | 'EUR' | 'USD'
 
 export interface Plan {
   id: string
@@ -96,6 +97,10 @@ export interface Proposal {
   hero_description: string
   selected_plans: Plan[]
   page_items?: PageItem[]
+  /** Moeda exibida ao cliente. Valores são sempre armazenados em BRL. Default 'BRL'. */
+  currency?: Currency
+  /** Quantos reais vale 1 unidade de `currency`. Ignorado quando currency === 'BRL'. Default 1. */
+  exchange_rate?: number
   valid_until: string
   status: ProposalStatus
   agency_settings: AgencySettings

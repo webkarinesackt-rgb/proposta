@@ -14,6 +14,8 @@ export const mockProposal: Proposal = {
     'Uma presença digital construída com estratégia, não apenas estética. Combinamos psicologia de conversão e performance para transformar visitantes em clientes.',
   valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   status: 'sent',
+  currency: 'BRL',
+  exchange_rate: 1,
   page_items: [
     { id: '1', name: 'Página de Vendas',   subtitle: 'Tamanho de 10 a 12 dobras', price: 2500 },
     { id: '2', name: 'Página de Captura',  subtitle: 'Tamanho de 4 a 6 dobras',  price: 1400 },

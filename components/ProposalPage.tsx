@@ -97,6 +97,8 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
           plans={proposal.selected_plans}
           onAccept={(planId) => handleAccept(planId)}
           projectType={proposal.project_type}
+          currency={proposal.currency}
+          exchangeRate={proposal.exchange_rate}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
         {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (

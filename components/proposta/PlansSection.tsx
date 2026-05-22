@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Clock, Check, ArrowRight } from 'lucide-react'
-import { Plan, ProjectType } from '@/lib/types'
+import { Plan, ProjectType, Currency } from '@/lib/types'
+import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
 
 interface PlansSectionProps {
   plans: Plan[]
   onAccept: (planId: string) => void
   projectType?: ProjectType
+  currency?: Currency
+  exchangeRate?: number
 }
 
 function PlanCard({
@@ -16,13 +19,18 @@ function PlanCard({
   index,
   onAccept,
   isSingle = false,
+  currency = 'BRL',
+  exchangeRate = 1,
 }: {
   plan: Plan
   index: number
   onAccept: (id: string) => void
   isSingle?: boolean
+  currency?: Currency
+  exchangeRate?: number
 }) {
   const isRec = plan.is_recommended
+  const symbol = currencySymbol(currency)
 
   return (
     <motion.div
@@ -292,7 +300,7 @@ function PlanCard({
             fontWeight: 300,
             color: isRec ? 'var(--green-pastel)' : 'var(--text-secondary)',
             fontFamily: '"ivypresto-display", Georgia, serif',
-          }}>R$</span>
+          }}>{symbol}</span>
           <span style={{
             fontFamily: '"ivypresto-display", Georgia, serif',
             fontWeight: 300,
@@ -302,7 +310,7 @@ function PlanCard({
             color: isRec ? 'var(--green-pastel)' : 'var(--text-primary)',
             textShadow: isRec ? '0 0 40px rgba(184,212,208,0.25)' : 'none',
           }}>
-            {plan.price_cash.toLocaleString('pt-BR')}
+            {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
           </span>
         </div>
 
@@ -314,7 +322,8 @@ function PlanCard({
           color: isRec ? 'rgba(139,183,175,0.5)' : 'var(--text-muted)',
           marginBottom: '1.25rem',
         }}>
-          ou {plan.price_installments_count}× de R$ {plan.price_installment_value.toFixed(0)} no cartão
+          ou {plan.price_installments_count}× de {symbol}{' '}
+          {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
         </p>
 
         {/* CTA */}
@@ -366,7 +375,13 @@ function PlanCard({
   )
 }
 
-export function PlansSection({ plans, onAccept, projectType }: PlansSectionProps) {
+export function PlansSection({
+  plans,
+  onAccept,
+  projectType,
+  currency = 'BRL',
+  exchangeRate = 1,
+}: PlansSectionProps) {
   const isCustom = projectType === 'custom'
   // Para custom: cada card horizontal (escopo/preço lado a lado), empilhados.
   const isSingle = plans.length === 1 || isCustom
@@ -430,7 +445,15 @@ export function PlansSection({ plans, onAccept, projectType }: PlansSectionProps
       >
         <div className={`grid gap-4 items-start md:items-end ${gridCols}`}>
           {plans.map((plan, i) => (
-            <PlanCard key={plan.id} plan={plan} index={i} onAccept={onAccept} isSingle={isSingle} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              index={i}
+              onAccept={onAccept}
+              isSingle={isSingle}
+              currency={currency}
+              exchangeRate={exchangeRate}
+            />
           ))}
         </div>
       </div>
