@@ -23,8 +23,9 @@ import qrcodeTerminal from 'qrcode-terminal'
 import QRCode from 'qrcode'
 import express from 'express'
 import multer from 'multer'
+import cors from 'cors'
 import { rmSync } from 'node:fs'
-import { writeFile, readFile, unlink } from 'node:fs/promises'
+import { writeFile, readFile, unlink, mkdir } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
@@ -35,6 +36,11 @@ import ffmpegPath from 'ffmpeg-static'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const AUTH_DIR = path.join(__dirname, 'auth')
+const LIB_DIR = path.join(__dirname, 'library')
+const LIB_AUDIO_DIR = path.join(LIB_DIR, 'audios')
+const LIB_FILE = path.join(LIB_DIR, 'library.json')
+const DATA_DIR = path.join(__dirname, 'data')
+const STORE_FILE = path.join(DATA_DIR, 'store.json')
 const PORT = Number(process.env.PORT) || 3100
 
 const logger = P({ level: 'silent' })
@@ -45,6 +51,14 @@ let sock = null
 let currentQR = null        // string crua do QR enquanto aguarda scan
 let connState = 'starting'  // starting | qr | open | close
 let meNumber = null         // número conectado, quando aberto
+
+// ─── Store do inbox (conversas + mensagens) ──────────────────────
+const store = {
+  chats: new Map(),    // jid → { id, name, lastText, lastTime, fromMeLast, unread }
+  messages: new Map(), // jid → [ { id, fromMe, text, type, time, pushName } ]
+  contacts: new Map(), // jid → nome
+}
+let storeDirty = false
 
 // ─── Conexão WhatsApp ────────────────────────────────────────────
 async function startSock() {
@@ -60,7 +74,8 @@ async function startSock() {
     },
     msgRetryCounterCache: new NodeCache(),
     markOnlineOnConnect: false,
-    browser: ['Fysi CRM', 'Chrome', '1.0.0'],
+    syncFullHistory: true, // puxa o histórico de conversas no pareamento
+    browser: ['Fysi CRM', 'Desktop', '1.0.0'],
   })
 
   // persiste credenciais a cada mudança (sobrevive a reinícios)
@@ -99,18 +114,42 @@ async function startSock() {
     }
   })
 
-  // log de mensagens recebidas — prova que o canal de leitura funciona
-  sock.ev.on('messages.upsert', ({ messages, type }) => {
-    if (type !== 'notify') return
-    for (const m of messages) {
-      if (m.key.fromMe) continue
-      const from = m.key.remoteJid
-      const text =
-        m.message?.conversation ||
-        m.message?.extendedTextMessage?.text ||
-        '[mídia/outro]'
-      console.log(`💬  ${from}: ${text}`)
+  // ── eventos do inbox: alimentam o store de conversas e mensagens ──
+
+  sock.ev.on('messaging-history.set', ({ chats, contacts, messages }) => {
+    try {
+      for (const c of chats || []) ingestChat(c)
+      for (const ct of contacts || []) ingestContact(ct)
+      for (const m of messages || []) recordMessage(m)
+      storeDirty = true
+      console.log(`📥  Histórico sincronizado: ${store.chats.size} conversas`)
+    } catch (e) {
+      console.error('[history.set]', e.message)
     }
+  })
+
+  sock.ev.on('chats.upsert', (chats) => {
+    for (const c of chats || []) ingestChat(c)
+    storeDirty = true
+  })
+
+  sock.ev.on('chats.update', (updates) => {
+    for (const c of updates || []) ingestChat(c)
+    storeDirty = true
+  })
+
+  sock.ev.on('contacts.upsert', (contacts) => {
+    for (const ct of contacts || []) ingestContact(ct)
+    storeDirty = true
+  })
+
+  sock.ev.on('contacts.update', (contacts) => {
+    for (const ct of contacts || []) ingestContact(ct)
+    storeDirty = true
+  })
+
+  sock.ev.on('messages.upsert', ({ messages }) => {
+    for (const m of messages || []) recordMessage(m)
   })
 }
 
@@ -131,6 +170,183 @@ async function resolveJid(number) {
   const hit = results?.[0]
   if (!hit?.exists) return { exists: false, tried: digits }
   return { exists: true, jid: hit.jid }
+}
+
+// ─── Biblioteca de envio (mensagens + áudios salvos) ─────────────
+
+/** Lê a biblioteca local (mensagens e áudios salvos). */
+async function readLibrary() {
+  try {
+    return JSON.parse(await readFile(LIB_FILE, 'utf8'))
+  } catch {
+    return { snippets: [], audios: [] }
+  }
+}
+
+/** Grava a biblioteca local. */
+async function writeLibrary(lib) {
+  await mkdir(LIB_DIR, { recursive: true })
+  await writeFile(LIB_FILE, JSON.stringify(lib, null, 2))
+}
+
+// ─── Store do inbox: helpers ─────────────────────────────────────
+
+/** Converte timestamp do Baileys (number ou Long) em número. */
+function tsToNum(t) {
+  if (!t) return 0
+  if (typeof t === 'number') return t
+  if (typeof t.toNumber === 'function') return t.toNumber()
+  return Number(t) || 0
+}
+
+/** Só conversas reais (contato ou grupo) — ignora status/broadcast. */
+function isRealChat(jid) {
+  return (
+    typeof jid === 'string' &&
+    (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@g.us'))
+  )
+}
+
+function numberFromJid(jid) {
+  return String(jid || '').split('@')[0]
+}
+
+/** Extrai um texto-resumo e o tipo de uma mensagem do WhatsApp. */
+function msgContent(message) {
+  if (!message) return { text: '', type: 'outro' }
+  // desembrulha mensagens encapsuladas (efêmeras, ver-uma-vez, etc.)
+  message =
+    message.ephemeralMessage?.message ||
+    message.viewOnceMessage?.message ||
+    message.viewOnceMessageV2?.message ||
+    message.documentWithCaptionMessage?.message ||
+    message
+  if (message.conversation) return { text: message.conversation, type: 'texto' }
+  if (message.extendedTextMessage?.text)
+    return { text: message.extendedTextMessage.text, type: 'texto' }
+  if (message.imageMessage)
+    return { text: message.imageMessage.caption || '🖼️ Imagem', type: 'imagem' }
+  if (message.videoMessage)
+    return { text: message.videoMessage.caption || '🎬 Vídeo', type: 'video' }
+  if (message.audioMessage)
+    return {
+      text: message.audioMessage.ptt ? '🎙️ Mensagem de voz' : '🎵 Áudio',
+      type: 'audio',
+    }
+  if (message.documentMessage)
+    return {
+      text: '📎 ' + (message.documentMessage.fileName || 'Documento'),
+      type: 'documento',
+    }
+  if (message.stickerMessage) return { text: '🌟 Figurinha', type: 'figurinha' }
+  if (message.locationMessage) return { text: '📍 Localização', type: 'local' }
+  if (message.contactMessage || message.contactsArrayMessage)
+    return { text: '👤 Contato', type: 'contato' }
+  return { text: '[mensagem]', type: 'outro' }
+}
+
+/** Nome de exibição de uma conversa. */
+function chatDisplayName(jid) {
+  const c = store.chats.get(jid)
+  if (c?.name) return c.name
+  const ct = store.contacts.get(jid)
+  if (ct) return ct
+  return numberFromJid(jid)
+}
+
+/** Registra/atualiza uma conversa vinda do Baileys. */
+function ingestChat(c) {
+  if (!c || !isRealChat(c.id)) return
+  const ex = store.chats.get(c.id) || { id: c.id, unread: 0 }
+  const name = c.name || c.subject || c.verifiedName
+  if (name) ex.name = name
+  if (c.unreadCount != null) ex.unread = c.unreadCount
+  store.chats.set(c.id, ex)
+}
+
+/** Registra/atualiza um contato (para nomear conversas). */
+function ingestContact(ct) {
+  if (!ct?.id) return
+  const name = ct.name || ct.verifiedName || ct.notify
+  if (name) store.contacts.set(ct.id, name)
+}
+
+/** Registra uma mensagem no store e atualiza a conversa. */
+function recordMessage(m) {
+  try {
+    const jid = m?.key?.remoteJid
+    if (!isRealChat(jid)) return
+    const { text, type } = msgContent(m.message)
+    const time = tsToNum(m.messageTimestamp)
+    const rec = {
+      id: m.key.id,
+      fromMe: !!m.key.fromMe,
+      text,
+      type,
+      time,
+      pushName: m.pushName || '',
+    }
+    let arr = store.messages.get(jid)
+    if (!arr) { arr = []; store.messages.set(jid, arr) }
+    const i = rec.id ? arr.findIndex((x) => x.id === rec.id) : -1
+    if (i >= 0) arr[i] = rec
+    else arr.push(rec)
+    arr.sort((a, b) => a.time - b.time)
+    if (arr.length > 200) arr.splice(0, arr.length - 200)
+
+    const chat = store.chats.get(jid) || { id: jid, unread: 0 }
+    chat.id = jid
+    if (time >= (chat.lastTime || 0)) {
+      chat.lastText = text
+      chat.lastTime = time
+      chat.fromMeLast = rec.fromMe
+    }
+    // usa o pushName como nome de contatos individuais ainda sem nome
+    if (
+      !jid.endsWith('@g.us') &&
+      !rec.fromMe &&
+      rec.pushName &&
+      !store.contacts.get(jid)
+    ) {
+      store.contacts.set(jid, rec.pushName)
+    }
+    store.chats.set(jid, chat)
+    storeDirty = true
+  } catch (e) {
+    console.error('[recordMessage]', e.message)
+  }
+}
+
+/** Grava o store em disco (apenas se houve mudança). */
+async function saveStore() {
+  if (!storeDirty) return
+  storeDirty = false
+  try {
+    await mkdir(DATA_DIR, { recursive: true })
+    await writeFile(
+      STORE_FILE,
+      JSON.stringify({
+        chats: [...store.chats.entries()],
+        messages: [...store.messages.entries()],
+        contacts: [...store.contacts.entries()],
+      })
+    )
+  } catch (e) {
+    console.error('[saveStore]', e.message)
+  }
+}
+
+/** Carrega o store do disco no boot. */
+async function loadStore() {
+  try {
+    const data = JSON.parse(await readFile(STORE_FILE, 'utf8'))
+    store.chats = new Map(data.chats || [])
+    store.messages = new Map(data.messages || [])
+    store.contacts = new Map(data.contacts || [])
+    console.log(`📂  Store carregado: ${store.chats.size} conversas`)
+  } catch {
+    /* primeiro boot — store vazio */
+  }
 }
 
 /** Garante que há conexão aberta antes de tentar enviar. */
@@ -187,6 +403,7 @@ const upload = multer({
   limits: { fileSize: 16 * 1024 * 1024 },
 })
 
+app.use(cors())
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))
 
@@ -281,8 +498,168 @@ app.post('/logout', async (_req, res) => {
   }
 })
 
+// ─── Biblioteca: mensagens e áudios salvos ───────────────────────
+
+// lista a biblioteca inteira
+app.get('/library', async (_req, res) => {
+  res.json(await readLibrary())
+})
+
+// salvar nova mensagem
+app.post('/library/snippet', async (req, res) => {
+  const { name, content } = req.body || {}
+  if (!name || !content) {
+    return res.status(400).json({ ok: false, error: 'Informe nome e conteúdo.' })
+  }
+  const lib = await readLibrary()
+  const snippet = { id: randomUUID(), name: String(name), content: String(content) }
+  lib.snippets.push(snippet)
+  await writeLibrary(lib)
+  res.json({ ok: true, snippet })
+})
+
+// apagar mensagem
+app.delete('/library/snippet/:id', async (req, res) => {
+  const lib = await readLibrary()
+  lib.snippets = lib.snippets.filter((s) => s.id !== req.params.id)
+  await writeLibrary(lib)
+  res.json({ ok: true })
+})
+
+// salvar novo áudio (converte p/ Opus e guarda no disco)
+app.post('/library/audio', upload.single('audio'), async (req, res) => {
+  const { name } = req.body || {}
+  if (!name) return res.status(400).json({ ok: false, error: 'Informe um nome.' })
+  if (!req.file) return res.status(400).json({ ok: false, error: 'Envie um arquivo de áudio.' })
+  try {
+    const { buffer, seconds } = await toWhatsAppVoice(req.file.buffer)
+    const id = randomUUID()
+    const file = `${id}.ogg`
+    await mkdir(LIB_AUDIO_DIR, { recursive: true })
+    await writeFile(path.join(LIB_AUDIO_DIR, file), buffer)
+    const lib = await readLibrary()
+    const audio = { id, name: String(name), file, seconds }
+    lib.audios.push(audio)
+    await writeLibrary(lib)
+    res.json({ ok: true, audio })
+  } catch (err) {
+    console.error('[library/audio]', err)
+    res.status(500).json({ ok: false, error: 'Falha ao salvar o áudio: ' + err.message })
+  }
+})
+
+// apagar áudio
+app.delete('/library/audio/:id', async (req, res) => {
+  const lib = await readLibrary()
+  const audio = lib.audios.find((a) => a.id === req.params.id)
+  if (audio) {
+    await unlink(path.join(LIB_AUDIO_DIR, audio.file)).catch(() => {})
+    lib.audios = lib.audios.filter((a) => a.id !== req.params.id)
+    await writeLibrary(lib)
+  }
+  res.json({ ok: true })
+})
+
+// enviar um áudio salvo para um contato
+app.post('/library/audio/:id/send', async (req, res) => {
+  if (!ensureConnected(res)) return
+  const { to } = req.body || {}
+  if (!to) return res.status(400).json({ ok: false, error: 'Informe "to".' })
+  const lib = await readLibrary()
+  const audio = lib.audios.find((a) => a.id === req.params.id)
+  if (!audio) return res.status(404).json({ ok: false, error: 'Áudio não encontrado.' })
+  try {
+    const r = await resolveJid(to)
+    if (!r.exists) {
+      return res.status(400).json({
+        ok: false,
+        error: `O número ${r.tried} não tem WhatsApp.`,
+      })
+    }
+    const buffer = await readFile(path.join(LIB_AUDIO_DIR, audio.file))
+    await sock.sendMessage(r.jid, {
+      audio: buffer,
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: true,
+      seconds: audio.seconds,
+    })
+    console.log(`🎙️  Áudio salvo "${audio.name}" enviado para ${r.jid}`)
+    res.json({ ok: true, jid: r.jid })
+  } catch (err) {
+    console.error('[library/audio/send]', err)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// ─── Inbox: conversas e mensagens ────────────────────────────────
+
+// lista de conversas (mais recentes primeiro)
+app.get('/chats', (_req, res) => {
+  const chats = [...store.chats.values()]
+    .filter((c) => c.lastTime)
+    .map((c) => ({
+      id: c.id,
+      name: chatDisplayName(c.id),
+      isGroup: c.id.endsWith('@g.us'),
+      lastText: c.lastText || '',
+      lastTime: c.lastTime || 0,
+      fromMeLast: !!c.fromMeLast,
+      unread: c.unread || 0,
+    }))
+    .sort((a, b) => b.lastTime - a.lastTime)
+  res.json({ chats })
+})
+
+// mensagens de uma conversa
+app.get('/chats/:id/messages', (req, res) => {
+  res.json({
+    id: req.params.id,
+    name: chatDisplayName(req.params.id),
+    messages: store.messages.get(req.params.id) || [],
+  })
+})
+
+// enviar texto para uma conversa existente
+app.post('/chats/:id/send-text', async (req, res) => {
+  if (!ensureConnected(res)) return
+  const { text } = req.body || {}
+  if (!text) return res.status(400).json({ ok: false, error: 'Informe "text".' })
+  try {
+    const sent = await sock.sendMessage(req.params.id, { text: String(text) })
+    if (sent) recordMessage(sent)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[chats/send-text]', err)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// enviar um áudio salvo para uma conversa existente
+app.post('/chats/:id/send-audio/:audioId', async (req, res) => {
+  if (!ensureConnected(res)) return
+  const lib = await readLibrary()
+  const audio = lib.audios.find((a) => a.id === req.params.audioId)
+  if (!audio) return res.status(404).json({ ok: false, error: 'Áudio não encontrado.' })
+  try {
+    const buffer = await readFile(path.join(LIB_AUDIO_DIR, audio.file))
+    const sent = await sock.sendMessage(req.params.id, {
+      audio: buffer,
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: true,
+      seconds: audio.seconds,
+    })
+    if (sent) recordMessage(sent)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[chats/send-audio]', err)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`\n🚀  Fysi WA Server na porta ${PORT} — http://localhost:${PORT}`)
 })
 
+await loadStore()
+setInterval(saveStore, 12000)
 startSock()

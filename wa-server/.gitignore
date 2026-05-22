@@ -1,4 +1,8 @@
 node_modules/
 # auth/ guarda as credenciais da sessão do WhatsApp — NUNCA versionar
 auth/
+# library/ guarda as mensagens e áudios salvos (dados de runtime)
+library/
+# data/ guarda o store de conversas e mensagens (dados de runtime)
+data/
 *.log
