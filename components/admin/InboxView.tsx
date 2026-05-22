@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage } from '@/lib/waServer'
-import { Search, Send, Users, ArrowLeft, Zap } from 'lucide-react'
+import { Search, Send, Users, ArrowLeft, Zap, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
+import ProposalPicker from './ProposalPicker'
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -111,6 +112,7 @@ export default function InboxView() {
   const [sending, setSending] = useState(false)
   const [search, setSearch] = useState('')
   const [showModels, setShowModels] = useState(false)
+  const [showProposals, setShowProposals] = useState(false)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   // poll: status + lista de conversas
@@ -291,7 +293,10 @@ export default function InboxView() {
         </div>
 
         {/* ── conversa ── */}
-        <div className="flex-1 min-w-0 flex flex-col" style={{ background: '#E8E6DF' }}>
+        <div
+          className="flex-1 min-w-0 flex flex-col relative"
+          style={{ background: '#E8E6DF' }}
+        >
           {!selectedId ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-[13px] text-[#A8B5B0]">
@@ -312,17 +317,30 @@ export default function InboxView() {
                   {initials(selectedName)}
                 </div>
                 <span className="text-[14px] font-bold text-[#162322]">{selectedName}</span>
-                <button
-                  onClick={() => setShowModels((v) => !v)}
-                  className="ml-auto flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-                  style={{
-                    background: showModels ? '#0D3839' : '#F4F3EF',
-                    color: showModels ? '#F4F99D' : '#0D3839',
-                  }}
-                >
-                  <Zap size={12} />
-                  Modelos
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => setShowProposals((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    style={{
+                      background: showProposals ? '#0D3839' : '#F4F3EF',
+                      color: showProposals ? '#F4F99D' : '#0D3839',
+                    }}
+                  >
+                    <FileText size={12} />
+                    Proposta
+                  </button>
+                  <button
+                    onClick={() => setShowModels((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    style={{
+                      background: showModels ? '#0D3839' : '#F4F3EF',
+                      color: showModels ? '#F4F99D' : '#0D3839',
+                    }}
+                  >
+                    <Zap size={12} />
+                    Modelos
+                  </button>
+                </div>
               </div>
 
               {/* mensagens */}
@@ -365,6 +383,14 @@ export default function InboxView() {
                   <Send size={16} />
                 </button>
               </div>
+
+              {showProposals && (
+                <ProposalPicker
+                  chatId={selectedId}
+                  onClose={() => setShowProposals(false)}
+                  onSent={refreshMessages}
+                />
+              )}
             </>
           )}
         </div>
