@@ -77,6 +77,7 @@ function PlanEditor({
   expandedScope = false,
   currency = 'BRL',
   exchangeRate = 1,
+  onCurrencyChange,
 }: {
   plan: Plan
   index: number
@@ -86,6 +87,7 @@ function PlanEditor({
   expandedScope?: boolean
   currency?: Currency
   exchangeRate?: number
+  onCurrencyChange: (c: Currency) => void
 }) {
   const [open, setOpen] = useState(index === 0)
 
@@ -161,6 +163,30 @@ function PlanEditor({
               <textarea className={`${INPUT} resize-none`} rows={3} value={plan.description}
                 onChange={e => onChange(plan.id, 'description', e.target.value)} />
             </Field>
+          </div>
+          {/* seletor de cifrão — moeda única da proposta */}
+          <div className="mb-4">
+            <label className={LABEL}>Cifrão exibido ao cliente</label>
+            <div className="flex gap-2">
+              {CURRENCY_OPTIONS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onCurrencyChange(c)}
+                  className="flex-1 rounded-xl px-3 py-2.5 text-center text-[12px] font-bold transition-all"
+                  style={{
+                    background: currency === c ? '#0D3839' : '#F4F3EF',
+                    border: `1px solid ${currency === c ? '#0D3839' : '#DFE0DB'}`,
+                    color: currency === c ? '#FFFFFF' : '#162322',
+                  }}
+                >
+                  {CURRENCIES[c].symbol} {c}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-[#8AA09A] mt-1.5">
+              Vale para a proposta toda. Os valores abaixo são sempre em reais.
+            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <Field label="Valor à vista (R$)">
@@ -638,6 +664,7 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
                 expandedScope={form.project_type === 'custom'}
                 currency={form.currency}
                 exchangeRate={form.exchange_rate}
+                onCurrencyChange={handleCurrency}
               />
             ))}
           </div>
