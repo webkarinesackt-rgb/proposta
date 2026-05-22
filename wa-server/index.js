@@ -262,6 +262,23 @@ function chatDisplayName(jid) {
   return numberFromJid(jid)
 }
 
+// cache de URLs de foto de perfil — { url|null, fetchedAt }
+const photoUrlCache = new Map()
+
+/** Devolve a URL da foto de perfil de um jid (cached) ou null. */
+async function getPhotoUrl(jid) {
+  const cached = photoUrlCache.get(jid)
+  if (cached && Date.now() - cached.fetchedAt < 60 * 60 * 1000) return cached.url
+  try {
+    const url = await sock.profilePictureUrl(jid, 'image')
+    photoUrlCache.set(jid, { url, fetchedAt: Date.now() })
+    return url
+  } catch {
+    photoUrlCache.set(jid, { url: null, fetchedAt: Date.now() })
+    return null
+  }
+}
+
 /** Registra/atualiza uma conversa vinda do Baileys. */
 function ingestChat(c) {
   if (!c || !isRealChat(c.id)) return
@@ -759,6 +776,23 @@ app.get('/chats/:id/media/:messageId', async (req, res) => {
   } catch (err) {
     console.error('[media]', err.message)
     res.status(500).json({ ok: false, error: 'Não foi possível baixar a mídia.' })
+  }
+})
+
+// foto de perfil de um contato/grupo (proxy + cache)
+app.get('/chats/:id/photo', async (req, res) => {
+  if (!sock) return res.status(409).send()
+  try {
+    const url = await getPhotoUrl(req.params.id)
+    if (!url) return res.status(404).send()
+    const r = await fetch(url)
+    if (!r.ok) return res.status(404).send()
+    const buffer = Buffer.from(await r.arrayBuffer())
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg')
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.send(buffer)
+  } catch {
+    res.status(404).send()
   }
 })
 

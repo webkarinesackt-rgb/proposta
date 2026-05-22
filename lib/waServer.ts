@@ -63,6 +63,11 @@ export const waServer = {
     return `${WA}/chats/${encodeURIComponent(chatId)}/media/${encodeURIComponent(messageId)}`
   },
 
+  /** URL da foto de perfil de um contato/grupo. */
+  photoUrl(chatId: string) {
+    return `${WA}/chats/${encodeURIComponent(chatId)}/photo`
+  },
+
   async status(): Promise<WaStatus> {
     const r = await fetch(`${WA}/status`)
     return r.json()

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage } from '@/lib/waServer'
 import { Search, Send, Users, ArrowLeft, Zap, FileText, BarChart3 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
 
@@ -23,6 +23,79 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
+/* ── avatar com foto (fallback pra iniciais) ─────────── */
+
+function Avatar({
+  chatId,
+  name,
+  isGroup,
+  size,
+  active,
+}: {
+  chatId: string
+  name: string
+  isGroup: boolean
+  size: number
+  active?: boolean
+}) {
+  const [error, setError] = useState(false)
+  return (
+    <div
+      className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden font-bold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.3),
+        background: active ? '#0D3839' : '#E6E6E1',
+        color: active ? '#F4F99D' : '#8AA09A',
+      }}
+    >
+      {error ? (
+        isGroup ? (
+          <Users size={Math.round(size * 0.4)} />
+        ) : (
+          <span>{initials(name)}</span>
+        )
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={waServer.photoUrl(chatId)}
+          alt=""
+          onError={() => setError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── transforma URLs em links clicáveis ──────────────── */
+
+function renderText(text: string, mine: boolean) {
+  const re = /(https?:\/\/[^\s]+)/g
+  const out: React.ReactNode[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push(
+      <a
+        key={m.index}
+        href={m[0]}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline break-all"
+        style={{ color: mine ? '#A8D4CC' : '#0D7A4A' }}
+      >
+        {m[0]}
+      </a>
+    )
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out.length ? out : text
+}
+
 /* ── chat list row ───────────────────────────────────── */
 
 function ChatRow({
@@ -40,12 +113,13 @@ function ChatRow({
       className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
       style={{ background: active ? '#F4FAF8' : 'transparent' }}
     >
-      <div
-        className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
-        style={{ background: active ? '#0D3839' : '#E6E6E1', color: active ? '#F4F99D' : '#8AA09A' }}
-      >
-        {chat.isGroup ? <Users size={16} /> : initials(chat.name)}
-      </div>
+      <Avatar
+        chatId={chat.id}
+        name={chat.name}
+        isGroup={chat.isGroup}
+        size={44}
+        active={active}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[13px] font-bold text-[#162322] truncate">{chat.name}</span>
@@ -96,7 +170,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           />
         ) : (
           <p className="text-[13px] leading-snug whitespace-pre-wrap break-words">
-            {msg.text}
+            {renderText(msg.text, mine)}
           </p>
         )}
         <p
@@ -180,6 +254,12 @@ export default function InboxView() {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // ?filter=unanswered → ativa o filtro automaticamente
+  const sp = useSearchParams()
+  useEffect(() => {
+    if (sp.get('filter') === 'unanswered') setChatFilter('unanswered')
+  }, [sp])
+
   async function refreshMessages() {
     if (!selectedId) return
     try {
@@ -219,6 +299,14 @@ export default function InboxView() {
     if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast)) return false
     return true
   })
+
+  // ao filtrar não respondidas, abre automaticamente a mais recente
+  const firstFilteredId = filtered[0]?.id || null
+  useEffect(() => {
+    if (chatFilter === 'unanswered' && !selectedId && firstFilteredId) {
+      setSelectedId(firstFilteredId)
+    }
+  }, [chatFilter, firstFilteredId, selectedId])
 
   const connLabel =
     conn === 'open' ? 'conectado' : conn === 'qr' ? 'aguardando QR' : 'conectando…'
@@ -361,12 +449,13 @@ export default function InboxView() {
                 className="px-5 py-3 flex items-center gap-3 flex-shrink-0"
                 style={{ background: '#FFFFFF', borderBottom: '1px solid #E6E6E1' }}
               >
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold"
-                  style={{ background: '#0D3839', color: '#F4F99D' }}
-                >
-                  {initials(selectedName)}
-                </div>
+                <Avatar
+                  chatId={selectedId}
+                  name={selectedName}
+                  isGroup={selectedId.endsWith('@g.us')}
+                  size={36}
+                  active
+                />
                 <span className="text-[14px] font-bold text-[#162322]">{selectedName}</span>
                 <div className="ml-auto flex items-center gap-2">
                   <button

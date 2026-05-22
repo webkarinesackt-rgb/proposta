@@ -175,7 +175,7 @@ export default function DashboardView() {
                 value={data.unanswered}
                 icon={<AlertCircle size={15} />}
                 accent
-                onClick={() => router.push('/admin/inbox')}
+                onClick={() => router.push('/admin/inbox?filter=unanswered')}
               />
               <Card
                 label="Conversas ativas"
