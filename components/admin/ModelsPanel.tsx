@@ -240,43 +240,68 @@ export default function ModelsPanel({
             {tab === 'snippets' ? 'Nova mensagem' : 'Novo áudio'}
           </button>
         ) : (
-          <div className="flex flex-col gap-2">
-            <input
-              value={fName}
-              onChange={(e) => setFName(e.target.value)}
-              placeholder="Nome do modelo"
-              className="px-3 py-2 rounded-lg text-[12px] outline-none"
-              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
-            />
-            <input
-              value={fCat}
-              onChange={(e) => setFCat(e.target.value)}
-              placeholder="Categoria (ex.: Follow-up)"
-              list="model-cats"
-              className="px-3 py-2 rounded-lg text-[12px] outline-none"
-              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
-            />
-            <datalist id="model-cats">
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-            {tab === 'snippets' ? (
-              <textarea
-                value={fContent}
-                onChange={(e) => setFContent(e.target.value)}
-                placeholder="Conteúdo da mensagem"
-                rows={3}
-                className="px-3 py-2 rounded-lg text-[12px] outline-none resize-none"
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
+                Nome
+              </p>
+              <input
+                value={fName}
+                onChange={(e) => setFName(e.target.value)}
+                placeholder={
+                  tab === 'snippets' ? 'Ex.: Saudação inicial' : 'Ex.: Áudio de apresentação'
+                }
+                className="w-full px-3 py-2 rounded-lg text-[12px] outline-none"
                 style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
               />
-            ) : (
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
+                Categoria
+              </p>
               <input
-                type="file"
-                accept="audio/*"
-                onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
-                className="text-[11px]"
+                value={fCat}
+                onChange={(e) => setFCat(e.target.value)}
+                placeholder="Ex.: Follow-up"
+                list="model-cats"
+                className="w-full px-3 py-2 rounded-lg text-[12px] outline-none"
+                style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
               />
+              <datalist id="model-cats">
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+            {tab === 'snippets' ? (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
+                  Mensagem
+                </p>
+                <textarea
+                  value={fContent}
+                  onChange={(e) => setFContent(e.target.value)}
+                  placeholder="Conteúdo da mensagem"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg text-[12px] outline-none resize-none"
+                  style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
+                />
+              </div>
+            ) : (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
+                  Arquivo de áudio
+                </p>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-[11px]"
+                />
+                <p className="text-[10px] text-[#A8B5B0] mt-1">
+                  Qualquer formato — vira mensagem de voz automaticamente.
+                </p>
+              </div>
             )}
             <div className="flex gap-2">
               <button
