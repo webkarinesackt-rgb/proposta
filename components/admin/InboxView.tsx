@@ -2,10 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage } from '@/lib/waServer'
-import { Search, Send, Users, ArrowLeft, Zap, FileText, BarChart3 } from 'lucide-react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Search, Send, Users, Zap, FileText } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
+
+/* ── tokens ──────────────────────────────────────────── */
+
+const T = {
+  textPrimary: '#E6F1EE',
+  textMuted: 'rgba(139,183,175,0.7)',
+  textDim: 'rgba(139,183,175,0.45)',
+  border: 'rgba(139,183,175,0.12)',
+  glass: 'rgba(15,57,58,0.45)',
+  glassDark: 'rgba(5,20,21,0.55)',
+  accent: '#F4F99D',
+  accentDark: '#0D3839',
+  green: '#9DE9A8',
+}
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -23,7 +37,7 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
-/* ── avatar com foto (fallback pra iniciais) ─────────── */
+/* ── avatar com foto (fallback iniciais) ─────────────── */
 
 function Avatar({
   chatId,
@@ -45,14 +59,19 @@ function Avatar({
       style={{
         width: size,
         height: size,
-        fontSize: Math.round(size * 0.3),
-        background: active ? '#0D3839' : '#E6E6E1',
-        color: active ? '#F4F99D' : '#8AA09A',
+        fontSize: Math.round(size * 0.32),
+        background: active
+          ? 'linear-gradient(135deg, #6BA89E 0%, #0D3839 100%)'
+          : 'rgba(139,183,175,0.12)',
+        color: active ? '#F4F99D' : 'rgba(139,183,175,0.85)',
+        border: active
+          ? '1px solid rgba(244,249,157,0.3)'
+          : '1px solid rgba(139,183,175,0.15)',
       }}
     >
       {error ? (
         isGroup ? (
-          <Users size={Math.round(size * 0.4)} />
+          <Users size={Math.round(size * 0.42)} />
         ) : (
           <span>{initials(name)}</span>
         )
@@ -85,7 +104,7 @@ function renderText(text: string, mine: boolean) {
         target="_blank"
         rel="noopener noreferrer"
         className="underline break-all"
-        style={{ color: mine ? '#A8D4CC' : '#0D7A4A' }}
+        style={{ color: mine ? '#FBFFCE' : '#9DE9A8' }}
       >
         {m[0]}
       </a>
@@ -110,30 +129,65 @@ function ChatRow({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-      style={{ background: active ? '#F4FAF8' : 'transparent' }}
+      className="relative w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+      style={{
+        background: active
+          ? 'linear-gradient(90deg, rgba(244,249,157,0.07) 0%, transparent 80%)'
+          : 'transparent',
+      }}
+      onMouseEnter={(e) => {
+        if (!active)
+          e.currentTarget.style.background = 'rgba(139,183,175,0.04)'
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent'
+      }}
     >
+      {active && (
+        <span
+          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full"
+          style={{
+            background: T.accent,
+            boxShadow: '0 0 10px rgba(244,249,157,0.5)',
+          }}
+        />
+      )}
       <Avatar
         chatId={chat.id}
         name={chat.name}
         isGroup={chat.isGroup}
-        size={44}
+        size={42}
         active={active}
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[13px] font-bold text-[#162322] truncate">{chat.name}</span>
-          <span className="text-[10px] text-[#A8B5B0] flex-shrink-0">{fmtTime(chat.lastTime)}</span>
+          <span
+            className="text-[13px] font-bold truncate"
+            style={{ color: T.textPrimary }}
+          >
+            {chat.name}
+          </span>
+          <span className="text-[10px] flex-shrink-0" style={{ color: T.textDim }}>
+            {fmtTime(chat.lastTime)}
+          </span>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <span className="text-[12px] text-[#8AA09A] truncate">
-            {chat.fromMeLast && <span className="text-[#A8B5B0]">Você: </span>}
+          <span className="text-[12px] truncate" style={{ color: T.textMuted }}>
+            {chat.fromMeLast && (
+              <span style={{ color: T.textDim }}>Você: </span>
+            )}
             {chat.lastText || '—'}
           </span>
           {chat.unread > 0 && (
             <span
-              className="text-[10px] font-bold text-white rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ background: '#4CAF7D', minWidth: 18, height: 18, padding: '0 5px' }}
+              className="text-[10px] font-bold rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{
+                background: T.accent,
+                color: T.accentDark,
+                minWidth: 18,
+                height: 18,
+                padding: '0 5px',
+              }}
             >
               {chat.unread}
             </span>
@@ -154,11 +208,16 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
       <div
         className="max-w-[72%] px-3.5 py-2 rounded-2xl"
         style={{
-          background: mine ? '#0D3839' : '#FFFFFF',
-          color: mine ? '#FFFFFF' : '#162322',
-          border: mine ? 'none' : '1px solid #E6E6E1',
+          background: mine
+            ? 'linear-gradient(135deg, #14595B 0%, #0D3839 100%)'
+            : 'rgba(15,57,58,0.55)',
+          color: T.textPrimary,
+          border: mine
+            ? '1px solid rgba(184,212,208,0.18)'
+            : '1px solid rgba(139,183,175,0.13)',
           borderBottomRightRadius: mine ? 4 : 16,
           borderBottomLeftRadius: mine ? 16 : 4,
+          boxShadow: mine ? '0 4px 12px rgba(0,0,0,0.18)' : 'none',
         }}
       >
         {isAudio ? (
@@ -166,7 +225,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
             controls
             preload="none"
             src={waServer.mediaUrl(chatId, msg.id)}
-            style={{ height: 38, maxWidth: 240, display: 'block' }}
+            style={{ height: 36, maxWidth: 240, display: 'block' }}
           />
         ) : (
           <p className="text-[13px] leading-snug whitespace-pre-wrap break-words">
@@ -175,7 +234,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
         )}
         <p
           className="text-[10px] mt-1 text-right"
-          style={{ color: mine ? 'rgba(255,255,255,0.5)' : '#A8B5B0' }}
+          style={{ color: mine ? 'rgba(230,241,238,0.5)' : T.textDim }}
         >
           {fmtTime(msg.time)}
         </p>
@@ -187,7 +246,6 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
 /* ── main ────────────────────────────────────────────── */
 
 export default function InboxView() {
-  const router = useRouter()
   const [chats, setChats] = useState<WaChat[]>([])
   const [conn, setConn] = useState<string>('...')
   const [serverOff, setServerOff] = useState(false)
@@ -308,54 +366,32 @@ export default function InboxView() {
     }
   }, [chatFilter, firstFilteredId, selectedId])
 
-  const connLabel =
-    conn === 'open' ? 'conectado' : conn === 'qr' ? 'aguardando QR' : 'conectando…'
-  const connColor = conn === 'open' ? '#4CAF7D' : '#E0A33B'
-
   return (
-    <div
-      className="h-screen flex flex-col"
-      style={{ background: '#ECEAE3', fontFamily: 'var(--font-inter)' }}
-    >
-      {/* top bar */}
-      <div
-        className="flex items-center justify-between px-6 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid #DFE0DB' }}
-      >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/admin')}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
-          >
-            <ArrowLeft size={13} />
-            Painel
-          </button>
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8AA09A]">
-            · Inbox WhatsApp
-          </span>
-          <button
-            onClick={() => router.push('/admin/dashboard')}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
-          >
-            <BarChart3 size={13} />
-            Dashboard
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: connColor }} />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A]">
-            {connLabel}
-          </span>
-        </div>
-      </div>
-
+    <div className="flex-1 min-h-0 flex flex-col">
       {serverOff && (
         <div
           className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
-          style={{ background: '#FBE9E9', color: '#A33' }}
+          style={{
+            background: 'rgba(229,115,115,0.10)',
+            borderBottom: '1px solid rgba(229,115,115,0.25)',
+            color: '#FFC7BD',
+          }}
         >
-          Servidor do WhatsApp offline. Rode <code>npm start</code> na pasta{' '}
+          Servidor do WhatsApp offline. Rode <code>npm start</code> em{' '}
           <code>wa-server</code>.
+        </div>
+      )}
+
+      {conn !== 'open' && !serverOff && (
+        <div
+          className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
+          style={{
+            background: 'rgba(244,213,93,0.08)',
+            borderBottom: '1px solid rgba(244,213,93,0.2)',
+            color: '#F4D55D',
+          }}
+        >
+          WhatsApp: {conn === 'qr' ? 'aguardando QR' : 'reconectando…'}
         </div>
       )}
 
@@ -364,19 +400,34 @@ export default function InboxView() {
         {/* ── lista de conversas ── */}
         <div
           className="w-[340px] flex-shrink-0 flex flex-col"
-          style={{ background: '#FFFFFF', borderRight: '1px solid #E6E6E1' }}
+          style={{
+            background: T.glassDark,
+            borderRight: `1px solid ${T.border}`,
+            backdropFilter: 'blur(10px)',
+          }}
         >
-          <div className="p-3 flex-shrink-0">
+          {/* search + filter */}
+          <div className="p-4 flex-shrink-0">
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+              style={{ color: 'rgba(139,183,175,0.5)' }}
+            >
+              ◈ Conversas
+            </p>
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
+              style={{
+                background: 'rgba(139,183,175,0.06)',
+                border: `1px solid ${T.border}`,
+              }}
             >
-              <Search size={14} className="text-[#A8B5B0]" />
+              <Search size={14} style={{ color: T.textDim }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar conversa"
-                className="flex-1 bg-transparent text-[13px] text-[#162322] outline-none placeholder-[#A8B5B0]"
+                className="flex-1 bg-transparent text-[13px] outline-none"
+                style={{ color: T.textPrimary }}
               />
             </div>
             <div className="flex gap-1.5 mt-2">
@@ -385,31 +436,39 @@ export default function InboxView() {
                   { id: 'all', label: 'Todas' },
                   {
                     id: 'unanswered',
-                    label: `Não respondidas${unansweredCount ? ` · ${unansweredCount}` : ''}`,
+                    label: `Sem resposta${unansweredCount ? ` · ${unansweredCount}` : ''}`,
                   },
                 ] as const
-              ).map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setChatFilter(f.id)}
-                  className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
-                  style={{
-                    background: chatFilter === f.id ? '#0D3839' : '#F4F3EF',
-                    color: chatFilter === f.id ? '#F4F99D' : '#8AA09A',
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
+              ).map((f) => {
+                const active = chatFilter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setChatFilter(f.id)}
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                    style={{
+                      background: active ? T.accent : 'rgba(139,183,175,0.06)',
+                      color: active ? T.accentDark : T.textMuted,
+                      border: `1px solid ${active ? T.accent : T.border}`,
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
+
           <div className="flex-1 min-h-0 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="text-[12px] text-[#A8B5B0] text-center px-4 py-8">
+              <p
+                className="text-[12px] text-center px-4 py-8"
+                style={{ color: T.textDim }}
+              >
                 {chats.length === 0
                   ? 'Sincronizando conversas…'
                   : chatFilter === 'unanswered'
-                  ? 'Tudo respondido! 🎉'
+                  ? 'Tudo respondido ✨'
                   : 'Nada encontrado.'}
               </p>
             ) : (
@@ -423,23 +482,60 @@ export default function InboxView() {
               ))
             )}
           </div>
+
           <div
-            className="px-4 py-2 text-[10px] text-[#A8B5B0] flex-shrink-0"
-            style={{ borderTop: '1px solid #F0F0EC' }}
+            className="px-4 py-2.5 text-[10px] flex-shrink-0 flex items-center justify-between"
+            style={{ borderTop: `1px solid ${T.border}`, color: T.textDim }}
           >
-            {chats.length} conversa{chats.length !== 1 ? 's' : ''}
+            <span>
+              {chats.length} conversa{chats.length !== 1 ? 's' : ''}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: conn === 'open' ? T.green : '#E57373',
+                  boxShadow: `0 0 6px ${conn === 'open' ? T.green : '#E57373'}88`,
+                }}
+              />
+              {conn === 'open' ? 'online' : conn}
+            </span>
           </div>
         </div>
 
         {/* ── conversa ── */}
         <div
           className="flex-1 min-w-0 flex flex-col relative"
-          style={{ background: '#E8E6DF' }}
+          style={{
+            background:
+              'radial-gradient(ellipse at 50% 0%, rgba(15,57,58,0.35) 0%, transparent 60%)',
+          }}
         >
           {!selectedId ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-[13px] text-[#A8B5B0]">
-                Selecione uma conversa para começar.
+            <div className="flex-1 flex items-center justify-center flex-col gap-3 px-6 text-center">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: 'rgba(139,183,175,0.05)',
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={T.textDim}
+                  strokeWidth="1.5"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <p
+                className="text-[13px]"
+                style={{ color: T.textMuted, maxWidth: 280 }}
+              >
+                Selecione uma conversa à esquerda para começar a responder.
               </p>
             </div>
           ) : (
@@ -447,23 +543,42 @@ export default function InboxView() {
               {/* header da conversa */}
               <div
                 className="px-5 py-3 flex items-center gap-3 flex-shrink-0"
-                style={{ background: '#FFFFFF', borderBottom: '1px solid #E6E6E1' }}
+                style={{
+                  background: T.glass,
+                  borderBottom: `1px solid ${T.border}`,
+                  backdropFilter: 'blur(8px)',
+                }}
               >
                 <Avatar
                   chatId={selectedId}
                   name={selectedName}
                   isGroup={selectedId.endsWith('@g.us')}
-                  size={36}
+                  size={38}
                   active
                 />
-                <span className="text-[14px] font-bold text-[#162322]">{selectedName}</span>
+                <div className="min-w-0">
+                  <p
+                    className="text-[14px] font-bold truncate"
+                    style={{ color: T.textPrimary }}
+                  >
+                    {selectedName}
+                  </p>
+                  <p className="text-[10px]" style={{ color: T.textDim }}>
+                    {selectedId.endsWith('@g.us') ? 'Grupo' : 'Contato'}
+                  </p>
+                </div>
                 <div className="ml-auto flex items-center gap-2">
                   <button
                     onClick={() => setShowProposals((v) => !v)}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                     style={{
-                      background: showProposals ? '#0D3839' : '#F4F3EF',
-                      color: showProposals ? '#F4F99D' : '#0D3839',
+                      background: showProposals
+                        ? T.accent
+                        : 'rgba(139,183,175,0.08)',
+                      color: showProposals ? T.accentDark : T.textPrimary,
+                      border: `1px solid ${
+                        showProposals ? T.accent : T.border
+                      }`,
                     }}
                   >
                     <FileText size={12} />
@@ -473,8 +588,11 @@ export default function InboxView() {
                     onClick={() => setShowModels((v) => !v)}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                     style={{
-                      background: showModels ? '#0D3839' : '#F4F3EF',
-                      color: showModels ? '#F4F99D' : '#0D3839',
+                      background: showModels
+                        ? T.accent
+                        : 'rgba(139,183,175,0.08)',
+                      color: showModels ? T.accentDark : T.textPrimary,
+                      border: `1px solid ${showModels ? T.accent : T.border}`,
                     }}
                   >
                     <Zap size={12} />
@@ -484,9 +602,12 @@ export default function InboxView() {
               </div>
 
               {/* mensagens */}
-              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-2">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-2">
                 {messages.length === 0 ? (
-                  <p className="text-[12px] text-[#A8B5B0] text-center py-8">
+                  <p
+                    className="text-[12px] text-center py-8"
+                    style={{ color: T.textDim }}
+                  >
                     Sem mensagens nesta conversa.
                   </p>
                 ) : (
@@ -500,7 +621,11 @@ export default function InboxView() {
               {/* composer */}
               <div
                 className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
-                style={{ background: '#FFFFFF', borderTop: '1px solid #E6E6E1' }}
+                style={{
+                  background: T.glass,
+                  borderTop: `1px solid ${T.border}`,
+                  backdropFilter: 'blur(8px)',
+                }}
               >
                 <input
                   value={draft}
@@ -513,14 +638,25 @@ export default function InboxView() {
                   }}
                   placeholder="Escreva uma mensagem…"
                   disabled={conn !== 'open'}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[13px] text-[#162322] outline-none placeholder-[#A8B5B0]"
-                  style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-[13px] outline-none"
+                  style={{
+                    background: 'rgba(139,183,175,0.06)',
+                    border: `1px solid ${T.border}`,
+                    color: T.textPrimary,
+                  }}
                 />
                 <button
                   onClick={handleSend}
                   disabled={sending || !draft.trim() || conn !== 'open'}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40"
-                  style={{ background: '#0D3839', color: '#F4F99D' }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
+                  style={{
+                    background: T.accent,
+                    color: T.accentDark,
+                    boxShadow:
+                      sending || !draft.trim() || conn !== 'open'
+                        ? 'none'
+                        : '0 4px 16px rgba(244,249,157,0.25)',
+                  }}
                 >
                   <Send size={16} />
                 </button>

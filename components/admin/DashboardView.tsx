@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { waServer, WaDashboard } from '@/lib/waServer'
 import {
-  ArrowLeft,
   Inbox,
   MessageSquare,
   AlertCircle,
@@ -12,6 +11,7 @@ import {
   Clock,
   Timer,
   Activity,
+  ArrowRight,
 } from 'lucide-react'
 
 const PERIODS = [
@@ -20,6 +20,13 @@ const PERIODS = [
   { id: 'month', label: 'Mês' },
   { id: 'all', label: 'Tudo' },
 ] as const
+
+const PERIOD_SUB: Record<string, string> = {
+  today: 'hoje',
+  week: 'esta semana',
+  month: 'este mês',
+  all: 'no total',
+}
 
 function fmtResponse(min: number) {
   if (!min) return '—'
@@ -35,44 +42,63 @@ function fmtWait(h: number) {
   return `${Math.floor(h / 24)}d`
 }
 
-function Card({
+/* ── card de métrica ─────────────────────────────────── */
+
+function MetricCard({
   label,
   value,
   icon,
-  accent,
+  sub,
+  accent = '#E6F1EE',
   onClick,
 }: {
   label: string
   value: string | number
   icon: React.ReactNode
-  accent?: boolean
+  sub?: string
+  accent?: string
   onClick?: () => void
 }) {
   return (
     <div
       onClick={onClick}
-      className="rounded-2xl p-5 flex flex-col gap-3 transition-all"
+      className="rounded-2xl p-5 transition-all"
       style={{
-        background: '#FFFFFF',
-        border: `1px solid ${accent ? '#E6C6C6' : '#E6E6E1'}`,
+        background:
+          'linear-gradient(165deg, rgba(15,57,58,0.7) 0%, rgba(7,31,32,0.9) 100%)',
+        border: '1px solid rgba(139,183,175,0.12)',
         cursor: onClick ? 'pointer' : 'default',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
       }}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8AA09A]">
+      <div className="flex items-center justify-between mb-3">
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: '#8BB7AF' }}
+        >
           {label}
         </span>
-        <span style={{ color: accent ? '#C9554D' : '#8AA09A' }}>{icon}</span>
+        <span style={{ color: 'rgba(139,183,175,0.45)' }}>{icon}</span>
       </div>
-      <span
-        className="text-[2.2rem] font-bold leading-none tracking-tight"
-        style={{ color: accent ? '#C9554D' : '#162322' }}
+      <p
+        className="font-bold leading-none tracking-tight"
+        style={{
+          color: accent,
+          fontSize: 'clamp(2rem, 4vw, 2.6rem)',
+        }}
       >
         {value}
-      </span>
+      </p>
+      {sub && (
+        <p className="text-[11px] mt-2" style={{ color: 'rgba(139,183,175,0.7)' }}>
+          {sub}
+        </p>
+      )}
     </div>
   )
 }
+
+/* ── main ────────────────────────────────────────────── */
 
 export default function DashboardView() {
   const router = useRouter()
@@ -101,114 +127,197 @@ export default function DashboardView() {
     }
   }, [period])
 
-  return (
-    <div
-      className="min-h-screen"
-      style={{ background: '#ECEAE3', fontFamily: 'var(--font-inter)' }}
-    >
-      {/* top bar */}
-      <div style={{ borderBottom: '1px solid #DFE0DB' }}>
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button
-            onClick={() => router.push('/admin')}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
-          >
-            <ArrowLeft size={13} /> Painel
-          </button>
-          <button
-            onClick={() => router.push('/admin/inbox')}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8AA09A] hover:text-[#0D3839] transition-colors"
-          >
-            <Inbox size={13} /> Inbox
-          </button>
-        </div>
-      </div>
+  const periodSub = PERIOD_SUB[period] || ''
 
-      <div className="max-w-5xl mx-auto px-6 pt-10 pb-20">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#A8B5B0] mb-2">
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="max-w-6xl mx-auto px-6 pt-12 pb-20">
+        <p
+          className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
+          style={{ color: '#6BA89E' }}
+        >
           DASHBOARD · WHATSAPP
         </p>
-        <h1 className="text-[2rem] font-bold text-[#162322] tracking-tight mb-6">
+        <h1
+          className="leading-none tracking-tight mb-2"
+          style={{
+            fontFamily: '"ivypresto-display", Georgia, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
+            fontSize: 'clamp(2.4rem, 5vw, 3.2rem)',
+            color: '#E6F1EE',
+          }}
+        >
           Métricas
         </h1>
+        <p className="text-[13px] mb-8" style={{ color: 'rgba(139,183,175,0.65)' }}>
+          Termômetro do seu atendimento no WhatsApp.
+        </p>
 
-        {/* period tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
-              style={{
-                background: period === p.id ? '#0D3839' : '#FFFFFF',
-                color: period === p.id ? '#F4F99D' : '#8AA09A',
-                border: `1px solid ${period === p.id ? '#0D3839' : '#E6E6E1'}`,
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
+        {/* period pills */}
+        <div className="flex gap-2 mb-8 flex-wrap">
+          {PERIODS.map((p) => {
+            const active = period === p.id
+            return (
+              <button
+                key={p.id}
+                onClick={() => setPeriod(p.id)}
+                className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
+                style={{
+                  background: active ? '#F4F99D' : 'rgba(139,183,175,0.08)',
+                  color: active ? '#0D3839' : '#8BB7AF',
+                  border: `1px solid ${
+                    active ? '#F4F99D' : 'rgba(139,183,175,0.18)'
+                  }`,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {p.label}
+              </button>
+            )
+          })}
         </div>
 
         {serverOff ? (
           <div
             className="rounded-2xl p-12 text-center"
-            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+            style={{
+              background: 'rgba(229,115,115,0.08)',
+              border: '1px solid rgba(229,115,115,0.25)',
+              color: '#FFC7BD',
+            }}
           >
-            <p className="text-[13px] text-[#A33]">
+            <p className="text-[13px]">
               Servidor do WhatsApp offline. Rode <code>npm start</code> na pasta{' '}
               <code>wa-server</code>.
             </p>
           </div>
         ) : !data ? (
-          <p className="text-[13px] text-[#A8B5B0]">Carregando métricas…</p>
+          <p className="text-[13px]" style={{ color: 'rgba(139,183,175,0.7)' }}>
+            Carregando métricas…
+          </p>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Card
+            {/* hero card: não respondidas + maior espera */}
+            <div
+              onClick={() => router.push('/admin/inbox?filter=unanswered')}
+              className="relative overflow-hidden rounded-3xl p-7 mb-3 cursor-pointer transition-transform hover:-translate-y-0.5"
+              style={{
+                background:
+                  'radial-gradient(ellipse at 100% 0%, rgba(229,115,115,0.16) 0%, transparent 60%), linear-gradient(160deg, rgba(82,28,28,0.55) 0%, rgba(40,12,12,0.7) 100%)',
+                border: '1px solid rgba(229,115,115,0.30)',
+                boxShadow: '0 12px 36px rgba(229,115,115,0.10)',
+              }}
+            >
+              <div className="flex items-start justify-between gap-6 flex-wrap">
+                <div>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+                    style={{ color: '#FFC7BD' }}
+                  >
+                    <AlertCircle size={12} />
+                    Aguardando sua resposta
+                  </p>
+                  <p
+                    className="font-bold leading-none"
+                    style={{
+                      color: '#FFD7CD',
+                      fontSize: 'clamp(3.5rem, 8vw, 5rem)',
+                    }}
+                  >
+                    {data.unanswered}
+                  </p>
+                  <p
+                    className="text-[12px] mt-3"
+                    style={{ color: 'rgba(255,199,189,0.7)' }}
+                  >
+                    {data.unanswered === 1
+                      ? 'conversa esperando sua resposta'
+                      : 'conversas esperando sua resposta'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2"
+                    style={{ color: 'rgba(255,199,189,0.65)' }}
+                  >
+                    Maior espera
+                  </p>
+                  <p
+                    className="font-bold leading-none"
+                    style={{
+                      color: '#E57373',
+                      fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)',
+                    }}
+                  >
+                    {fmtWait(data.longestWaitH)}
+                  </p>
+                </div>
+              </div>
+              <div
+                className="mt-6 inline-flex items-center gap-2 text-[12px] font-bold"
+                style={{ color: '#F4F99D' }}
+              >
+                Abrir essas conversas
+                <ArrowRight size={13} />
+              </div>
+            </div>
+
+            {/* main grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+              <MetricCard
                 label="Conversas"
                 value={data.totalChats}
                 icon={<MessageSquare size={15} />}
+                accent="#E6F1EE"
               />
-              <Card
-                label="Não respondidas"
-                value={data.unanswered}
-                icon={<AlertCircle size={15} />}
-                accent
-                onClick={() => router.push('/admin/inbox?filter=unanswered')}
-              />
-              <Card
+              <MetricCard
                 label="Conversas ativas"
                 value={data.activeChats}
                 icon={<Activity size={15} />}
+                accent="#E6F1EE"
+                sub={periodSub}
               />
-              <Card
+              <MetricCard
                 label="Mensagens recebidas"
                 value={data.received}
                 icon={<Inbox size={15} />}
+                accent="#8BB7AF"
+                sub={periodSub}
               />
-              <Card
+              <MetricCard
                 label="Mensagens enviadas"
                 value={data.sent}
                 icon={<Send size={15} />}
-              />
-              <Card
-                label="Tempo de resposta"
-                value={fmtResponse(data.avgResponseMin)}
-                icon={<Clock size={15} />}
-              />
-              <Card
-                label="Maior espera"
-                value={fmtWait(data.longestWaitH)}
-                icon={<Timer size={15} />}
-                accent
+                accent="#F4F99D"
+                sub={periodSub}
               />
             </div>
-            <p className="text-[11px] text-[#A8B5B0] mt-4 leading-relaxed">
-              &quot;Conversas ativas&quot; e &quot;mensagens&quot; contam o período
-              selecionado. &quot;Não respondidas&quot; e &quot;maior espera&quot; são o
-              estado atual. Clique em &quot;Não respondidas&quot; para abrir essas
-              conversas no inbox.
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MetricCard
+                label="Tempo médio de resposta"
+                value={fmtResponse(data.avgResponseMin)}
+                icon={<Clock size={15} />}
+                accent="#8BB7AF"
+                sub={`quanto seus clientes esperaram ${periodSub}`}
+              />
+              <MetricCard
+                label="Volume"
+                value={`${data.received + data.sent}`}
+                icon={<Timer size={15} />}
+                accent="#E6F1EE"
+                sub={`total de mensagens (${periodSub})`}
+              />
+            </div>
+
+            <p
+              className="text-[11px] mt-6 leading-relaxed"
+              style={{ color: 'rgba(139,183,175,0.55)' }}
+            >
+              &quot;Conversas ativas&quot;, &quot;mensagens&quot; e &quot;tempo de
+              resposta&quot; contam o período selecionado. &quot;Não respondidas&quot;
+              e &quot;maior espera&quot; são o estado atual.
             </p>
           </>
         )}
