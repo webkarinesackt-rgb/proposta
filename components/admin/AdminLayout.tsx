@@ -42,7 +42,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="min-h-screen flex"
+      className="h-screen flex overflow-hidden"
       style={{
         background: '#F7F7F4',
         fontFamily: 'var(--font-inter)',
@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     >
       {/* sidebar */}
       <aside
-        className="w-[84px] flex-shrink-0 flex flex-col items-center py-5 sticky top-0 h-screen"
+        className="w-[84px] flex-shrink-0 flex flex-col items-center py-5 h-screen"
         style={{
           background:
             'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
@@ -157,7 +157,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* main */}
-      <main className="flex-1 min-w-0 min-h-screen flex flex-col">
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col">
         {children}
       </main>
     </div>
