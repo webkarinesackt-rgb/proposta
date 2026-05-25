@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
@@ -616,6 +616,27 @@ export default function InboxView() {
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
+                  {currentChat && (
+                    <button
+                      onClick={async () => {
+                        const wasArchived = currentChat.archived
+                        await waServer.updateChat(selectedId, {
+                          archived: !wasArchived,
+                        })
+                        await reloadChats()
+                        if (!wasArchived) setSelectedId(null)
+                      }}
+                      title={currentChat.archived ? 'Desarquivar' : 'Arquivar conversa'}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[#F4F3EF]"
+                      style={{ color: T.textMuted }}
+                    >
+                      {currentChat.archived ? (
+                        <ArchiveRestore size={14} />
+                      ) : (
+                        <Archive size={14} />
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowProposals((v) => !v)}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
