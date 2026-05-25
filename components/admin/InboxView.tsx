@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { waServer, WaChat, WaMessage } from '@/lib/waServer'
+import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
 import { Search, Send, Users, Zap, FileText } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -10,15 +10,17 @@ import ProposalPicker from './ProposalPicker'
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#E6F1EE',
-  textMuted: 'rgba(139,183,175,0.7)',
-  textDim: 'rgba(139,183,175,0.45)',
-  border: 'rgba(139,183,175,0.12)',
-  glass: 'rgba(15,57,58,0.45)',
-  glassDark: 'rgba(5,20,21,0.55)',
-  accent: '#F4F99D',
-  accentDark: '#0D3839',
-  green: '#9DE9A8',
+  textPrimary: '#162322',
+  textMuted: '#6B8585',
+  textDim: '#8AA09A',
+  border: '#E6E6E1',
+  borderSubtle: '#F0F0EC',
+  card: '#FFFFFF',
+  bgSubtle: '#FAFAF8',
+  conversationBg: '#F0EDE4',
+  accent: '#0D3839',
+  accentBright: '#F4F99D',
+  green: '#22C55E',
 }
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -37,7 +39,7 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
-/* ── avatar com foto (fallback iniciais) ─────────────── */
+/* ── avatar ──────────────────────────────────────────── */
 
 function Avatar({
   chatId,
@@ -60,13 +62,9 @@ function Avatar({
         width: size,
         height: size,
         fontSize: Math.round(size * 0.32),
-        background: active
-          ? 'linear-gradient(135deg, #6BA89E 0%, #0D3839 100%)'
-          : 'rgba(139,183,175,0.12)',
-        color: active ? '#F4F99D' : 'rgba(139,183,175,0.85)',
-        border: active
-          ? '1px solid rgba(244,249,157,0.3)'
-          : '1px solid rgba(139,183,175,0.15)',
+        background: active ? T.accent : '#F4F3EF',
+        color: active ? T.accentBright : T.textDim,
+        border: `1px solid ${active ? T.accent : T.border}`,
       }}
     >
       {error ? (
@@ -88,7 +86,7 @@ function Avatar({
   )
 }
 
-/* ── transforma URLs em links clicáveis ──────────────── */
+/* ── linkify ─────────────────────────────────────────── */
 
 function renderText(text: string, mine: boolean) {
   const re = /(https?:\/\/[^\s]+)/g
@@ -104,7 +102,7 @@ function renderText(text: string, mine: boolean) {
         target="_blank"
         rel="noopener noreferrer"
         className="underline break-all"
-        style={{ color: mine ? '#FBFFCE' : '#9DE9A8' }}
+        style={{ color: mine ? '#C8E6E0' : '#0D7A4A' }}
       >
         {m[0]}
       </a>
@@ -126,18 +124,16 @@ function ChatRow({
   active: boolean
   onClick: () => void
 }) {
+  const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
   return (
     <button
       onClick={onClick}
       className="relative w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
       style={{
-        background: active
-          ? 'linear-gradient(90deg, rgba(244,249,157,0.07) 0%, transparent 80%)'
-          : 'transparent',
+        background: active ? 'rgba(13,56,57,0.04)' : 'transparent',
       }}
       onMouseEnter={(e) => {
-        if (!active)
-          e.currentTarget.style.background = 'rgba(139,183,175,0.04)'
+        if (!active) e.currentTarget.style.background = T.bgSubtle
       }}
       onMouseLeave={(e) => {
         if (!active) e.currentTarget.style.background = 'transparent'
@@ -145,11 +141,8 @@ function ChatRow({
     >
       {active && (
         <span
-          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full"
-          style={{
-            background: T.accent,
-            boxShadow: '0 0 10px rgba(244,249,157,0.5)',
-          }}
+          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+          style={{ background: T.accent }}
         />
       )}
       <Avatar
@@ -157,7 +150,6 @@ function ChatRow({
         name={chat.name}
         isGroup={chat.isGroup}
         size={42}
-        active={active}
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
@@ -178,18 +170,29 @@ function ChatRow({
             )}
             {chat.lastText || '—'}
           </span>
-          {chat.unread > 0 && (
+          {chat.unread > 0 ? (
             <span
-              className="text-[10px] font-bold rounded-full flex-shrink-0 flex items-center justify-center"
+              className="text-[10px] font-bold rounded-full flex-shrink-0 flex items-center justify-center text-white"
               style={{
-                background: T.accent,
-                color: T.accentDark,
+                background: T.green,
                 minWidth: 18,
                 height: 18,
                 padding: '0 5px',
               }}
             >
               {chat.unread}
+            </span>
+          ) : (
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0"
+              style={{
+                background: statusMeta.bg,
+                color: statusMeta.color,
+              }}
+            >
+              {statusMeta.label.length > 11
+                ? statusMeta.label.slice(0, 9) + '…'
+                : statusMeta.label}
             </span>
           )}
         </div>
@@ -198,7 +201,7 @@ function ChatRow({
   )
 }
 
-/* ── message bubble ──────────────────────────────────── */
+/* ── bolha de mensagem ───────────────────────────────── */
 
 function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const mine = msg.fromMe
@@ -208,16 +211,12 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
       <div
         className="max-w-[72%] px-3.5 py-2 rounded-2xl"
         style={{
-          background: mine
-            ? 'linear-gradient(135deg, #14595B 0%, #0D3839 100%)'
-            : 'rgba(15,57,58,0.55)',
-          color: T.textPrimary,
-          border: mine
-            ? '1px solid rgba(184,212,208,0.18)'
-            : '1px solid rgba(139,183,175,0.13)',
+          background: mine ? T.accent : '#FFFFFF',
+          color: mine ? '#FFFFFF' : T.textPrimary,
+          border: mine ? 'none' : `1px solid ${T.border}`,
           borderBottomRightRadius: mine ? 4 : 16,
           borderBottomLeftRadius: mine ? 16 : 4,
-          boxShadow: mine ? '0 4px 12px rgba(0,0,0,0.18)' : 'none',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
         {isAudio ? (
@@ -234,7 +233,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
         )}
         <p
           className="text-[10px] mt-1 text-right"
-          style={{ color: mine ? 'rgba(230,241,238,0.5)' : T.textDim }}
+          style={{ color: mine ? 'rgba(255,255,255,0.5)' : T.textDim }}
         >
           {fmtTime(msg.time)}
         </p>
@@ -295,9 +294,7 @@ export default function InboxView() {
         if (!alive) return
         setMessages(r.messages || [])
         setSelectedName(r.name)
-      } catch {
-        /* ignora — o poll de status já sinaliza servidor offline */
-      }
+      } catch {}
     }
     tick()
     const iv = setInterval(tick, 3000)
@@ -312,10 +309,12 @@ export default function InboxView() {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ?filter=unanswered → ativa o filtro automaticamente
+  // ?filter=unanswered → ativa o filtro / ?chat=jid → abre a conversa
   const sp = useSearchParams()
   useEffect(() => {
     if (sp.get('filter') === 'unanswered') setChatFilter('unanswered')
+    const c = sp.get('chat')
+    if (c) setSelectedId(c)
   }, [sp])
 
   async function refreshMessages() {
@@ -323,9 +322,7 @@ export default function InboxView() {
     try {
       const r = await waServer.messages(selectedId)
       setMessages(r.messages || [])
-    } catch {
-      /* o poll de status sinaliza servidor offline */
-    }
+    } catch {}
   }
 
   async function handleSend() {
@@ -350,7 +347,6 @@ export default function InboxView() {
     }
   }
 
-  // "não respondida" = conversa individual cuja última mensagem é do contato
   const unansweredCount = chats.filter((c) => !c.isGroup && !c.fromMeLast).length
   const filtered = chats.filter((c) => {
     if (search.trim() && !c.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -358,7 +354,6 @@ export default function InboxView() {
     return true
   })
 
-  // ao filtrar não respondidas, abre automaticamente a mais recente
   const firstFilteredId = filtered[0]?.id || null
   useEffect(() => {
     if (chatFilter === 'unanswered' && !selectedId && firstFilteredId) {
@@ -367,57 +362,50 @@ export default function InboxView() {
   }, [chatFilter, firstFilteredId, selectedId])
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
+    <div className="flex-1 min-h-0 flex flex-col" style={{ background: T.card }}>
       {serverOff && (
         <div
           className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
           style={{
-            background: 'rgba(229,115,115,0.10)',
-            borderBottom: '1px solid rgba(229,115,115,0.25)',
-            color: '#FFC7BD',
+            background: '#FEF2F2',
+            borderBottom: '1px solid #FCA5A5',
+            color: '#B91C1C',
           }}
         >
           Servidor do WhatsApp offline. Rode <code>npm start</code> em{' '}
           <code>wa-server</code>.
         </div>
       )}
-
       {conn !== 'open' && !serverOff && (
         <div
           className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
           style={{
-            background: 'rgba(244,213,93,0.08)',
-            borderBottom: '1px solid rgba(244,213,93,0.2)',
-            color: '#F4D55D',
+            background: '#FEF9E7',
+            borderBottom: '1px solid #FDE68A',
+            color: '#92400E',
           }}
         >
           WhatsApp: {conn === 'qr' ? 'aguardando QR' : 'reconectando…'}
         </div>
       )}
 
-      {/* corpo: lista + conversa */}
       <div className="flex-1 min-h-0 flex">
         {/* ── lista de conversas ── */}
         <div
           className="w-[340px] flex-shrink-0 flex flex-col"
-          style={{
-            background: T.glassDark,
-            borderRight: `1px solid ${T.border}`,
-            backdropFilter: 'blur(10px)',
-          }}
+          style={{ borderRight: `1px solid ${T.border}`, background: T.card }}
         >
-          {/* search + filter */}
           <div className="p-4 flex-shrink-0">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
-              style={{ color: 'rgba(139,183,175,0.5)' }}
+              style={{ color: T.textDim }}
             >
-              ◈ Conversas
+              Conversas
             </p>
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{
-                background: 'rgba(139,183,175,0.06)',
+                background: T.bgSubtle,
                 border: `1px solid ${T.border}`,
               }}
             >
@@ -447,8 +435,8 @@ export default function InboxView() {
                     onClick={() => setChatFilter(f.id)}
                     className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
                     style={{
-                      background: active ? T.accent : 'rgba(139,183,175,0.06)',
-                      color: active ? T.accentDark : T.textMuted,
+                      background: active ? T.accent : T.bgSubtle,
+                      color: active ? T.accentBright : T.textMuted,
                       border: `1px solid ${active ? T.accent : T.border}`,
                     }}
                   >
@@ -485,7 +473,7 @@ export default function InboxView() {
 
           <div
             className="px-4 py-2.5 text-[10px] flex-shrink-0 flex items-center justify-between"
-            style={{ borderTop: `1px solid ${T.border}`, color: T.textDim }}
+            style={{ borderTop: `1px solid ${T.borderSubtle}`, color: T.textDim }}
           >
             <span>
               {chats.length} conversa{chats.length !== 1 ? 's' : ''}
@@ -494,8 +482,7 @@ export default function InboxView() {
               <span
                 className="w-1.5 h-1.5 rounded-full"
                 style={{
-                  background: conn === 'open' ? T.green : '#E57373',
-                  boxShadow: `0 0 6px ${conn === 'open' ? T.green : '#E57373'}88`,
+                  background: conn === 'open' ? T.green : '#EF4444',
                 }}
               />
               {conn === 'open' ? 'online' : conn}
@@ -506,17 +493,14 @@ export default function InboxView() {
         {/* ── conversa ── */}
         <div
           className="flex-1 min-w-0 flex flex-col relative"
-          style={{
-            background:
-              'radial-gradient(ellipse at 50% 0%, rgba(15,57,58,0.35) 0%, transparent 60%)',
-          }}
+          style={{ background: T.conversationBg }}
         >
           {!selectedId ? (
             <div className="flex-1 flex items-center justify-center flex-col gap-3 px-6 text-center">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
                 style={{
-                  background: 'rgba(139,183,175,0.05)',
+                  background: '#FFFFFF',
                   border: `1px solid ${T.border}`,
                 }}
               >
@@ -544,9 +528,8 @@ export default function InboxView() {
               <div
                 className="px-5 py-3 flex items-center gap-3 flex-shrink-0"
                 style={{
-                  background: T.glass,
+                  background: T.card,
                   borderBottom: `1px solid ${T.border}`,
-                  backdropFilter: 'blur(8px)',
                 }}
               >
                 <Avatar
@@ -572,10 +555,8 @@ export default function InboxView() {
                     onClick={() => setShowProposals((v) => !v)}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                     style={{
-                      background: showProposals
-                        ? T.accent
-                        : 'rgba(139,183,175,0.08)',
-                      color: showProposals ? T.accentDark : T.textPrimary,
+                      background: showProposals ? T.accent : T.bgSubtle,
+                      color: showProposals ? T.accentBright : T.textPrimary,
                       border: `1px solid ${
                         showProposals ? T.accent : T.border
                       }`,
@@ -588,10 +569,8 @@ export default function InboxView() {
                     onClick={() => setShowModels((v) => !v)}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                     style={{
-                      background: showModels
-                        ? T.accent
-                        : 'rgba(139,183,175,0.08)',
-                      color: showModels ? T.accentDark : T.textPrimary,
+                      background: showModels ? T.accent : T.bgSubtle,
+                      color: showModels ? T.accentBright : T.textPrimary,
                       border: `1px solid ${showModels ? T.accent : T.border}`,
                     }}
                   >
@@ -622,9 +601,8 @@ export default function InboxView() {
               <div
                 className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
                 style={{
-                  background: T.glass,
+                  background: T.card,
                   borderTop: `1px solid ${T.border}`,
-                  backdropFilter: 'blur(8px)',
                 }}
               >
                 <input
@@ -640,7 +618,7 @@ export default function InboxView() {
                   disabled={conn !== 'open'}
                   className="flex-1 px-4 py-2.5 rounded-xl text-[13px] outline-none"
                   style={{
-                    background: 'rgba(139,183,175,0.06)',
+                    background: T.bgSubtle,
                     border: `1px solid ${T.border}`,
                     color: T.textPrimary,
                   }}
@@ -649,14 +627,7 @@ export default function InboxView() {
                   onClick={handleSend}
                   disabled={sending || !draft.trim() || conn !== 'open'}
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
-                  style={{
-                    background: T.accent,
-                    color: T.accentDark,
-                    boxShadow:
-                      sending || !draft.trim() || conn !== 'open'
-                        ? 'none'
-                        : '0 4px 16px rgba(244,249,157,0.25)',
-                  }}
+                  style={{ background: T.accent, color: T.accentBright }}
                 >
                   <Send size={16} />
                 </button>

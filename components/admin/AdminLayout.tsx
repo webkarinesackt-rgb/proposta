@@ -2,13 +2,14 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, BarChart3 } from 'lucide-react'
+import { FileText, MessageSquare, BarChart3, Tag } from 'lucide-react'
 import { waServer } from '@/lib/waServer'
 import type { ReactNode } from 'react'
 
 const TABS = [
   { path: '/admin', icon: FileText, label: 'Propostas' },
   { path: '/admin/inbox', icon: MessageSquare, label: 'Inbox' },
+  { path: '/admin/leads', icon: Tag, label: 'Leads' },
   { path: '/admin/dashboard', icon: BarChart3, label: 'Métricas' },
 ] as const
 
@@ -43,20 +44,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div
       className="min-h-screen flex"
       style={{
-        background:
-          'radial-gradient(ellipse at 50% -10%, rgba(139,183,175,0.10) 0%, transparent 55%), linear-gradient(165deg, #0E3C3D 0%, #082828 60%, #051A1A 100%)',
+        background: '#F7F7F4',
         fontFamily: 'var(--font-inter)',
-        color: '#E6F1EE',
+        color: '#162322',
       }}
     >
       {/* sidebar */}
       <aside
         className="w-[84px] flex-shrink-0 flex flex-col items-center py-5 sticky top-0 h-screen"
         style={{
-          background: 'rgba(5,20,21,0.55)',
-          borderRight: '1px solid rgba(139,183,175,0.10)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          background:
+            'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
+          borderRight: '1px solid rgba(0,0,0,0.08)',
         }}
       >
         {/* mark */}

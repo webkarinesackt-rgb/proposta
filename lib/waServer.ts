@@ -12,7 +12,24 @@ export interface WaChat {
   lastTime: number
   fromMeLast: boolean
   unread: number
+  status: string
 }
+
+/** Etiquetas de pipeline (mesma ordem e ids do wa-server). */
+export const LEAD_STATUSES = [
+  { id: 'LEAD',       label: 'Lead',                color: '#3B82F6', bg: '#EFF6FF' },
+  { id: 'NEGOCIACAO', label: 'Negociação',          color: '#EAB308', bg: '#FEFCE8' },
+  { id: 'REUNIAO',    label: 'Reunião agendada',    color: '#F97316', bg: '#FFF7ED' },
+  { id: 'PROPOSTA',   label: 'Proposta enviada',    color: '#EF4444', bg: '#FEF2F2' },
+  { id: 'AGUARDANDO', label: 'Aguardando resposta', color: '#A855F7', bg: '#FAF5FF' },
+  { id: 'FECHADO',    label: 'Fechado',             color: '#22C55E', bg: '#F0FDF4' },
+  { id: 'PERDIDA',    label: 'Perdida',             color: '#64748B', bg: '#F1F5F9' },
+] as const
+
+export type LeadStatusId = (typeof LEAD_STATUSES)[number]['id']
+
+export const STATUS_META: Record<string, { label: string; color: string; bg: string }> =
+  Object.fromEntries(LEAD_STATUSES.map((s) => [s.id, s]))
 
 export interface WaMessage {
   id: string
@@ -137,6 +154,18 @@ export const waServer = {
 
   async dashboard(period: string): Promise<WaDashboard> {
     const r = await fetch(`${WA}/dashboard?period=${period}`)
+    return r.json()
+  },
+
+  async setStatus(chatId: string, status: string) {
+    const r = await fetch(
+      `${WA}/chats/${encodeURIComponent(chatId)}/status`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      }
+    )
     return r.json()
   },
 }

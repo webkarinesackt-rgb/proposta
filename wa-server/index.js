@@ -282,7 +282,7 @@ async function getPhotoUrl(jid) {
 /** Registra/atualiza uma conversa vinda do Baileys. */
 function ingestChat(c) {
   if (!c || !isRealChat(c.id)) return
-  const ex = store.chats.get(c.id) || { id: c.id, unread: 0 }
+  const ex = store.chats.get(c.id) || { id: c.id, unread: 0, status: 'LEAD' }
   const name = c.name || c.subject || c.verifiedName
   if (name) ex.name = name
   if (c.unreadCount != null) ex.unread = c.unreadCount
@@ -323,7 +323,7 @@ function recordMessage(m) {
     arr.sort((a, b) => a.time - b.time)
     if (arr.length > 200) arr.splice(0, arr.length - 200)
 
-    const chat = store.chats.get(jid) || { id: jid, unread: 0 }
+    const chat = store.chats.get(jid) || { id: jid, unread: 0, status: 'LEAD' }
     chat.id = jid
     if (time >= (chat.lastTime || 0)) {
       chat.lastText = text
@@ -721,6 +721,7 @@ app.get('/chats', (_req, res) => {
       lastTime: c.lastTime || 0,
       fromMeLast: !!c.fromMeLast,
       unread: c.unread || 0,
+      status: c.status || 'LEAD',
     }))
     .sort((a, b) => b.lastTime - a.lastTime)
   res.json({ chats })
@@ -831,6 +832,31 @@ app.post('/chats/:id/send-audio/:audioId', async (req, res) => {
     console.error('[chats/send-audio]', err)
     res.status(500).json({ ok: false, error: err.message })
   }
+})
+
+// muda o status (etiqueta de pipeline) de uma conversa
+const LEAD_STATUSES = [
+  'LEAD',
+  'NEGOCIACAO',
+  'REUNIAO',
+  'PROPOSTA',
+  'AGUARDANDO',
+  'FECHADO',
+  'PERDIDA',
+]
+app.post('/chats/:id/status', (req, res) => {
+  const { status } = req.body || {}
+  if (!LEAD_STATUSES.includes(status)) {
+    return res.status(400).json({ ok: false, error: 'Status inválido.' })
+  }
+  const ex = store.chats.get(req.params.id) || {
+    id: req.params.id,
+    unread: 0,
+  }
+  ex.status = status
+  store.chats.set(req.params.id, ex)
+  storeDirty = true
+  res.json({ ok: true, status })
 })
 
 // métricas do dashboard

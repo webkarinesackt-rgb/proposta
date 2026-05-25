@@ -20,28 +20,29 @@ import {
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#E6F1EE',
-  textMuted: 'rgba(139,183,175,0.7)',
-  textDim: 'rgba(139,183,175,0.45)',
-  border: 'rgba(139,183,175,0.12)',
-  cardBg:
-    'linear-gradient(165deg, rgba(15,57,58,0.6) 0%, rgba(7,31,32,0.85) 100%)',
-  accent: '#F4F99D',
-  accentDark: '#0D3839',
+  textPrimary: '#162322',
+  textMuted: '#6B8585',
+  textDim: '#8AA09A',
+  border: '#E6E6E1',
+  borderSubtle: '#F0F0EC',
+  card: '#FFFFFF',
+  bgSubtle: '#FAFAF8',
+  accent: '#0D3839',
+  accentBright: '#F4F99D',
 }
 
-/* ── status badges ───────────────────────────────────── */
+/* ── status meta ─────────────────────────────────────── */
 
 const STATUS_META: Record<
   ProposalStatus,
   { label: string; color: string; bg: string; icon: React.ReactNode }
 > = {
-  draft:    { label: 'Rascunho',    color: '#A8B5B0', bg: 'rgba(168,181,176,0.10)', icon: <FileText size={10} /> },
-  sent:     { label: 'Enviada',     color: '#9DE9A8', bg: 'rgba(157,233,168,0.12)', icon: <Mail size={10} /> },
-  viewed:   { label: 'Visualizada', color: '#8BB7AF', bg: 'rgba(139,183,175,0.12)', icon: <Eye size={10} /> },
-  accepted: { label: 'Aceita',      color: '#F4F99D', bg: 'rgba(244,249,157,0.15)', icon: <CheckCircle2 size={10} /> },
-  rejected: { label: 'Recusada',    color: '#E57373', bg: 'rgba(229,115,115,0.12)', icon: <XCircle size={10} /> },
-  expired:  { label: 'Expirada',    color: '#8D9E9C', bg: 'rgba(141,158,156,0.10)', icon: <Clock size={10} /> },
+  draft:    { label: 'Rascunho',    color: '#64748B', bg: '#F1F5F9', icon: <FileText size={10} /> },
+  sent:     { label: 'Enviada',     color: '#3B82F6', bg: '#EFF6FF', icon: <Mail size={10} /> },
+  viewed:   { label: 'Visualizada', color: '#8B5CF6', bg: '#F5F3FF', icon: <Eye size={10} /> },
+  accepted: { label: 'Aceita',      color: '#22C55E', bg: '#F0FDF4', icon: <CheckCircle2 size={10} /> },
+  rejected: { label: 'Recusada',    color: '#EF4444', bg: '#FEF2F2', icon: <XCircle size={10} /> },
+  expired:  { label: 'Expirada',    color: '#A8B5B0', bg: '#F4F3EF', icon: <Clock size={10} /> },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -78,9 +79,8 @@ function Stat({
     <div
       className="rounded-2xl p-5"
       style={{
-        background: T.cardBg,
+        background: T.card,
         border: `1px solid ${T.border}`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
       }}
     >
       <p
@@ -121,9 +121,8 @@ function ProposalCard({
     <div
       className="rounded-2xl p-5 flex flex-col gap-3 transition-all"
       style={{
-        background: T.cardBg,
+        background: T.card,
         border: `1px solid ${T.border}`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
       }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -145,7 +144,10 @@ function ProposalCard({
         </div>
         <span
           className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
-          style={{ color: meta.color, background: meta.bg, border: `1px solid ${meta.color}30` }}
+          style={{
+            color: meta.color,
+            background: meta.bg,
+          }}
         >
           {meta.icon}
           {expired && proposal.status !== 'accepted' ? 'Expirada' : meta.label}
@@ -155,7 +157,7 @@ function ProposalCard({
       <div className="flex items-center gap-4">
         <span
           className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded"
-          style={{ background: 'rgba(139,183,175,0.08)', color: T.textMuted }}
+          style={{ background: T.bgSubtle, color: T.textMuted }}
         >
           {TYPE_LABEL[proposal.project_type] ?? proposal.project_type}
         </span>
@@ -170,10 +172,8 @@ function ProposalCard({
             key={p.id}
             className="text-[10px] px-2 py-0.5 rounded-full"
             style={{
-              background: p.is_recommended
-                ? T.accent
-                : 'rgba(139,183,175,0.08)',
-              color: p.is_recommended ? T.accentDark : T.textMuted,
+              background: p.is_recommended ? T.accentBright : T.bgSubtle,
+              color: p.is_recommended ? T.accent : T.textMuted,
               fontWeight: p.is_recommended ? 700 : 500,
             }}
           >
@@ -184,18 +184,12 @@ function ProposalCard({
 
       <div
         className="flex items-center gap-2 pt-2"
-        style={{ borderTop: `1px solid ${T.border}` }}
+        style={{ borderTop: `1px solid ${T.borderSubtle}` }}
       >
         <button
           onClick={() => router.push(`/admin/edit/${proposal.id}`)}
-          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
           style={{ color: T.textPrimary }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = 'rgba(139,183,175,0.08)')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = 'transparent')
-          }
         >
           Editar
         </button>
@@ -204,14 +198,8 @@ function ProposalCard({
             localStorage.setItem('fysi_draft', JSON.stringify(proposal))
             window.open('/p/preview', '_blank')
           }}
-          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
-          style={{ color: '#9DE9A8' }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = 'rgba(157,233,168,0.08)')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = 'transparent')
-          }
+          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
+          style={{ color: T.textMuted }}
         >
           <Eye size={11} />
           Prévia
@@ -219,14 +207,8 @@ function ProposalCard({
         {!isDraft && (
           <button
             onClick={() => onCopy(proposal)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            style={{ color: '#9DE9A8' }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = 'rgba(157,233,168,0.08)')
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = 'transparent')
-            }
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
+            style={{ color: T.textMuted }}
           >
             <Copy size={11} />
             Link
@@ -236,7 +218,7 @@ function ProposalCard({
           <button
             onClick={() => onPublish(proposal.id)}
             className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all"
-            style={{ background: T.accent, color: T.accentDark }}
+            style={{ background: T.accent, color: T.accentBright }}
           >
             <Send size={11} />
             Publicar
@@ -244,14 +226,8 @@ function ProposalCard({
         )}
         <button
           onClick={() => onDelete(proposal.id)}
-          className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors"
-          style={{ color: '#E57373' }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = 'rgba(229,115,115,0.10)')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = 'transparent')
-          }
+          className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors hover:bg-[#FEF2F2]"
+          style={{ color: '#EF4444' }}
         >
           <Trash2 size={11} />
         </button>
@@ -319,13 +295,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-6 pt-12 pb-20">
+      <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
         {/* hero */}
-        <div className="flex items-end justify-between gap-4 mb-10 flex-wrap">
+        <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
             <p
               className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
-              style={{ color: '#6BA89E' }}
+              style={{ color: T.textDim }}
             >
               PAINEL · PROPOSTAS
             </p>
@@ -335,7 +311,7 @@ export default function AdminDashboard() {
                 fontFamily: '"ivypresto-display", Georgia, serif',
                 fontStyle: 'italic',
                 fontWeight: 300,
-                fontSize: 'clamp(2.2rem, 4.5vw, 3rem)',
+                fontSize: 'clamp(2rem, 4.5vw, 2.8rem)',
                 color: T.textPrimary,
               }}
             >
@@ -351,11 +327,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => router.push('/admin/new')}
             className="flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
-            style={{
-              background: T.accent,
-              color: T.accentDark,
-              boxShadow: '0 6px 24px rgba(244,249,157,0.25)',
-            }}
+            style={{ background: T.accent, color: T.accentBright }}
           >
             <Plus size={14} />
             Nova proposta
@@ -363,11 +335,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Stat value={stats.total} label="Total" />
           <Stat value={stats.draft} label="Rascunhos" />
-          <Stat value={stats.sent} label="Enviadas" accent="#9DE9A8" />
-          <Stat value={stats.accepted} label="Aceitas" accent={T.accent} />
+          <Stat value={stats.sent} label="Enviadas" accent="#3B82F6" />
+          <Stat value={stats.accepted} label="Aceitas" accent="#22C55E" />
         </div>
 
         {/* filters */}
@@ -380,10 +352,9 @@ export default function AdminDashboard() {
                 onClick={() => setFilter(f.value)}
                 className="text-[11px] font-bold px-4 py-1.5 rounded-full transition-all"
                 style={{
-                  background: active ? T.accent : 'rgba(139,183,175,0.06)',
-                  color: active ? T.accentDark : T.textMuted,
+                  background: active ? T.accent : T.card,
+                  color: active ? T.accentBright : T.textMuted,
                   border: `1px solid ${active ? T.accent : T.border}`,
-                  letterSpacing: '0.03em',
                 }}
               >
                 {f.label}
@@ -402,15 +373,9 @@ export default function AdminDashboard() {
         {filtered.length === 0 ? (
           <div
             className="rounded-2xl p-12 text-center"
-            style={{
-              background: T.cardBg,
-              border: `1px solid ${T.border}`,
-            }}
+            style={{ background: T.card, border: `1px solid ${T.border}` }}
           >
-            <p
-              className="text-[13px] mb-4"
-              style={{ color: T.textMuted }}
-            >
+            <p className="text-[13px] mb-4" style={{ color: T.textMuted }}>
               {proposals.length === 0
                 ? 'Nenhuma proposta ainda.'
                 : 'Nenhuma proposta neste filtro.'}
@@ -419,7 +384,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => router.push('/admin/new')}
                 className="text-[12px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl"
-                style={{ background: T.accent, color: T.accentDark }}
+                style={{ background: T.accent, color: T.accentBright }}
               >
                 Criar primeira proposta
               </button>
