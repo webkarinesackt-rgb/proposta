@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown } from 'lucide-react'
+import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
@@ -130,16 +131,23 @@ function ChatRow({
   chat,
   active,
   onClick,
+  onSetStatus,
+  onArchive,
 }: {
   chat: WaChat
   active: boolean
   onClick: () => void
+  onSetStatus: (status: string) => void
+  onArchive: () => void
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
   return (
-    <button
+    <div
       onClick={onClick}
-      className="relative w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+      role="button"
+      tabIndex={0}
+      className="relative w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer"
       style={{
         background: active ? 'rgba(13,56,57,0.04)' : 'transparent',
       }}
@@ -194,21 +202,95 @@ function ChatRow({
               {chat.unread}
             </span>
           ) : (
-            <span
-              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0"
-              style={{
-                background: statusMeta.bg,
-                color: statusMeta.color,
-              }}
+            <div
+              className="relative flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
             >
-              {statusMeta.label.length > 11
-                ? statusMeta.label.slice(0, 9) + '…'
-                : statusMeta.label}
-            </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMenuOpen((o) => !o)
+                }}
+                title="Mudar etapa"
+                className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all"
+                style={{
+                  background: statusMeta.bg,
+                  color: statusMeta.color,
+                  border: `1px solid ${statusMeta.color}30`,
+                }}
+              >
+                {statusMeta.label.length > 11
+                  ? statusMeta.label.slice(0, 9) + '…'
+                  : statusMeta.label}
+                <ChevronDown size={9} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMenuOpen(false)
+                    }}
+                  />
+                  <div
+                    className="absolute z-40 top-full mt-1.5 right-0 w-56 rounded-xl py-1"
+                    style={{
+                      background: '#FFFFFF',
+                      border: `1px solid ${T.border}`,
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                    }}
+                  >
+                    {LEAD_STATUSES.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSetStatus(s.id)
+                          setMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                      >
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full"
+                          style={{
+                            background: s.bg,
+                            color: s.color,
+                            border: `1px solid ${s.color}30`,
+                          }}
+                        >
+                          {s.label}
+                        </span>
+                        {chat.status === s.id && (
+                          <span className="ml-auto text-[10px] text-[#8AA09A]">
+                            atual
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    <div
+                      className="my-1"
+                      style={{ borderTop: `1px solid ${T.borderSubtle}` }}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onArchive()
+                        setMenuOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6B8585]"
+                    >
+                      <Archive size={11} />
+                      {chat.archived ? 'Desarquivar' : 'Arquivar conversa'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -267,7 +349,7 @@ export default function InboxView() {
   const [search, setSearch] = useState('')
   const [showModels, setShowModels] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
-  const [showDetails, setShowDetails] = useState(true)
+  const [showDetails, setShowDetails] = useState(false)
   const [chatFilter, setChatFilter] = useState<'all' | 'unanswered' | 'archived' | 'groups'>('all')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
@@ -355,6 +437,23 @@ export default function InboxView() {
       const cs = await waServer.chats()
       setChats(cs)
     } catch {}
+  }
+
+  async function handleSetChatStatus(id: string, status: string) {
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)))
+    try {
+      await waServer.updateChat(id, { status })
+    } catch {}
+    reloadChats()
+  }
+
+  async function handleArchiveChat(id: string, archived: boolean) {
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, archived } : c)))
+    try {
+      await waServer.updateChat(id, { archived })
+    } catch {}
+    reloadChats()
+    if (archived && id === selectedId) setSelectedId(null)
   }
 
   async function handleSend() {
@@ -613,6 +712,8 @@ export default function InboxView() {
                   chat={c}
                   active={c.id === selectedId}
                   onClick={() => setSelectedId(c.id)}
+                  onSetStatus={(s) => handleSetChatStatus(c.id, s)}
+                  onArchive={() => handleArchiveChat(c.id, !c.archived)}
                 />
               ))
             )}
