@@ -727,6 +727,13 @@ app.get('/chats', (_req, res) => {
       fromMeLast: !!c.fromMeLast,
       unread: c.unread || 0,
       status: c.status || 'LEAD',
+      archived: !!c.archived,
+      tags: c.tags || [],
+      value: c.value || 0,
+      source: c.source || '',
+      email: c.email || '',
+      notes: c.notes || '',
+      linkedProposalId: c.linkedProposalId || '',
     }))
     .sort((a, b) => b.lastTime - a.lastTime)
   res.json({ chats })
@@ -872,6 +879,35 @@ app.post('/chats/:id/status', (req, res) => {
   store.chats.set(req.params.id, ex)
   storeDirty = true
   res.json({ ok: true, status })
+})
+
+// atualiza qualquer campo do lead (archived, tags, value, source, etc.)
+const PATCHABLE = [
+  'archived',
+  'tags',
+  'value',
+  'source',
+  'email',
+  'notes',
+  'linkedProposalId',
+  'status',
+]
+app.patch('/chats/:id', (req, res) => {
+  const body = req.body || {}
+  const ex = store.chats.get(req.params.id) || {
+    id: req.params.id,
+    unread: 0,
+    status: 'LEAD',
+  }
+  for (const k of PATCHABLE) {
+    if (k in body) {
+      if (k === 'status' && !LEAD_STATUSES.includes(body[k])) continue
+      ex[k] = body[k]
+    }
+  }
+  store.chats.set(req.params.id, ex)
+  storeDirty = true
+  res.json({ ok: true })
 })
 
 // métricas do dashboard

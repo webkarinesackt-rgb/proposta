@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
+import LeadDetailsPanel from './LeadDetailsPanel'
 
 /* ── tokens ──────────────────────────────────────────── */
 
@@ -266,7 +267,8 @@ export default function InboxView() {
   const [search, setSearch] = useState('')
   const [showModels, setShowModels] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
-  const [chatFilter, setChatFilter] = useState<'all' | 'unanswered'>('all')
+  const [showDetails, setShowDetails] = useState(true)
+  const [chatFilter, setChatFilter] = useState<'all' | 'unanswered' | 'archived'>('all')
   const [listOpen, setListOpen] = useState(true)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
@@ -346,6 +348,13 @@ export default function InboxView() {
     } catch {}
   }
 
+  async function reloadChats() {
+    try {
+      const cs = await waServer.chats()
+      setChats(cs)
+    } catch {}
+  }
+
   async function handleSend() {
     const text = draft.trim()
     if (!text || !selectedId || sending) return
@@ -368,12 +377,19 @@ export default function InboxView() {
     }
   }
 
-  const unansweredCount = chats.filter((c) => !c.isGroup && !c.fromMeLast).length
+  const unansweredCount = chats.filter(
+    (c) => !c.archived && !c.isGroup && !c.fromMeLast
+  ).length
+  const archivedCount = chats.filter((c) => c.archived).length
   const filtered = chats.filter((c) => {
     if (search.trim() && !c.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (chatFilter === 'archived') return !!c.archived
+    if (c.archived) return false
     if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast)) return false
     return true
   })
+
+  const currentChat = chats.find((c) => c.id === selectedId)
 
   const firstFilteredId = filtered[0]?.id || null
   useEffect(() => {
@@ -443,10 +459,14 @@ export default function InboxView() {
             <div className="flex gap-1.5 mt-2">
               {(
                 [
-                  { id: 'all', label: 'Todas' },
+                  { id: 'all', label: 'Ativas' },
                   {
                     id: 'unanswered',
                     label: `Sem resposta${unansweredCount ? ` · ${unansweredCount}` : ''}`,
+                  },
+                  {
+                    id: 'archived',
+                    label: `Arquivadas${archivedCount ? ` · ${archivedCount}` : ''}`,
                   },
                 ] as const
               ).map((f) => {
@@ -611,7 +631,13 @@ export default function InboxView() {
                     Proposta
                   </button>
                   <button
-                    onClick={() => setShowModels((v) => !v)}
+                    onClick={() => {
+                      setShowModels((v) => {
+                        const next = !v
+                        if (next) setShowDetails(false)
+                        return next
+                      })
+                    }}
                     className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                     style={{
                       background: showModels ? T.accent : T.bgSubtle,
@@ -621,6 +647,24 @@ export default function InboxView() {
                   >
                     <Zap size={12} />
                     Modelos
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDetails((v) => {
+                        const next = !v
+                        if (next) setShowModels(false)
+                        return next
+                      })
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                    style={{
+                      background: showDetails ? T.accent : T.bgSubtle,
+                      color: showDetails ? T.accentBright : T.textPrimary,
+                      border: `1px solid ${showDetails ? T.accent : T.border}`,
+                    }}
+                  >
+                    <Info size={12} />
+                    Detalhes
                   </button>
                 </div>
               </div>
@@ -694,6 +738,13 @@ export default function InboxView() {
             chatId={selectedId}
             onClose={() => setShowModels(false)}
             onSent={refreshMessages}
+          />
+        )}
+        {showDetails && selectedId && currentChat && (
+          <LeadDetailsPanel
+            chat={currentChat}
+            onClose={() => setShowDetails(false)}
+            onUpdated={reloadChats}
           />
         )}
       </div>

@@ -295,9 +295,8 @@ export default function LeadsView() {
     router.push(`/admin/inbox?chat=${encodeURIComponent(id)}`)
   }
 
-  const filteredChats = includeGroups
-    ? chats
-    : chats.filter((c) => !c.isGroup)
+  const filteredChats = (includeGroups ? chats : chats.filter((c) => !c.isGroup))
+    .filter((c) => !c.archived)
 
   const byStatus: Record<string, WaChat[]> = {}
   for (const s of LEAD_STATUSES) byStatus[s.id] = []

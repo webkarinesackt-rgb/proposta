@@ -13,7 +13,35 @@ export interface WaChat {
   fromMeLast: boolean
   unread: number
   status: string
+  archived: boolean
+  tags: string[]
+  value: number
+  source: string
+  email: string
+  notes: string
+  linkedProposalId: string
 }
+
+export interface WaChatPatch {
+  archived?: boolean
+  tags?: string[]
+  value?: number
+  source?: string
+  email?: string
+  notes?: string
+  linkedProposalId?: string
+  status?: string
+}
+
+export const LEAD_SOURCES = [
+  'Instagram',
+  'Indicação',
+  'Tráfego pago',
+  'Site',
+  'Orgânico (WhatsApp)',
+  'Lista de espera',
+  'Outro',
+] as const
 
 /** Etiquetas de pipeline (mesma ordem e ids do wa-server). */
 export const LEAD_STATUSES = [
@@ -166,6 +194,15 @@ export const waServer = {
         body: JSON.stringify({ status }),
       }
     )
+    return r.json()
+  },
+
+  async updateChat(chatId: string, patch: WaChatPatch) {
+    const r = await fetch(`${WA}/chats/${encodeURIComponent(chatId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
     return r.json()
   },
 }
