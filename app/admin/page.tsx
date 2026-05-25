@@ -294,7 +294,7 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">

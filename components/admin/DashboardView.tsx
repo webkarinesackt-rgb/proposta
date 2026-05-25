@@ -141,7 +141,7 @@ export default function DashboardView() {
   const periodSub = PERIOD_SUB[period] || ''
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-8 pt-10 pb-20">
         <p
           className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"

@@ -528,3 +528,27 @@ p {
   background-image: radial-gradient(circle, rgba(139,183,175,0.08) 1px, transparent 1px);
   background-size: 32px 32px;
 }
+
+/* ─── Thin scrollbar (sempre visível no macOS) ───────────── */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13,56,57,0.25) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(13,56,57,0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(13,56,57,0.45);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}

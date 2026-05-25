@@ -447,7 +447,7 @@ export default function InboxView() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
             {filtered.length === 0 ? (
               <p
                 className="text-[12px] text-center px-4 py-8"
