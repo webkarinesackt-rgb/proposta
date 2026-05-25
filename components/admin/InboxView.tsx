@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
@@ -268,7 +268,9 @@ export default function InboxView() {
   const [showModels, setShowModels] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
   const [showDetails, setShowDetails] = useState(true)
-  const [chatFilter, setChatFilter] = useState<'all' | 'unanswered' | 'archived'>('all')
+  const [chatFilter, setChatFilter] = useState<'all' | 'unanswered' | 'archived' | 'groups'>('all')
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const [listOpen, setListOpen] = useState(true)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
@@ -381,10 +383,24 @@ export default function InboxView() {
     (c) => !c.archived && !c.isGroup && !c.fromMeLast
   ).length
   const archivedCount = chats.filter((c) => c.archived).length
+  const groupsCount = chats.filter((c) => !c.archived && c.isGroup).length
+
+  // todas as tags com contagem (entre conversas não-arquivadas)
+  const allTags: [string, number][] = (() => {
+    const m = new Map<string, number>()
+    for (const c of chats) {
+      if (c.archived) continue
+      for (const t of c.tags || []) m.set(t, (m.get(t) || 0) + 1)
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  })()
+
   const filtered = chats.filter((c) => {
     if (search.trim() && !c.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
     if (chatFilter === 'archived') return !!c.archived
     if (c.archived) return false
+    if (chatFilter === 'groups') return c.isGroup
     if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast)) return false
     return true
   })
@@ -456,13 +472,17 @@ export default function InboxView() {
                 style={{ color: T.textPrimary }}
               />
             </div>
-            <div className="flex gap-1.5 mt-2">
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {(
                 [
                   { id: 'all', label: 'Ativas' },
                   {
                     id: 'unanswered',
                     label: `Sem resposta${unansweredCount ? ` · ${unansweredCount}` : ''}`,
+                  },
+                  {
+                    id: 'groups',
+                    label: `Grupos${groupsCount ? ` · ${groupsCount}` : ''}`,
                   },
                   {
                     id: 'archived',
@@ -475,7 +495,7 @@ export default function InboxView() {
                   <button
                     key={f.id}
                     onClick={() => setChatFilter(f.id)}
-                    className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                    className="py-1.5 px-3 rounded-full text-[11px] font-bold transition-colors"
                     style={{
                       background: active ? T.accent : T.bgSubtle,
                       color: active ? T.accentBright : T.textMuted,
@@ -486,6 +506,91 @@ export default function InboxView() {
                   </button>
                 )
               })}
+
+              {/* Dropdown de Etiquetas */}
+              <div className="relative">
+                <button
+                  onClick={() => setTagMenuOpen((o) => !o)}
+                  className="py-1.5 px-3 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1"
+                  style={{
+                    background: tagFilter ? T.accent : T.bgSubtle,
+                    color: tagFilter ? T.accentBright : T.textMuted,
+                    border: `1px solid ${tagFilter ? T.accent : T.border}`,
+                  }}
+                >
+                  <Tag size={10} />
+                  {tagFilter || 'Etiquetas'}
+                </button>
+                {tagMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setTagMenuOpen(false)}
+                    />
+                    <div
+                      className="absolute z-40 top-full mt-1.5 left-0 w-56 rounded-xl py-1 max-h-72 overflow-y-auto thin-scroll"
+                      style={{
+                        background: '#FFFFFF',
+                        border: `1px solid ${T.border}`,
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      {tagFilter && (
+                        <button
+                          onClick={() => {
+                            setTagFilter(null)
+                            setTagMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] font-bold flex items-center gap-2"
+                          style={{
+                            color: T.accent,
+                            borderBottom: `1px solid ${T.borderSubtle}`,
+                          }}
+                        >
+                          <X size={11} />
+                          Limpar filtro
+                        </button>
+                      )}
+                      {allTags.length === 0 ? (
+                        <p className="text-[11px] text-[#A8B5B0] text-center py-4 px-3">
+                          Sem etiquetas ainda. Adicione em &quot;Detalhes&quot;.
+                        </p>
+                      ) : (
+                        allTags.map(([t, n]) => {
+                          const isActive = tagFilter === t
+                          return (
+                            <button
+                              key={t}
+                              onClick={() => {
+                                setTagFilter(t)
+                                setTagMenuOpen(false)
+                              }}
+                              className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-[#FAFAF8] transition-colors"
+                              style={{
+                                background: isActive ? '#FAFAF8' : 'transparent',
+                              }}
+                            >
+                              <span
+                                className="text-[10px] font-bold uppercase tracking-[0.05em] px-2 py-0.5 rounded-full"
+                                style={{
+                                  background: '#EFF6FF',
+                                  color: '#1E40AF',
+                                  border: '1px solid #BFDBFE',
+                                }}
+                              >
+                                {t}
+                              </span>
+                              <span className="text-[10px] text-[#A8B5B0] font-semibold">
+                                {n}
+                              </span>
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
