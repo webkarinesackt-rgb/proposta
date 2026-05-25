@@ -268,7 +268,12 @@ const photoUrlCache = new Map()
 /** Devolve a URL da foto de perfil de um jid (cached) ou null. */
 async function getPhotoUrl(jid) {
   const cached = photoUrlCache.get(jid)
-  if (cached && Date.now() - cached.fetchedAt < 60 * 60 * 1000) return cached.url
+  if (cached) {
+    const age = Date.now() - cached.fetchedAt
+    // sucesso: cache 1h. falha: cache só 2 min (deixa retry rápido)
+    if (cached.url && age < 60 * 60 * 1000) return cached.url
+    if (!cached.url && age < 2 * 60 * 1000) return null
+  }
   try {
     const url = await sock.profilePictureUrl(jid, 'image')
     photoUrlCache.set(jid, { url, fetchedAt: Date.now() })
@@ -782,17 +787,27 @@ app.get('/chats/:id/media/:messageId', async (req, res) => {
 
 // foto de perfil de um contato/grupo (proxy + cache)
 app.get('/chats/:id/photo', async (req, res) => {
-  if (!sock) return res.status(409).send()
+  if (!sock) {
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(409).send()
+  }
   try {
     const url = await getPhotoUrl(req.params.id)
-    if (!url) return res.status(404).send()
+    if (!url) {
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(404).send()
+    }
     const r = await fetch(url)
-    if (!r.ok) return res.status(404).send()
+    if (!r.ok) {
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(404).send()
+    }
     const buffer = Buffer.from(await r.arrayBuffer())
     res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg')
-    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.setHeader('Cache-Control', 'private, max-age=600')
     res.send(buffer)
   } catch {
+    res.setHeader('Cache-Control', 'no-store')
     res.status(404).send()
   }
 })

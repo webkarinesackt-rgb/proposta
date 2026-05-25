@@ -31,6 +31,15 @@ function Avatar({
   isGroup: boolean
 }) {
   const [error, setError] = useState(false)
+  const [bust, setBust] = useState(0)
+  useEffect(() => {
+    if (!error) return
+    const t = setTimeout(() => {
+      setError(false)
+      setBust((b) => b + 1)
+    }, 60_000)
+    return () => clearTimeout(t)
+  }, [error])
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden font-bold"
@@ -48,7 +57,7 @@ function Avatar({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={waServer.photoUrl(chatId)}
+          src={waServer.photoUrl(chatId) + (bust ? `?b=${bust}` : '')}
           alt=""
           onError={() => setError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}

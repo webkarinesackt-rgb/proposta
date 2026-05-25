@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
 import ProposalPicker from './ProposalPicker'
@@ -55,6 +55,16 @@ function Avatar({
   active?: boolean
 }) {
   const [error, setError] = useState(false)
+  const [bust, setBust] = useState(0)
+  // se a foto falhou, tenta de novo em 60s (pode ter chegado depois)
+  useEffect(() => {
+    if (!error) return
+    const t = setTimeout(() => {
+      setError(false)
+      setBust((b) => b + 1)
+    }, 60_000)
+    return () => clearTimeout(t)
+  }, [error])
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden font-bold"
@@ -76,7 +86,7 @@ function Avatar({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={waServer.photoUrl(chatId)}
+          src={waServer.photoUrl(chatId) + (bust ? `?b=${bust}` : '')}
           alt=""
           onError={() => setError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -257,6 +267,7 @@ export default function InboxView() {
   const [showModels, setShowModels] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
   const [chatFilter, setChatFilter] = useState<'all' | 'unanswered'>('all')
+  const [listOpen, setListOpen] = useState(true)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   // poll: status + lista de conversas
@@ -304,10 +315,20 @@ export default function InboxView() {
     }
   }, [selectedId])
 
-  // rola para a última mensagem
+  // rola para a última mensagem APENAS quando chega mensagem nova
+  // (evita o scroll automático a cada poll bagunçar a leitura)
+  const lastMsgIdRef = useRef<string | null>(null)
   useEffect(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const last = messages[messages.length - 1]?.id ?? null
+    if (last && last !== lastMsgIdRef.current) {
+      lastMsgIdRef.current = last
+      msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
+  useEffect(() => {
+    // ao trocar de conversa, reseta — a próxima leva rola
+    lastMsgIdRef.current = null
+  }, [selectedId])
 
   // ?filter=unanswered → ativa o filtro / ?chat=jid → abre a conversa
   const sp = useSearchParams()
@@ -391,6 +412,7 @@ export default function InboxView() {
 
       <div className="flex-1 min-h-0 flex">
         {/* ── lista de conversas ── */}
+        {listOpen && (
         <div
           className="w-[340px] flex-shrink-0 flex flex-col"
           style={{ borderRight: `1px solid ${T.border}`, background: T.card }}
@@ -489,6 +511,7 @@ export default function InboxView() {
             </span>
           </div>
         </div>
+        )}
 
         {/* ── conversa ── */}
         <div
@@ -496,7 +519,17 @@ export default function InboxView() {
           style={{ background: T.conversationBg }}
         >
           {!selectedId ? (
-            <div className="flex-1 flex items-center justify-center flex-col gap-3 px-6 text-center">
+            <div className="flex-1 flex items-center justify-center flex-col gap-3 px-6 text-center relative">
+              {!listOpen && (
+                <button
+                  onClick={() => setListOpen(true)}
+                  title="Mostrar conversas"
+                  className="absolute top-3 left-3 w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[#F4F3EF]"
+                  style={{ color: T.textMuted, background: '#FFFFFF', border: `1px solid ${T.border}` }}
+                >
+                  <PanelLeftOpen size={16} />
+                </button>
+              )}
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
                 style={{
@@ -532,6 +565,18 @@ export default function InboxView() {
                   borderBottom: `1px solid ${T.border}`,
                 }}
               >
+                <button
+                  onClick={() => setListOpen((o) => !o)}
+                  title={listOpen ? 'Ocultar conversas' : 'Mostrar conversas'}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors hover:bg-[#F4F3EF]"
+                  style={{ color: T.textMuted }}
+                >
+                  {listOpen ? (
+                    <PanelLeftClose size={16} />
+                  ) : (
+                    <PanelLeftOpen size={16} />
+                  )}
+                </button>
                 <Avatar
                   chatId={selectedId}
                   name={selectedName}
