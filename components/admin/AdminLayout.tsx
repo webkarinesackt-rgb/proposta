@@ -2,8 +2,9 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, BarChart3, Tag } from 'lucide-react'
+import { FileText, MessageSquare, BarChart3, Tag, LogOut } from 'lucide-react'
 import { waServer } from '@/lib/waServer'
+import { createClient } from '@/lib/supabase/client'
 import type { ReactNode } from 'react'
 
 const TABS = [
@@ -144,7 +145,28 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              router.push('/login')
+              router.refresh()
+            }}
+            title="Sair"
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color: 'rgba(139,183,175,0.6)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#F4F99D'
+              e.currentTarget.style.background = 'rgba(244,249,157,0.06)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'rgba(139,183,175,0.6)'
+              e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            <LogOut size={16} />
+          </button>
           <p
             className="text-[8px] font-bold uppercase tracking-[0.18em] text-center leading-tight"
             style={{ color: 'rgba(139,183,175,0.35)' }}
