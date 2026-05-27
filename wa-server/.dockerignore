@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.DS_Store
+auth
+data
+library
+.env
+.env.*
+*.tsbuildinfo
+README.md

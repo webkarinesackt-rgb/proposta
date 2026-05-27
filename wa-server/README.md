@@ -47,3 +47,37 @@ Depois abra **http://localhost:3100** no navegador.
 - Esta é uma conexão **não-oficial** (mesma base do app antigo).
   Funciona bem para uso comercial próprio; evite disparo em massa.
 - A porta padrão é `3100` (`PORT=xxxx npm start` para mudar).
+
+## Deploy em produção (EasyPanel na VPS)
+
+A VPS roda Docker + EasyPanel. O `Dockerfile` já está nesta pasta.
+Sequência no painel (em `http://IP_DA_VPS:3000`):
+
+1. **Create Project** → nome `fysi-crm`.
+2. **+ Service → App** → nome `wa-server`.
+3. **Source**:
+   - Tipo: **GitHub** (autorize e selecione `proposta_app`)
+   - Branch: `main`
+   - **Build Path**: `/wa-server` (importante — o Dockerfile vive nessa subpasta)
+4. **Build**: Docker. EasyPanel detecta o `Dockerfile` automaticamente.
+5. **Volumes** (3 — **obrigatórios**, perder o `auth` força novo QR):
+   - `/app/auth`     → volume `wa-auth`
+   - `/app/data`     → volume `wa-data`
+   - `/app/library`  → volume `wa-library`
+6. **Environment**:
+   - `PORT=3100`
+   - `NODE_ENV=production`
+7. **Domains**: aponte um subdomínio (ex.: `wa.seu-dominio.com.br`)
+   para a VPS (registro A) e adicione em **Domains** com porta `3100`.
+   O EasyPanel emite o HTTPS via Let's Encrypt sozinho.
+8. **Deploy**. Acompanhe os logs até ver `Conectado ao WhatsApp como ...`.
+9. Acesse `https://wa.seu-dominio.com.br` → escaneie o QR uma vez.
+
+No app Next.js (Vercel), configure a env var:
+
+```
+NEXT_PUBLIC_WA_SERVER_URL=https://wa.seu-dominio.com.br
+```
+
+> Sem domínio próprio, o EasyPanel também emite uma URL `*.easypanel.host`
+> com HTTPS — dá pra usar enquanto não comprar o domínio.
