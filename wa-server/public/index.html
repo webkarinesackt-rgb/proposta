@@ -136,6 +136,24 @@
 <div id="toast" class="toast"></div>
 
 <script>
+  // Auth: lê ?t=TOKEN da URL e injeta em toda chamada fetch ao backend.
+  // Em prod o wa-server roda com WA_AUTH_TOKEN — sem isso devolve 401.
+  const WA_TOKEN = new URLSearchParams(location.search).get('t') || ''
+  if (WA_TOKEN) {
+    const _fetch = window.fetch.bind(window)
+    window.fetch = (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url
+      // só injeta para chamadas relativas (mesma origem)
+      if (url && !/^https?:/i.test(url)) {
+        init.headers = new Headers(init.headers || {})
+        if (!init.headers.has('Authorization')) {
+          init.headers.set('Authorization', 'Bearer ' + WA_TOKEN)
+        }
+      }
+      return _fetch(input, init)
+    }
+  }
+
   const $ = (id) => document.getElementById(id)
   let libLoaded = false
   let lib = { snippets: [], audios: [] }

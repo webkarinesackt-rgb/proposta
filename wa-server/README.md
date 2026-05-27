@@ -67,6 +67,9 @@ Sequência no painel (em `http://IP_DA_VPS:3000`):
 6. **Environment**:
    - `PORT=3100`
    - `NODE_ENV=production`
+   - `WA_AUTH_TOKEN=<hex 32 bytes>` (gerar com `openssl rand -hex 32`).
+     Mesmo valor vai em `NEXT_PUBLIC_WA_AUTH_TOKEN` do app Next.js.
+     **Sem isso, todos os endpoints ficam públicos na internet.**
 7. **Domains**: aponte um subdomínio (ex.: `wa.seu-dominio.com.br`)
    para a VPS (registro A) e adicione em **Domains** com porta `3100`.
    O EasyPanel emite o HTTPS via Let's Encrypt sozinho.

@@ -44,6 +44,7 @@ const LIB_FILE = path.join(LIB_DIR, 'library.json')
 const DATA_DIR = path.join(__dirname, 'data')
 const STORE_FILE = path.join(DATA_DIR, 'store.json')
 const PORT = Number(process.env.PORT) || 3100
+const AUTH_TOKEN = process.env.WA_AUTH_TOKEN || ''
 
 const logger = P({ level: 'silent' })
 const execFileAsync = promisify(execFile)
@@ -516,6 +517,23 @@ const upload = multer({
 app.use(cors())
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))
+
+// ─── auth: token compartilhado (Bearer ou ?t=) ───────────────────
+// Em prod (VPS exposto à internet) WA_AUTH_TOKEN é obrigatório. Sem ele
+// definido, segue aberto (modo dev local). Aplicado depois do static pra
+// a UI de QR seguir abrindo no navegador; o JS dela injeta o token.
+if (AUTH_TOKEN) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization || ''
+    const m = header.match(/^Bearer\s+(.+)$/)
+    const token = m ? m[1] : req.query.t
+    if (token === AUTH_TOKEN) return next()
+    res.status(401).json({ ok: false, error: 'Unauthorized' })
+  })
+  console.log('🔒  WA_AUTH_TOKEN ativo — endpoints protegidos por bearer/?t=')
+} else {
+  console.log('⚠️   WA_AUTH_TOKEN não definido — endpoints abertos (uso local)')
+}
 
 // status da conexão
 app.get('/status', (_req, res) => {
