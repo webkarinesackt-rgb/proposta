@@ -16,6 +16,12 @@ function fmtTime(t: number) {
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
+function fmtBRL(v: number) {
+  if (!v) return ''
+  if (v >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
+  return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
@@ -157,7 +163,12 @@ function LeadRow({
   return (
     <div
       onClick={onOpen}
-      className="flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/wa-chat-id', chat.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      className="flex items-center gap-3 px-4 py-2.5 transition-colors cursor-grab active:cursor-grabbing"
       style={{ borderBottom: '1px solid #F0F0EC' }}
       onMouseEnter={(e) => (e.currentTarget.style.background = '#FAFAF8')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -205,12 +216,30 @@ function StatusGroup({
   initialOpen?: boolean
 }) {
   const [open, setOpen] = useState(initialOpen)
+  const [dragOver, setDragOver] = useState(false)
+  const totalValue = chats.reduce((sum, c) => sum + (Number(c.value) || 0), 0)
   return (
     <div
-      className="rounded-2xl mb-3 overflow-hidden"
+      onDragOver={(e) => {
+        // só aceita se for um chat sendo arrastado E ainda não está nesta etapa
+        if (e.dataTransfer.types.includes('text/wa-chat-id')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          if (!dragOver) setDragOver(true)
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const id = e.dataTransfer.getData('text/wa-chat-id')
+        if (id) onSetStatus(id, status.id)
+      }}
+      className="rounded-2xl mb-3 overflow-hidden transition-all"
       style={{
         background: '#FFFFFF',
-        border: '1px solid #E6E6E1',
+        border: dragOver ? `2px dashed ${status.color}` : '1px solid #E6E6E1',
+        transform: dragOver ? 'scale(1.005)' : 'none',
       }}
     >
       <button
@@ -235,6 +264,14 @@ function StatusGroup({
         <span className="text-[12px] text-[#8AA09A] font-semibold">
           {chats.length}
         </span>
+        {totalValue > 0 && (
+          <span
+            className="text-[11px] font-bold ml-auto px-2 py-0.5 rounded"
+            style={{ color: status.color, background: status.bg }}
+          >
+            {fmtBRL(totalValue)}
+          </span>
+        )}
       </button>
       {open && chats.length > 0 && (
         <div>

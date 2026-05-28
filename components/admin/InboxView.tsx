@@ -36,6 +36,45 @@ function fmtTime(t: number) {
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
+/** Chave de "dia" pra agrupar mensagens (YYYY-MM-DD local). */
+function dayKey(t: number) {
+  if (!t) return ''
+  const d = new Date(t * 1000)
+  return d.toDateString()
+}
+
+/** Label do dia pra separador: "Hoje", "Ontem" ou data por extenso. */
+function dayLabel(t: number) {
+  const d = new Date(t * 1000)
+  const today = new Date()
+  const ydy = new Date()
+  ydy.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Hoje'
+  if (d.toDateString() === ydy.toDateString()) return 'Ontem'
+  const sameYear = d.getFullYear() === today.getFullYear()
+  return d.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
+}
+
+function DaySeparator({ timestamp }: { timestamp: number }) {
+  return (
+    <div className="flex justify-center my-3">
+      <span
+        className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full"
+        style={{
+          background: 'rgba(13,56,57,0.06)',
+          color: '#6B8585',
+        }}
+      >
+        {dayLabel(timestamp)}
+      </span>
+    </div>
+  )
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
@@ -960,9 +999,20 @@ export default function InboxView() {
                     Sem mensagens nesta conversa.
                   </p>
                 ) : (
-                  messages.map((m) => (
-                    <Bubble key={m.id} msg={m} chatId={selectedId} />
-                  ))
+                  (() => {
+                    let lastDay = ''
+                    return messages.map((m) => {
+                      const day = dayKey(m.time)
+                      const showSep = day !== lastDay
+                      lastDay = day
+                      return (
+                        <div key={m.id}>
+                          {showSep && <DaySeparator timestamp={m.time} />}
+                          <Bubble msg={m} chatId={selectedId} />
+                        </div>
+                      )
+                    })
+                  })()
                 )}
                 <div ref={msgEndRef} />
               </div>
@@ -975,22 +1025,36 @@ export default function InboxView() {
                   borderTop: `1px solid ${T.border}`,
                 }}
               >
-                <input
+                <textarea
                   value={draft}
+                  rows={1}
                   onChange={(e) => setDraft(e.target.value)}
+                  onInput={(e) => {
+                    // auto-grow até maxHeight
+                    const el = e.currentTarget
+                    el.style.height = 'auto'
+                    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
                       handleSend()
+                      // reseta altura após envio
+                      requestAnimationFrame(() => {
+                        e.currentTarget.style.height = 'auto'
+                      })
                     }
+                    // Shift+Enter cai no comportamento default do textarea: nova linha
                   }}
-                  placeholder="Escreva uma mensagem…"
+                  placeholder="Escreva uma mensagem… (Shift+Enter pra quebrar linha)"
                   disabled={conn !== 'open'}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-[13px] outline-none"
+                  className="flex-1 px-4 py-2.5 rounded-xl text-[13px] outline-none resize-none thin-scroll"
                   style={{
                     background: T.bgSubtle,
                     border: `1px solid ${T.border}`,
                     color: T.textPrimary,
+                    minHeight: 42,
+                    maxHeight: 140,
                   }}
                 />
                 <button
