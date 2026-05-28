@@ -904,6 +904,7 @@ app.post('/chats/:id/status', (req, res) => {
 
 // atualiza qualquer campo do lead (archived, tags, value, source, etc.)
 const PATCHABLE = [
+  'name',
   'archived',
   'tags',
   'value',

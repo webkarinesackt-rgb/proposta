@@ -40,6 +40,7 @@ export interface WaChat {
 }
 
 export interface WaChatPatch {
+  name?: string
   archived?: boolean
   tags?: string[]
   value?: number

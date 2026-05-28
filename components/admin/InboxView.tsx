@@ -367,6 +367,8 @@ export default function InboxView() {
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const [listOpen, setListOpen] = useState(true)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   // poll: status + lista de conversas
@@ -824,14 +826,53 @@ export default function InboxView() {
                   active
                 />
                 <div className="min-w-0">
-                  <p
-                    className="text-[14px] font-bold truncate"
-                    style={{ color: T.textPrimary }}
-                  >
-                    {selectedName}
-                  </p>
+                  {editingName ? (
+                    <input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          const next = nameDraft.trim()
+                          if (next && next !== selectedName) {
+                            setSelectedName(next)
+                            setChats((cs) =>
+                              cs.map((c) =>
+                                c.id === selectedId ? { ...c, name: next } : c
+                              )
+                            )
+                            try {
+                              await waServer.updateChat(selectedId, { name: next })
+                            } catch {}
+                          }
+                          setEditingName(false)
+                        } else if (e.key === 'Escape') {
+                          setEditingName(false)
+                        }
+                      }}
+                      onBlur={() => setEditingName(false)}
+                      className="text-[14px] font-bold w-full bg-transparent outline-none border-b"
+                      style={{
+                        color: T.textPrimary,
+                        borderColor: T.accent,
+                      }}
+                    />
+                  ) : (
+                    <p
+                      className="text-[14px] font-bold truncate cursor-pointer hover:opacity-70"
+                      style={{ color: T.textPrimary }}
+                      onClick={() => {
+                        setNameDraft(selectedName)
+                        setEditingName(true)
+                      }}
+                      title="Clique para renomear este contato"
+                    >
+                      {selectedName}
+                    </p>
+                  )}
                   <p className="text-[10px]" style={{ color: T.textDim }}>
                     {selectedId.endsWith('@g.us') ? 'Grupo' : 'Contato'}
+                    {!editingName && ' · clique no nome pra renomear'}
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
