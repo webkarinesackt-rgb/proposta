@@ -292,6 +292,9 @@ function ingestChat(c) {
   const name = c.name || c.subject || c.verifiedName
   if (name) ex.name = name
   if (c.unreadCount != null) ex.unread = c.unreadCount
+  // Estado de arquivamento do WhatsApp (nome do campo varia entre versões)
+  const arch = c.archived ?? c.archive
+  if (arch != null) ex.archived = !!arch
   store.chats.set(c.id, ex)
 }
 
