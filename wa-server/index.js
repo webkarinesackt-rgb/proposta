@@ -181,7 +181,14 @@ async function startSock() {
     storeDirty = true
   })
 
-  sock.ev.on('messages.upsert', ({ messages }) => {
+  sock.ev.on('messages.upsert', ({ messages, type }) => {
+    // diagnostic: log every batch (jid, count, type) — fica em prod por enquanto
+    if (messages?.length) {
+      const sample = messages[0]
+      console.log(
+        `📨 messages.upsert [${type}] n=${messages.length} jid=${sample?.key?.remoteJid} fromMe=${!!sample?.key?.fromMe} hasMsg=${!!sample?.message}`
+      )
+    }
     const touched = new Set()
     for (const m of messages || []) {
       recordMessage(m)
@@ -263,11 +270,14 @@ function tsToNum(t) {
   return Number(t) || 0
 }
 
-/** Só conversas reais (contato ou grupo) — ignora status/broadcast. */
+/** Só conversas reais (contato ou grupo) — ignora status/broadcast.
+ *  Aceita @lid (linked ID, novo formato multi-device do WhatsApp 2024+). */
 function isRealChat(jid) {
   return (
     typeof jid === 'string' &&
-    (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@g.us'))
+    (jid.endsWith('@s.whatsapp.net') ||
+      jid.endsWith('@g.us') ||
+      jid.endsWith('@lid'))
   )
 }
 
