@@ -469,6 +469,7 @@ export default function InboxView() {
   const [nameDraft, setNameDraft] = useState('')
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [newCount, setNewCount] = useState(0)
+  const [presence, setPresence] = useState<{ state: string; ts: number } | null>(null)
   const [searchHits, setSearchHits] = useState<Map<string, string>>(new Map())
   const msgEndRef = useRef<HTMLDivElement>(null)
   const msgScrollRef = useRef<HTMLDivElement>(null)
@@ -566,6 +567,26 @@ export default function InboxView() {
     }
   }, [selectedId])
 
+  // poll: presence da conversa selecionada (skip grupos — presence em
+  // grupo é por participante, ruidoso e pouco útil)
+  useEffect(() => {
+    if (!selectedId || selectedId.endsWith('@g.us')) {
+      setPresence(null)
+      return
+    }
+    let alive = true
+    async function tick() {
+      const p = await waServer.presence(selectedId!)
+      if (alive) setPresence(p)
+    }
+    tick()
+    const iv = setInterval(tick, 4000)
+    return () => {
+      alive = false
+      clearInterval(iv)
+    }
+  }, [selectedId])
+
   // rola para a última mensagem APENAS quando chega mensagem nova
   // E o usuário está perto do final. Se ele estiver lendo histórico
   // mais acima, não bagunça — em vez disso aparece o botão "↓ X novas".
@@ -591,6 +612,19 @@ export default function InboxView() {
     setNewCount(0)
     setIsAtBottom(true)
   }, [selectedId])
+
+  // Quando uma conversa abre, dá um scroll instantâneo pro fim
+  // (em vez de smooth) — o usuário não vê o histórico subindo.
+  const initialScrollDoneRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!selectedId) return
+    if (initialScrollDoneRef.current === selectedId) return
+    if (messages.length === 0) return
+    initialScrollDoneRef.current = selectedId
+    requestAnimationFrame(() => {
+      msgEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
+    })
+  }, [selectedId, messages.length])
 
   // ?filter=unanswered → ativa o filtro / ?chat=jid → abre a conversa
   const sp = useSearchParams()
@@ -1100,8 +1134,30 @@ export default function InboxView() {
                     </p>
                   )}
                   <p className="text-[10px]" style={{ color: T.textDim }}>
-                    {selectedId.endsWith('@g.us') ? 'Grupo' : 'Contato'}
-                    {!editingName && ' · clique no nome pra renomear'}
+                    {(() => {
+                      if (selectedId.endsWith('@g.us')) {
+                        return 'Grupo' + (!editingName ? ' · clique no nome pra renomear' : '')
+                      }
+                      // Não-grupo: tenta usar presence
+                      const p = presence
+                      if (p) {
+                        const ageS = Date.now() / 1000 - p.ts
+                        if (p.state === 'composing')
+                          return <span style={{ color: T.accent, fontWeight: 600 }}>digitando…</span>
+                        if (p.state === 'recording')
+                          return <span style={{ color: T.accent, fontWeight: 600 }}>gravando áudio…</span>
+                        if (p.state === 'available')
+                          return <span style={{ color: '#22C55E', fontWeight: 600 }}>online</span>
+                        if (p.state === 'unavailable' && ageS < 24 * 3600) {
+                          const minutes = Math.round(ageS / 60)
+                          if (minutes < 1) return 'visto agora'
+                          if (minutes < 60) return `visto há ${minutes} min`
+                          const hours = Math.round(minutes / 60)
+                          return `visto há ${hours}h`
+                        }
+                      }
+                      return 'Contato' + (!editingName ? ' · clique no nome pra renomear' : '')
+                    })()}
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">

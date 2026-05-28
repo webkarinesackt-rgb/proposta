@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
 import { waServer, WaChat, LEAD_STATUSES, STATUS_META } from '@/lib/waServer'
+import { useToast } from '@/lib/useToast'
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -155,11 +156,15 @@ function LeadRow({
   chat,
   onOpen,
   onSetStatus,
+  onSetValue,
 }: {
   chat: WaChat
   onOpen: () => void
   onSetStatus: (id: string, status: string) => void
+  onSetValue: (id: string, value: number) => void
 }) {
+  const [editingValue, setEditingValue] = useState(false)
+  const [valueDraft, setValueDraft] = useState('')
   return (
     <div
       onClick={onOpen}
@@ -167,7 +172,6 @@ function LeadRow({
       onDragStart={(e) => {
         e.dataTransfer.setData('text/wa-chat-id', chat.id)
         e.dataTransfer.effectAllowed = 'move'
-        // suave fade no card sendo arrastado
         const el = e.currentTarget as HTMLDivElement
         requestAnimationFrame(() => {
           el.style.opacity = '0.4'
@@ -199,7 +203,55 @@ function LeadRow({
           {chat.lastText || '—'}
         </p>
       </div>
-      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex-shrink-0 flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {editingValue ? (
+          <input
+            autoFocus
+            type="number"
+            placeholder="0"
+            value={valueDraft}
+            onChange={(e) => setValueDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const v = Math.max(0, Math.round(Number(valueDraft) || 0))
+                onSetValue(chat.id, v)
+                setEditingValue(false)
+              } else if (e.key === 'Escape') {
+                setEditingValue(false)
+              }
+            }}
+            onBlur={() => {
+              const v = Math.max(0, Math.round(Number(valueDraft) || 0))
+              onSetValue(chat.id, v)
+              setEditingValue(false)
+            }}
+            className="w-24 text-[11px] font-bold px-2 py-1 rounded outline-none"
+            style={{
+              background: '#F4F3EF',
+              border: '1px solid #C8D8D4',
+              color: '#162322',
+            }}
+          />
+        ) : (
+          <button
+            onClick={() => {
+              setValueDraft(chat.value ? String(chat.value) : '')
+              setEditingValue(true)
+            }}
+            title="Clique pra editar o valor (R$)"
+            className="text-[10px] font-bold px-2 py-1 rounded transition-all hover:opacity-80"
+            style={{
+              background: chat.value ? '#0D3839' : 'transparent',
+              color: chat.value ? '#F4F99D' : '#A8B5B0',
+              border: chat.value ? 'none' : '1px dashed #C8D8D4',
+            }}
+          >
+            {chat.value ? fmtBRL(chat.value) : '+ R$'}
+          </button>
+        )}
         <StatusBadge
           status={chat.status}
           onChange={(s) => onSetStatus(chat.id, s)}
@@ -216,12 +268,14 @@ function StatusGroup({
   chats,
   onOpenChat,
   onSetStatus,
+  onSetValue,
   initialOpen = true,
 }: {
   status: (typeof LEAD_STATUSES)[number]
   chats: WaChat[]
   onOpenChat: (id: string) => void
   onSetStatus: (id: string, status: string) => void
+  onSetValue: (id: string, value: number) => void
   initialOpen?: boolean
 }) {
   const [open, setOpen] = useState(initialOpen)
@@ -290,6 +344,7 @@ function StatusGroup({
               chat={c}
               onOpen={() => onOpenChat(c.id)}
               onSetStatus={onSetStatus}
+              onSetValue={onSetValue}
             />
           ))}
         </div>
@@ -310,13 +365,8 @@ export default function LeadsView() {
   const [chats, setChats] = useState<WaChat[]>([])
   const [serverOff, setServerOff] = useState(false)
   const [includeGroups, setIncludeGroups] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(null), 2200)
-    return () => clearTimeout(t)
-  }, [toast])
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const { show: showToast, Toast } = useToast()
 
   async function load() {
     try {
@@ -341,13 +391,30 @@ export default function LeadsView() {
     // otimista
     setChats((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)))
     if (prev && meta) {
-      setToast(`${prev.name} → ${meta.label}`)
+      showToast(`${prev.name} → ${meta.label}`)
     }
     try {
       await waServer.setStatus(id, status)
     } catch {
       load()
-      setToast('Erro ao mudar etapa — desfazendo')
+      showToast('Erro ao mudar etapa — desfazendo', { kind: 'error' })
+    }
+  }
+
+  async function handleSetValue(id: string, value: number) {
+    const prev = chats.find((c) => c.id === id)
+    if (!prev || prev.value === value) return
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, value } : c)))
+    try {
+      await waServer.updateChat(id, { value })
+      showToast(
+        value > 0
+          ? `Valor: ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+          : 'Valor removido'
+      )
+    } catch {
+      load()
+      showToast('Erro ao salvar valor', { kind: 'error' })
     }
   }
 
@@ -357,6 +424,18 @@ export default function LeadsView() {
 
   const filteredChats = (includeGroups ? chats : chats.filter((c) => !c.isGroup))
     .filter((c) => !c.archived)
+    .filter((c) => !tagFilter || (c.tags || []).includes(tagFilter))
+
+  // todas as etiquetas em uso, com contagem
+  const allTags: [string, number][] = (() => {
+    const m = new Map<string, number>()
+    for (const c of chats) {
+      if (c.archived) continue
+      if (!includeGroups && c.isGroup) continue
+      for (const t of c.tags || []) m.set(t, (m.get(t) || 0) + 1)
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  })()
 
   const byStatus: Record<string, WaChat[]> = {}
   for (const s of LEAD_STATUSES) byStatus[s.id] = []
@@ -376,19 +455,7 @@ export default function LeadsView() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll relative">
-      {toast && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] font-semibold px-4 py-2.5 rounded-full transition-all"
-          style={{
-            background: '#0D3839',
-            color: '#F4F99D',
-            boxShadow: '0 10px 30px rgba(13,56,57,0.25)',
-            maxWidth: '90vw',
-          }}
-        >
-          {toast}
-        </div>
-      )}
+      <Toast />
       <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
@@ -465,6 +532,48 @@ export default function LeadsView() {
           </label>
         </div>
 
+        {/* filtro por etiqueta — só aparece se existirem tags em uso */}
+        {allTags.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap mb-6">
+            <span className="text-[10px] uppercase tracking-[0.12em] font-bold text-[#A8B5B0] mr-1">
+              Etiquetas:
+            </span>
+            <button
+              onClick={() => setTagFilter(null)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all"
+              style={{
+                background: tagFilter === null ? '#0D3839' : '#FFFFFF',
+                color: tagFilter === null ? '#F4F99D' : '#6B8585',
+                border: '1px solid ' + (tagFilter === null ? '#0D3839' : '#E6E6E1'),
+              }}
+            >
+              Todas
+            </button>
+            {allTags.slice(0, 10).map(([t, n]) => (
+              <button
+                key={t}
+                onClick={() => setTagFilter(t === tagFilter ? null : t)}
+                className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all flex items-center gap-1"
+                style={{
+                  background: t === tagFilter ? '#0D3839' : '#FFFFFF',
+                  color: t === tagFilter ? '#F4F99D' : '#6B8585',
+                  border:
+                    '1px solid ' + (t === tagFilter ? '#0D3839' : '#E6E6E1'),
+                }}
+              >
+                <Tag size={10} />
+                {t}
+                <span
+                  className="text-[10px] opacity-70"
+                  style={{ color: t === tagFilter ? '#F4F99D' : '#A8B5B0' }}
+                >
+                  {n}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {serverOff && (
           <div
             className="rounded-2xl p-6 mb-4 text-[13px] font-semibold"
@@ -497,6 +606,7 @@ export default function LeadsView() {
               chats={byStatus[s.id]}
               onOpenChat={openChat}
               onSetStatus={handleSetStatus}
+              onSetValue={handleSetValue}
               initialOpen={
                 ['LEAD', 'AGUARDANDO', 'PROPOSTA'].includes(s.id) ||
                 byStatus[s.id].length > 0

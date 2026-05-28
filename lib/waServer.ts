@@ -224,6 +224,16 @@ export const waServer = {
     return j.results || []
   },
 
+  async presence(chatId: string): Promise<{ state: string; ts: number } | null> {
+    try {
+      const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/presence`)
+      const j = await r.json()
+      return j.presence || null
+    } catch {
+      return null
+    }
+  },
+
   async setStatus(chatId: string, status: string) {
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/status`, {
       method: 'POST',

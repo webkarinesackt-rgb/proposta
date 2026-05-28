@@ -63,6 +63,12 @@ const store = {
 }
 let storeDirty = false
 
+// ─── Presence (online/digitando) ─────────────────────────────────
+// Baileys só manda updates pros JIDs que você assinou via presenceSubscribe.
+// Guardamos o último estado e timestamp por JID; é volátil (em memória).
+const presenceStore = new Map() // jid → { state, ts }
+const subscribedJids = new Set()
+
 // ─── Conexão WhatsApp ────────────────────────────────────────────
 async function startSock() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR)
@@ -153,6 +159,18 @@ async function startSock() {
 
   sock.ev.on('messages.upsert', ({ messages }) => {
     for (const m of messages || []) recordMessage(m)
+  })
+
+  // presence updates: id é o JID do chat; presences é um objeto keyed
+  // por participante (em 1-1, igual ao id; em grupos, por participante).
+  sock.ev.on('presence.update', ({ id, presences }) => {
+    if (!presences || typeof presences !== 'object') return
+    const p = presences[id] || Object.values(presences)[0]
+    if (!p) return
+    presenceStore.set(id, {
+      state: p.lastKnownPresence || 'unavailable',
+      ts: Date.now() / 1000,
+    })
   })
 }
 
@@ -847,6 +865,18 @@ app.get('/chats/:id/media/:messageId', async (req, res) => {
     console.error('[media]', err.message)
     res.status(500).json({ ok: false, error: 'Não foi possível baixar a mídia.' })
   }
+})
+
+// presence (online / digitando / etc). Assina o JID na primeira chamada
+// e devolve o último estado conhecido + timestamp.
+app.get('/chats/:id/presence', (req, res) => {
+  if (!sock) return res.status(409).json({ presence: null })
+  const jid = req.params.id
+  if (!subscribedJids.has(jid)) {
+    subscribedJids.add(jid)
+    sock.presenceSubscribe(jid).catch(() => {})
+  }
+  res.json({ presence: presenceStore.get(jid) || null })
 })
 
 // foto de perfil de um contato/grupo (proxy + cache)
