@@ -49,6 +49,16 @@ const AUTH_TOKEN = process.env.WA_AUTH_TOKEN || ''
 const logger = P({ level: 'silent' })
 const execFileAsync = promisify(execFile)
 
+// Filtra dumps verbosos do libsignal (Baileys console.log direto que
+// não respeita pino logger): "Closing session: SessionEntry { ... }".
+// Esses dumps poluem completamente os logs e não dão info útil.
+const _origLog = console.log
+console.log = (...args) => {
+  const first = args[0]
+  if (typeof first === 'string' && first.startsWith('Closing session')) return
+  _origLog.apply(console, args)
+}
+
 // ─── Estado da conexão (em memória) ──────────────────────────────
 let sock = null
 let currentQR = null        // string crua do QR enquanto aguarda scan
@@ -325,11 +335,43 @@ function msgContent(message) {
   return { text: '[mensagem]', type: 'outro' }
 }
 
-/** Nome de exibição de uma conversa. */
+/** Detecta nome "mascarado" como "+55∙∙∙∙∙∙04" que WhatsApp manda
+ *  para contatos privados/business. Usuário não consegue identificar. */
+function isMaskedName(name) {
+  if (!name) return false
+  return /[∙·.]{3,}/.test(name)
+}
+
+/** Formata número em padrão brasileiro: +55 11 91234-5678 */
+function prettyNumber(jid) {
+  const n = numberFromJid(jid)
+  if (!/^\d+$/.test(n)) return null
+  if (n.startsWith('55') && (n.length === 12 || n.length === 13)) {
+    const ddd = n.slice(2, 4)
+    const rest = n.slice(4)
+    const mid = rest.length === 9 ? rest.slice(0, 5) : rest.slice(0, 4)
+    const end = rest.slice(mid.length)
+    return `+55 ${ddd} ${mid}-${end}`
+  }
+  return null
+}
+
+/** Nome de exibição de uma conversa.
+ *  Precedência: alias custom → nome do WhatsApp (se não-mascarado)
+ *               → pushName de contato → número formatado → JID cru. */
 function chatDisplayName(jid) {
   const c = store.chats.get(jid)
-  if (c?.name) return c.name
+  if (c?.alias) return c.alias
+  if (c?.name && !isMaskedName(c.name)) return c.name
   const ct = store.contacts.get(jid)
+  if (ct && !isMaskedName(ct)) return ct
+  // tenta número brasileiro formatado pra contatos 1-1
+  if (jid.endsWith('@s.whatsapp.net')) {
+    const fmt = prettyNumber(jid)
+    if (fmt) return fmt
+  }
+  // se o nome existia mas era mascarado, usa ele de fallback (melhor que o JID)
+  if (c?.name) return c.name
   if (ct) return ct
   return numberFromJid(jid)
 }
