@@ -370,6 +370,12 @@ function chatDisplayName(jid) {
     const fmt = prettyNumber(jid)
     if (fmt) return fmt
   }
+  // @lid sem nome: mostra "Sem nome · XXXX" (últimos 4 dígitos)
+  // em vez do ID inteiro de 15+ dígitos que não diz nada
+  if (jid.endsWith('@lid')) {
+    const tail = numberFromJid(jid).slice(-4)
+    return `Sem nome · ${tail}`
+  }
   // se o nome existia mas era mascarado, usa ele de fallback (melhor que o JID)
   if (c?.name) return c.name
   if (ct) return ct
@@ -945,14 +951,13 @@ const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', '
 function mergeChatFromExtension(incoming) {
   if (!incoming?.id || !isRealChat(incoming.id)) return
   const ex = store.chats.get(incoming.id) || { id: incoming.id, unread: 0, status: 'LEAD' }
-  // só sobrescreve o que veio do WA
-  if (incoming.name !== undefined) ex.name = incoming.name
-  if (incoming.lastText !== undefined && incoming.lastText !== '') ex.lastText = incoming.lastText
+  // só sobrescreve com valores NÃO-VAZIOS (nome '' não sobrescreve nome já salvo)
+  if (incoming.name && incoming.name.trim()) ex.name = incoming.name
+  if (incoming.lastText && incoming.lastText.trim()) ex.lastText = incoming.lastText
   if (typeof incoming.lastTime === 'number' && incoming.lastTime > 0) ex.lastTime = incoming.lastTime
   if (typeof incoming.fromMeLast === 'boolean') ex.fromMeLast = incoming.fromMeLast
   if (typeof incoming.unread === 'number') ex.unread = incoming.unread
   ex.id = incoming.id
-  // mantém o resto (alias, tags, status, etc — CRM_ONLY_FIELDS)
   store.chats.set(incoming.id, ex)
   storeDirty = true
 }
