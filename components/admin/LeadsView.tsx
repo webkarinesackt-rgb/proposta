@@ -64,7 +64,7 @@ function Avatar({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={waServer.photoUrl(chatId) + (bust ? `?b=${bust}` : '')}
+          src={waServer.photoUrl(chatId, bust || undefined)}
           alt=""
           onError={() => setError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}

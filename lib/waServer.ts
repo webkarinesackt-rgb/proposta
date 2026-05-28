@@ -140,9 +140,16 @@ export const waServer = {
     )
   },
 
-  /** URL da foto de perfil (idem: token via ?t=). */
-  photoUrl(chatId: string) {
-    return withTokenQS(`${WA}/chats/${encodeURIComponent(chatId)}/photo`)
+  /**
+   * URL da foto de perfil (idem: token via ?t=).
+   * `bust` é um número opcional pra forçar refresh do cache (cache-bust).
+   * Importante: bust precisa ser anexado APÓS ?t= existir, senão vira
+   * `?t=TOKEN?b=N` (URL malformada).
+   */
+  photoUrl(chatId: string, bust?: number) {
+    const url = withTokenQS(`${WA}/chats/${encodeURIComponent(chatId)}/photo`)
+    if (!bust) return url
+    return url + (url.includes('?') ? '&' : '?') + 'b=' + bust
   },
 
   async status(): Promise<WaStatus> {
@@ -232,6 +239,14 @@ export const waServer = {
     } catch {
       return null
     }
+  },
+
+  /**
+   * URL do stream SSE de eventos. EventSource não suporta headers,
+   * então o token precisa ir como query param.
+   */
+  eventsUrl() {
+    return withTokenQS(`${WA}/events`)
   },
 
   async setStatus(chatId: string, status: string) {

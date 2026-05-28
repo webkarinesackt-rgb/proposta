@@ -127,7 +127,7 @@ function Avatar({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={waServer.photoUrl(chatId) + (bust ? `?b=${bust}` : '')}
+          src={waServer.photoUrl(chatId, bust || undefined)}
           alt=""
           onError={() => setError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -522,10 +522,13 @@ export default function InboxView() {
     setNewCount(0)
   }
 
-  // poll: status + lista de conversas
+  // status + lista de conversas:
+  //  - 1 fetch inicial pra hidratar
+  //  - depois SSE manda 'changed'/'status' e a gente refaz só o que mudou
+  //  - poll de 30s como fallback (se SSE cair sem onerror disparar)
   useEffect(() => {
     let alive = true
-    async function tick() {
+    async function loadAll() {
       try {
         const [st, cs] = await Promise.all([waServer.status(), waServer.chats()])
         if (!alive) return
@@ -536,15 +539,84 @@ export default function InboxView() {
         if (alive) setServerOff(true)
       }
     }
-    tick()
-    const iv = setInterval(tick, 5000)
+    async function loadChats() {
+      try {
+        const cs = await waServer.chats()
+        if (alive) {
+          setChats(cs)
+          setServerOff(false)
+        }
+      } catch {
+        if (alive) setServerOff(true)
+      }
+    }
+    loadAll()
+
+    // SSE
+    const es = new EventSource(waServer.eventsUrl())
+    es.addEventListener('hello', (ev) => {
+      try {
+        const d = JSON.parse((ev as MessageEvent).data)
+        setConn(d.state)
+      } catch {}
+    })
+    es.addEventListener('status', (ev) => {
+      try {
+        const d = JSON.parse((ev as MessageEvent).data)
+        setConn(d.state)
+      } catch {}
+    })
+    es.addEventListener('changed', (ev) => {
+      // recarrega lista de conversas
+      loadChats()
+      try {
+        const d = JSON.parse((ev as MessageEvent).data) as {
+          kind: string
+          chats?: string[]
+        }
+        // se a conversa selecionada teve mensagem nova, refetch dela
+        const sel = selectedIdRef.current
+        if (sel && d.chats && d.chats.includes(sel)) {
+          refreshMessagesRef.current?.()
+        }
+      } catch {}
+    })
+    es.addEventListener('presence', (ev) => {
+      try {
+        const d = JSON.parse((ev as MessageEvent).data) as {
+          chatId: string
+          state: string
+          ts: number
+        }
+        if (d.chatId === selectedIdRef.current) {
+          setPresenceRef.current?.({ state: d.state, ts: d.ts })
+        }
+      } catch {}
+    })
+    es.onerror = () => {
+      // EventSource tenta reconectar automaticamente; só marca offline
+      setServerOff(true)
+    }
+
+    // fallback poll de 30s pra cobrir o caso de SSE estar saudável
+    // mas a gente perdeu um evento (raro)
+    const iv = setInterval(loadChats, 30_000)
     return () => {
       alive = false
+      es.close()
       clearInterval(iv)
     }
   }, [])
 
-  // poll: mensagens da conversa selecionada
+  // ref pra SSE handler enxergar o selectedId atual sem capturar stale closure
+  const selectedIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    selectedIdRef.current = selectedId
+  }, [selectedId])
+
+  // mensagens: 1 fetch inicial + refetch sob demanda via SSE.
+  // poll de 20s como fallback (era 3s).
+  const refreshMessagesRef = useRef<() => void>(() => {})
   useEffect(() => {
     if (!selectedId) {
       setMessages([])
@@ -559,16 +631,21 @@ export default function InboxView() {
         setSelectedName(r.name)
       } catch {}
     }
+    refreshMessagesRef.current = tick
     tick()
-    const iv = setInterval(tick, 3000)
+    const iv = setInterval(tick, 20_000)
     return () => {
       alive = false
       clearInterval(iv)
     }
   }, [selectedId])
 
-  // poll: presence da conversa selecionada (skip grupos — presence em
-  // grupo é por participante, ruidoso e pouco útil)
+  // presence da conversa selecionada (skip grupos).
+  // 1 fetch inicial + updates via SSE 'presence'. Poll 30s de fallback.
+  const setPresenceRef = useRef<(p: { state: string; ts: number } | null) => void>(() => {})
+  useEffect(() => {
+    setPresenceRef.current = setPresence
+  }, [])
   useEffect(() => {
     if (!selectedId || selectedId.endsWith('@g.us')) {
       setPresence(null)
@@ -580,7 +657,7 @@ export default function InboxView() {
       if (alive) setPresence(p)
     }
     tick()
-    const iv = setInterval(tick, 4000)
+    const iv = setInterval(tick, 30_000)
     return () => {
       alive = false
       clearInterval(iv)

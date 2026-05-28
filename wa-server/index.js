@@ -69,6 +69,19 @@ let storeDirty = false
 const presenceStore = new Map() // jid → { state, ts }
 const subscribedJids = new Set()
 
+// ─── SSE: push de eventos pro cliente ────────────────────────────
+// Em vez do cliente fazer poll, ele abre uma conexão long-lived em
+// /events e a gente despeja eventos conforme acontecem.
+const sseClients = new Set() // Set<res>
+
+function sseSend(event, data) {
+  if (sseClients.size === 0) return
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+  for (const res of sseClients) {
+    try { res.write(payload) } catch {}
+  }
+}
+
 // ─── Conexão WhatsApp ────────────────────────────────────────────
 async function startSock() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR)
@@ -106,6 +119,9 @@ async function startSock() {
       connState = 'open'
       meNumber = sock?.user?.id?.split(':')[0] ?? null
       console.log(`✅  Conectado ao WhatsApp como ${meNumber}`)
+      sseSend('status', { state: 'open', me: meNumber })
+      // reset subscribedJids — após reconexão, presence sub é perdida
+      subscribedJids.clear()
     }
 
     if (connection === 'close') {
@@ -113,6 +129,7 @@ async function startSock() {
       const statusCode = lastDisconnect?.error?.output?.statusCode
       const loggedOut = statusCode === DisconnectReason.loggedOut
       console.log(`❌  Conexão fechada (code=${statusCode}). loggedOut=${loggedOut}`)
+      sseSend('status', { state: 'close', me: null })
 
       if (loggedOut) {
         // sessão revogada — apaga credenciais para gerar um novo QR
@@ -158,7 +175,23 @@ async function startSock() {
   })
 
   sock.ev.on('messages.upsert', ({ messages }) => {
-    for (const m of messages || []) recordMessage(m)
+    const touched = new Set()
+    for (const m of messages || []) {
+      recordMessage(m)
+      const jid = m?.key?.remoteJid
+      if (isRealChat(jid)) touched.add(jid)
+    }
+    if (touched.size > 0) {
+      sseSend('changed', { kind: 'messages', chats: [...touched] })
+    }
+  })
+
+  // emite eventos quando chats são atualizados
+  sock.ev.on('chats.upsert', () => {
+    sseSend('changed', { kind: 'chats' })
+  })
+  sock.ev.on('chats.update', () => {
+    sseSend('changed', { kind: 'chats' })
   })
 
   // presence updates: id é o JID do chat; presences é um objeto keyed
@@ -167,10 +200,13 @@ async function startSock() {
     if (!presences || typeof presences !== 'object') return
     const p = presences[id] || Object.values(presences)[0]
     if (!p) return
-    presenceStore.set(id, {
-      state: p.lastKnownPresence || 'unavailable',
-      ts: Date.now() / 1000,
-    })
+    const state = p.lastKnownPresence || 'unavailable'
+    // só atualiza ts se o estado MUDOU (evita 'visto agora' eterno)
+    const prev = presenceStore.get(id)
+    if (!prev || prev.state !== state) {
+      presenceStore.set(id, { state, ts: Date.now() / 1000 })
+      sseSend('presence', { chatId: id, state, ts: Date.now() / 1000 })
+    }
   })
 }
 
@@ -552,6 +588,13 @@ if (AUTH_TOKEN) {
     res.status(401).json({ ok: false, error: 'Unauthorized' })
   })
   console.log('🔒  WA_AUTH_TOKEN ativo — endpoints protegidos por bearer/?t=')
+} else if (process.env.NODE_ENV === 'production') {
+  // fail-CLOSED em prod: se esquecer o env var, o servidor recusa
+  // qualquer chamada em vez de expor tudo à internet.
+  console.error('❌  WA_AUTH_TOKEN obrigatório em produção. Recusando todas as chamadas.')
+  app.use((_req, res) => {
+    res.status(503).json({ ok: false, error: 'WA_AUTH_TOKEN não configurado' })
+  })
 } else {
   console.log('⚠️   WA_AUTH_TOKEN não definido — endpoints abertos (uso local)')
 }
@@ -559,6 +602,30 @@ if (AUTH_TOKEN) {
 // status da conexão
 app.get('/status', (_req, res) => {
   res.json({ state: connState, me: meNumber })
+})
+
+// SSE: stream de eventos em tempo real.
+// Eventos: 'changed' { kind: 'messages'|'chats', chats?: [jid] }
+//          'presence' { chatId, state, ts }
+//          'status' { state, me }
+app.get('/events', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    // anti-buffer pra proxies (Traefik, nginx)
+    'X-Accel-Buffering': 'no',
+  })
+  res.write(`event: hello\ndata: {"state":"${connState}","me":${JSON.stringify(meNumber)}}\n\n`)
+  sseClients.add(res)
+  // keepalive a cada 25s pro proxy não derrubar a conexão por idle
+  const ping = setInterval(() => {
+    try { res.write(': ping\n\n') } catch {}
+  }, 25_000)
+  req.on('close', () => {
+    clearInterval(ping)
+    sseClients.delete(res)
+  })
 })
 
 // diagnóstico: confere um número e mostra o JID resolvido no WhatsApp
