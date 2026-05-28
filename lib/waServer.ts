@@ -41,6 +41,7 @@ export interface WaChat {
 
 export interface WaChatPatch {
   name?: string
+  alias?: string // rename custom — sobrevive a sync do WA (prec. max)
   archived?: boolean
   tags?: string[]
   value?: number
@@ -90,6 +91,8 @@ export interface WaMessage {
 export interface WaStatus {
   state: 'starting' | 'qr' | 'open' | 'close'
   me: string | null
+  /** Idade do último push da extensão Chrome (segundos). Null = nunca recebido. */
+  ingest?: { lastAt: number; ageS: number } | null
 }
 
 export interface WaSnippet {

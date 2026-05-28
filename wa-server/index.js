@@ -79,6 +79,11 @@ let storeDirty = false
 const presenceStore = new Map() // jid → { state, ts }
 const subscribedJids = new Set()
 
+// Quando a extensão Chrome empurra dados, marca o timestamp pra UI
+// poder mostrar "extensão ativa há X segundos".
+let lastIngestAt = 0
+function markIngest() { lastIngestAt = Math.floor(Date.now() / 1000) }
+
 // ─── SSE: push de eventos pro cliente ────────────────────────────
 // Em vez do cliente fazer poll, ele abre uma conexão long-lived em
 // /events e a gente despeja eventos conforme acontecem.
@@ -191,14 +196,7 @@ async function startSock() {
     storeDirty = true
   })
 
-  sock.ev.on('messages.upsert', ({ messages, type }) => {
-    // diagnostic: log every batch (jid, count, type) — fica em prod por enquanto
-    if (messages?.length) {
-      const sample = messages[0]
-      console.log(
-        `📨 messages.upsert [${type}] n=${messages.length} jid=${sample?.key?.remoteJid} fromMe=${!!sample?.key?.fromMe} hasMsg=${!!sample?.message}`
-      )
-    }
+  sock.ev.on('messages.upsert', ({ messages }) => {
     const touched = new Set()
     for (const m of messages || []) {
       recordMessage(m)
@@ -681,9 +679,15 @@ if (AUTH_TOKEN) {
   console.log('⚠️   WA_AUTH_TOKEN não definido — endpoints abertos (uso local)')
 }
 
-// status da conexão
+// status da conexão (+ idade do último ingest da extensão se houver)
 app.get('/status', (_req, res) => {
-  res.json({ state: connState, me: meNumber })
+  res.json({
+    state: connState,
+    me: meNumber,
+    ingest: lastIngestAt
+      ? { lastAt: lastIngestAt, ageS: Math.floor(Date.now() / 1000) - lastIngestAt }
+      : null,
+  })
 })
 
 // SSE: stream de eventos em tempo real.
@@ -907,23 +911,23 @@ app.post('/library/audio/:id/send', async (req, res) => {
 app.get('/search', (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase()
   if (q.length < 2) return res.json({ q, results: [] })
-  const byChat = new Map() // jid → { count, firstSnippet, firstTime, firstFromMe }
+  const byChat = new Map() // jid → { count, snippet, time, fromMe } da MAIS NOVA
   for (const [jid, msgs] of store.messages) {
     if (!isRealChat(jid)) continue
+    // mensagens vêm em ordem cronológica (antigas → novas).
+    // iteramos NORMAL contando todos os matches, mas o snippet sobrescreve
+    // a cada match, então no fim fica o trecho da mensagem MAIS RECENTE.
     for (const m of msgs) {
       const text = (m.text || '').toLowerCase()
       if (!text.includes(q)) continue
       const ex = byChat.get(jid) || { count: 0 }
       ex.count++
-      if (ex.count === 1) {
-        // primeiro trecho — pega ~60 chars de contexto ao redor do termo
-        const i = text.indexOf(q)
-        const start = Math.max(0, i - 25)
-        const end = Math.min(m.text.length, i + q.length + 35)
-        ex.firstSnippet = (start > 0 ? '…' : '') + m.text.slice(start, end) + (end < m.text.length ? '…' : '')
-        ex.firstTime = m.time
-        ex.firstFromMe = !!m.fromMe
-      }
+      const i = text.indexOf(q)
+      const start = Math.max(0, i - 25)
+      const end = Math.min(m.text.length, i + q.length + 35)
+      ex.snippet = (start > 0 ? '…' : '') + m.text.slice(start, end) + (end < m.text.length ? '…' : '')
+      ex.time = m.time
+      ex.fromMe = !!m.fromMe
       byChat.set(jid, ex)
     }
   }
@@ -931,9 +935,9 @@ app.get('/search', (req, res) => {
     chatId: jid,
     name: chatDisplayName(jid),
     count: info.count,
-    snippet: info.firstSnippet,
-    time: info.firstTime,
-    fromMe: info.firstFromMe,
+    snippet: info.snippet,
+    time: info.time,
+    fromMe: info.fromMe,
   })).sort((a, b) => b.time - a.time).slice(0, 40)
   res.json({ q, results })
 })
@@ -970,6 +974,7 @@ app.post('/ingest/chats', (req, res) => {
     mergeChatFromExtension(c)
     n++
   }
+  markIngest()
   if (n > 0) sseSend('changed', { kind: 'chats' })
   console.log(`🔌  ingest/chats: ${n} conversas`)
   res.json({ ok: true, count: n })
@@ -978,6 +983,7 @@ app.post('/ingest/chats', (req, res) => {
 // Push incremental de um chat (chats.update).
 app.post('/ingest/chat', (req, res) => {
   mergeChatFromExtension(req.body?.chat || {})
+  markIngest()
   sseSend('changed', { kind: 'chats' })
   res.json({ ok: true })
 })
@@ -1016,6 +1022,7 @@ app.post('/ingest/message', (req, res) => {
   }
   store.chats.set(jid, chat)
   storeDirty = true
+  markIngest()
   sseSend('changed', { kind: 'messages', chats: [jid] })
   res.json({ ok: true })
 })
@@ -1280,6 +1287,7 @@ app.post('/chats/:id/status', (req, res) => {
 // atualiza qualquer campo do lead (archived, tags, value, source, etc.)
 const PATCHABLE = [
   'name',
+  'alias', // rename custom que sobrevive ao sync (precedência max em chatDisplayName)
   'archived',
   'tags',
   'value',

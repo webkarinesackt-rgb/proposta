@@ -451,6 +451,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
 export default function InboxView() {
   const [chats, setChats] = useState<WaChat[]>([])
   const [conn, setConn] = useState<string>('...')
+  const [ingest, setIngest] = useState<{ ageS: number } | null>(null)
   const [serverOff, setServerOff] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedName, setSelectedName] = useState('')
@@ -467,6 +468,11 @@ export default function InboxView() {
   const [listOpen, setListOpen] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+  const [showAddChat, setShowAddChat] = useState(false)
+  const [addChatNumber, setAddChatNumber] = useState('')
+  const [addChatName, setAddChatName] = useState('')
+  const [addChatBusy, setAddChatBusy] = useState(false)
+  const [addChatError, setAddChatError] = useState('')
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [newCount, setNewCount] = useState(0)
   const [presence, setPresence] = useState<{ state: string; ts: number } | null>(null)
@@ -533,6 +539,7 @@ export default function InboxView() {
         const [st, cs] = await Promise.all([waServer.status(), waServer.chats()])
         if (!alive) return
         setConn(st.state)
+        setIngest(st.ingest ? { ageS: st.ingest.ageS } : null)
         setChats(cs)
         setServerOff(false)
       } catch {
@@ -601,10 +608,22 @@ export default function InboxView() {
     // fallback poll de 30s pra cobrir o caso de SSE estar saudável
     // mas a gente perdeu um evento (raro)
     const iv = setInterval(loadChats, 30_000)
+    // poll do status (leve) a cada 10s pra manter o indicador da
+    // extensão (idade do último ingest) atualizado
+    const ivStatus = setInterval(async () => {
+      try {
+        const st = await waServer.status()
+        if (alive) {
+          setConn(st.state)
+          setIngest(st.ingest ? { ageS: st.ingest.ageS } : null)
+        }
+      } catch {}
+    }, 10_000)
     return () => {
       alive = false
       es.close()
       clearInterval(iv)
+      clearInterval(ivStatus)
     }
   }, [])
 
@@ -842,27 +861,48 @@ export default function InboxView() {
         >
           <div className="p-4 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
-              <p
-                className="text-[10px] font-bold uppercase tracking-[0.18em]"
-                style={{ color: T.textDim }}
-              >
-                Conversas
-              </p>
+              <div className="flex items-center gap-2">
+                <p
+                  className="text-[10px] font-bold uppercase tracking-[0.18em]"
+                  style={{ color: T.textDim }}
+                >
+                  Conversas
+                </p>
+                {ingest && (
+                  <span
+                    title={
+                      ingest.ageS < 90
+                        ? `Extensão Chrome ativa (último push há ${ingest.ageS}s)`
+                        : `Extensão Chrome inativa — último push há ${
+                            ingest.ageS < 60
+                              ? ingest.ageS + 's'
+                              : ingest.ageS < 3600
+                              ? Math.round(ingest.ageS / 60) + 'min'
+                              : Math.round(ingest.ageS / 3600) + 'h'
+                          }. Abra web.whatsapp.com no Chrome com a extensão.`
+                    }
+                    className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: ingest.ageS < 90 ? '#F0FDF4' : '#FEF3C7',
+                      color: ingest.ageS < 90 ? '#15803D' : '#A16207',
+                    }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: ingest.ageS < 90 ? '#22C55E' : '#EAB308',
+                      }}
+                    />
+                    {ingest.ageS < 90 ? 'EXT' : 'EXT ⚠'}
+                  </span>
+                )}
+              </div>
               <button
-                onClick={async () => {
-                  const number = window.prompt(
-                    'Adicionar contato\n\nNúmero com DDI (ex: 5511999998888):',
-                    ''
-                  )
-                  if (!number) return
-                  const name = window.prompt('Nome (opcional):', '') || ''
-                  const r = await waServer.addChat(number, name)
-                  if (r.ok && r.jid) {
-                    await reloadChats()
-                    setSelectedId(r.jid)
-                  } else {
-                    window.alert(r.error || 'Erro ao adicionar')
-                  }
+                onClick={() => {
+                  setAddChatNumber('')
+                  setAddChatName('')
+                  setAddChatError('')
+                  setShowAddChat(true)
                 }}
                 title="Adicionar conversa que não veio no sync"
                 className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md transition-colors hover:bg-[#F4F3EF]"
@@ -1206,7 +1246,9 @@ export default function InboxView() {
                               )
                             )
                             try {
-                              await waServer.updateChat(selectedId, { name: next })
+                              // grava como `alias` (não `name`) — precedência max
+                              // em chatDisplayName e sobrevive a sync do WhatsApp
+                              await waServer.updateChat(selectedId, { alias: next })
                             } catch {}
                           }
                           setEditingName(false)
@@ -1461,6 +1503,94 @@ export default function InboxView() {
           />
         )}
       </div>
+
+      {/* Modal: + Conversa (adicionar contato manualmente) */}
+      {showAddChat && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => !addChatBusy && setShowAddChat(false)}
+        >
+          <div
+            className="w-[420px] max-w-[90vw] rounded-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}
+          >
+            <h2 className="text-[16px] font-bold mb-1" style={{ color: T.textPrimary }}>
+              Adicionar conversa
+            </h2>
+            <p className="text-[12px] mb-5" style={{ color: T.textMuted }}>
+              Útil pra contatos que não vieram no sync inicial do WhatsApp.
+            </p>
+
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: T.textDim }}>
+              Número com DDI
+            </label>
+            <input
+              autoFocus
+              value={addChatNumber}
+              onChange={(e) => setAddChatNumber(e.target.value)}
+              placeholder="5511999998888"
+              disabled={addChatBusy}
+              className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none mb-4"
+              style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+            />
+
+            <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: T.textDim }}>
+              Nome (opcional)
+            </label>
+            <input
+              value={addChatName}
+              onChange={(e) => setAddChatName(e.target.value)}
+              placeholder="Nome do contato"
+              disabled={addChatBusy}
+              className="w-full px-3 py-2.5 rounded-lg text-[13px] outline-none"
+              style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+            />
+
+            {addChatError && (
+              <p className="text-[12px] font-semibold mt-3 px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#B91C1C' }}>
+                {addChatError}
+              </p>
+            )}
+
+            <div className="flex gap-2 justify-end mt-5">
+              <button
+                onClick={() => setShowAddChat(false)}
+                disabled={addChatBusy}
+                className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-colors hover:bg-[#F4F3EF] disabled:opacity-50"
+                style={{ color: T.textMuted }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  const n = addChatNumber.trim()
+                  if (!n) {
+                    setAddChatError('Digite o número.')
+                    return
+                  }
+                  setAddChatBusy(true)
+                  setAddChatError('')
+                  const r = await waServer.addChat(n, addChatName.trim())
+                  setAddChatBusy(false)
+                  if (r.ok && r.jid) {
+                    setShowAddChat(false)
+                    await reloadChats()
+                    setSelectedId(r.jid)
+                  } else {
+                    setAddChatError(r.error || 'Erro ao adicionar')
+                  }
+                }}
+                disabled={addChatBusy}
+                className="text-[12px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all disabled:opacity-50"
+                style={{ background: T.accent, color: T.accentBright }}
+              >
+                {addChatBusy ? 'Adicionando…' : 'Adicionar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
