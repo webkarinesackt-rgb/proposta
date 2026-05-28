@@ -167,6 +167,15 @@ function LeadRow({
       onDragStart={(e) => {
         e.dataTransfer.setData('text/wa-chat-id', chat.id)
         e.dataTransfer.effectAllowed = 'move'
+        // suave fade no card sendo arrastado
+        const el = e.currentTarget as HTMLDivElement
+        requestAnimationFrame(() => {
+          el.style.opacity = '0.4'
+        })
+      }}
+      onDragEnd={(e) => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.opacity = '1'
       }}
       className="flex items-center gap-3 px-4 py-2.5 transition-colors cursor-grab active:cursor-grabbing"
       style={{ borderBottom: '1px solid #F0F0EC' }}
@@ -356,6 +365,15 @@ export default function LeadsView() {
     byStatus[key].push(c)
   }
 
+  // total geral: soma de todos os leads, excluindo PERDIDA
+  const totalPipeline = filteredChats
+    .filter((c) => c.status !== 'PERDIDA')
+    .reduce((sum, c) => sum + (Number(c.value) || 0), 0)
+  const totalClosed = (byStatus.FECHADO || []).reduce(
+    (sum, c) => sum + (Number(c.value) || 0),
+    0
+  )
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll relative">
       {toast && (
@@ -393,6 +411,40 @@ export default function LeadsView() {
             <p className="text-[13px] text-[#6B8585] mt-2">
               Suas conversas organizadas por etapa do funil.
             </p>
+            {totalPipeline > 0 && (
+              <div className="flex items-center gap-5 mt-4 text-[11px]">
+                <div>
+                  <p
+                    className="font-bold uppercase tracking-[0.14em] text-[10px]"
+                    style={{ color: '#8AA09A' }}
+                  >
+                    Pipeline ativo
+                  </p>
+                  <p
+                    className="font-bold mt-0.5"
+                    style={{ color: '#0D3839', fontSize: 18 }}
+                  >
+                    {fmtBRL(totalPipeline)}
+                  </p>
+                </div>
+                {totalClosed > 0 && (
+                  <div>
+                    <p
+                      className="font-bold uppercase tracking-[0.14em] text-[10px]"
+                      style={{ color: '#8AA09A' }}
+                    >
+                      Fechado
+                    </p>
+                    <p
+                      className="font-bold mt-0.5"
+                      style={{ color: '#22C55E', fontSize: 18 }}
+                    >
+                      {fmtBRL(totalClosed)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <label
             className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"

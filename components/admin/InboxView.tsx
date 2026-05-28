@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -172,12 +172,14 @@ function ChatRow({
   onClick,
   onSetStatus,
   onArchive,
+  matchSnippet,
 }: {
   chat: WaChat
   active: boolean
   onClick: () => void
   onSetStatus: (status: string) => void
   onArchive: () => void
+  matchSnippet?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
@@ -222,11 +224,31 @@ function ChatRow({
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <span className="text-[12px] truncate" style={{ color: T.textMuted }}>
-            {chat.fromMeLast && (
-              <span style={{ color: T.textDim }}>Você: </span>
+          <span
+            className="text-[12px] truncate"
+            style={{
+              color: matchSnippet ? T.textPrimary : T.textMuted,
+              fontStyle: matchSnippet ? 'italic' : 'normal',
+            }}
+            title={matchSnippet || undefined}
+          >
+            {matchSnippet ? (
+              <>
+                <Search
+                  size={9}
+                  className="inline mr-1 -mt-0.5"
+                  style={{ color: T.accent }}
+                />
+                {matchSnippet}
+              </>
+            ) : (
+              <>
+                {chat.fromMeLast && (
+                  <span style={{ color: T.textDim }}>Você: </span>
+                )}
+                {chat.lastText || '—'}
+              </>
             )}
-            {chat.lastText || '—'}
           </span>
           <div
             className="relative flex-shrink-0 flex items-center gap-1"
@@ -351,10 +373,21 @@ function ChatRow({
 function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const mine = msg.fromMe
   const isAudio = msg.type === 'audio' && msg.hasMedia
+  const [copied, setCopied] = useState(false)
+  const canCopy = !isAudio && !!msg.text && msg.text !== '[mensagem]'
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(msg.text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {}
+  }
+
   return (
-    <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${mine ? 'justify-end' : 'justify-start'} group`}>
       <div
-        className="max-w-[72%] px-3.5 py-2 rounded-2xl"
+        className="relative max-w-[72%] px-3.5 py-2 rounded-2xl"
         style={{
           background: mine ? T.accent : '#FFFFFF',
           color: mine ? '#FFFFFF' : T.textPrimary,
@@ -364,6 +397,21 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
+        {canCopy && (
+          <button
+            onClick={copyText}
+            title={copied ? 'Copiado!' : 'Copiar texto'}
+            className="absolute -top-2 -right-2 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background: '#FFFFFF',
+              border: `1px solid ${T.border}`,
+              color: copied ? '#22C55E' : T.textDim,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+            }}
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+          </button>
+        )}
         {isAudio ? (
           <audio
             controls
@@ -421,25 +469,44 @@ export default function InboxView() {
   const [nameDraft, setNameDraft] = useState('')
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [newCount, setNewCount] = useState(0)
-  const [searchHits, setSearchHits] = useState<Set<string>>(new Set())
+  const [searchHits, setSearchHits] = useState<Map<string, string>>(new Map())
   const msgEndRef = useRef<HTMLDivElement>(null)
   const msgScrollRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // busca server-side em mensagens (debounced)
   useEffect(() => {
     const q = search.trim()
     if (q.length < 2) {
-      setSearchHits(new Set())
+      setSearchHits(new Map())
       return
     }
     const t = setTimeout(async () => {
       try {
         const hits = await waServer.searchMessages(q)
-        setSearchHits(new Set(hits.map((h) => h.chatId)))
+        setSearchHits(new Map(hits.map((h) => [h.chatId, h.snippet])))
       } catch {}
     }, 250)
     return () => clearTimeout(t)
   }, [search])
+
+  // atalho ⌘K / Ctrl+K → foca a busca; Esc → limpa
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const meta = e.metaKey || e.ctrlKey
+      if (meta && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        setSearch('')
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   function handleMessagesScroll() {
     const el = msgScrollRef.current
@@ -678,12 +745,38 @@ export default function InboxView() {
             >
               <Search size={14} style={{ color: T.textDim }} />
               <input
+                ref={searchInputRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar conversa"
+                placeholder="Buscar conversa ou mensagem"
                 className="flex-1 bg-transparent text-[13px] outline-none"
                 style={{ color: T.textPrimary }}
               />
+              {search ? (
+                <button
+                  onClick={() => {
+                    setSearch('')
+                    searchInputRef.current?.focus()
+                  }}
+                  title="Limpar (Esc)"
+                  className="rounded p-0.5 transition-colors hover:bg-black/5"
+                  style={{ color: T.textDim }}
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <span
+                  className="hidden md:inline text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  style={{
+                    background: '#FFFFFF',
+                    border: `1px solid ${T.border}`,
+                    color: T.textDim,
+                  }}
+                  title="Atalho pra focar a busca"
+                >
+                  ⌘K
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {(
@@ -809,27 +902,64 @@ export default function InboxView() {
 
           <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
             {filtered.length === 0 ? (
-              <p
-                className="text-[12px] text-center px-4 py-8"
-                style={{ color: T.textDim }}
-              >
-                {chats.length === 0
-                  ? 'Sincronizando conversas…'
-                  : chatFilter === 'unanswered'
-                  ? 'Tudo respondido ✨'
-                  : 'Nada encontrado.'}
-              </p>
+              chats.length === 0 && !serverOff ? (
+                // skeleton loader enquanto sincroniza
+                <div className="px-4 py-3 flex flex-col gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 animate-pulse"
+                      style={{ opacity: 1 - i * 0.12 }}
+                    >
+                      <div
+                        className="rounded-full flex-shrink-0"
+                        style={{ width: 42, height: 42, background: T.bgSubtle }}
+                      />
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <div
+                          className="h-3 rounded"
+                          style={{ background: T.bgSubtle, width: `${50 + (i % 3) * 15}%` }}
+                        />
+                        <div
+                          className="h-2.5 rounded"
+                          style={{ background: T.bgSubtle, width: `${70 - (i % 2) * 20}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p
+                  className="text-[12px] text-center px-4 py-8"
+                  style={{ color: T.textDim }}
+                >
+                  {chatFilter === 'unanswered'
+                    ? 'Tudo respondido ✨'
+                    : 'Nada encontrado.'}
+                </p>
+              )
             ) : (
-              filtered.map((c) => (
-                <ChatRow
-                  key={c.id}
-                  chat={c}
-                  active={c.id === selectedId}
-                  onClick={() => setSelectedId(c.id)}
-                  onSetStatus={(s) => handleSetChatStatus(c.id, s)}
-                  onArchive={() => handleArchiveChat(c.id, !c.archived)}
-                />
-              ))
+              filtered.map((c) => {
+                // só mostra snippet se a busca matchou em mensagem
+                // E o nome do contato NÃO contém o termo (senão é redundante)
+                const q = search.trim().toLowerCase()
+                const nameHits = q && c.name.toLowerCase().includes(q)
+                const snippet =
+                  !nameHits && searchHits.has(c.id)
+                    ? searchHits.get(c.id)
+                    : undefined
+                return (
+                  <ChatRow
+                    key={c.id}
+                    chat={c}
+                    active={c.id === selectedId}
+                    onClick={() => setSelectedId(c.id)}
+                    onSetStatus={(s) => handleSetChatStatus(c.id, s)}
+                    onArchive={() => handleArchiveChat(c.id, !c.archived)}
+                    matchSnippet={snippet}
+                  />
+                )
+              })
             )}
           </div>
 
