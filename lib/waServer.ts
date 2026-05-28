@@ -163,6 +163,15 @@ export const waServer = {
     return j.chats || []
   },
 
+  async addChat(number: string, name?: string): Promise<{ ok: boolean; jid?: string; error?: string }> {
+    const r = await waFetch('/chats/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number, name: name || '' }),
+    })
+    return r.json()
+  },
+
   async messages(id: string): Promise<{ id: string; name: string; messages: WaMessage[] }> {
     const r = await waFetch(`/chats/${encodeURIComponent(id)}/messages`)
     return r.json()

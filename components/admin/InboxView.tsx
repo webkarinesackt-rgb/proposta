@@ -841,12 +841,36 @@ export default function InboxView() {
           style={{ borderRight: `1px solid ${T.border}`, background: T.card }}
         >
           <div className="p-4 flex-shrink-0">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
-              style={{ color: T.textDim }}
-            >
-              Conversas
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: T.textDim }}
+              >
+                Conversas
+              </p>
+              <button
+                onClick={async () => {
+                  const number = window.prompt(
+                    'Adicionar contato\n\nNúmero com DDI (ex: 5511999998888):',
+                    ''
+                  )
+                  if (!number) return
+                  const name = window.prompt('Nome (opcional):', '') || ''
+                  const r = await waServer.addChat(number, name)
+                  if (r.ok && r.jid) {
+                    await reloadChats()
+                    setSelectedId(r.jid)
+                  } else {
+                    window.alert(r.error || 'Erro ao adicionar')
+                  }
+                }}
+                title="Adicionar conversa que não veio no sync"
+                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md transition-colors hover:bg-[#F4F3EF]"
+                style={{ color: T.textMuted }}
+              >
+                + Conversa
+              </button>
+            </div>
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{
