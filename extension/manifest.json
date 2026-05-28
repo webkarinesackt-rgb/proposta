@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Fysi CRM Bridge",
+  "version": "0.1.0",
+  "description": "Le o WhatsApp Web e empurra mensagens/conversas pro wa-server do Fysi CRM.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://wa-fysi.177-73-235-85.nip.io/*"
+  ],
+  "action": {
+    "default_title": "Fysi CRM Bridge",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js", "vendor/wppconnect-wa.js"],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ]
+}

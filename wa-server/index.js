@@ -931,6 +931,89 @@ app.get('/search', (req, res) => {
   res.json({ q, results })
 })
 
+// ─── Ingestão da extensão Chrome (WhatsApp Web bridge) ──────────────────
+// A extensão lê o WhatsApp Web direto pelo wppconnect (que vive na
+// página do WhatsApp) e empurra os dados aqui. Mais confiável que
+// nossa conexão Baileys quando essa última está com sessões queimadas.
+//
+// Campos que SOMENTE o CRM controla (alias, tags, value, status, etc.)
+// são preservados — só atualizamos os campos vindos do WhatsApp.
+
+const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', 'linkedProposalId', 'status', 'archived']
+
+function mergeChatFromExtension(incoming) {
+  if (!incoming?.id || !isRealChat(incoming.id)) return
+  const ex = store.chats.get(incoming.id) || { id: incoming.id, unread: 0, status: 'LEAD' }
+  // só sobrescreve o que veio do WA
+  if (incoming.name !== undefined) ex.name = incoming.name
+  if (incoming.lastText !== undefined && incoming.lastText !== '') ex.lastText = incoming.lastText
+  if (typeof incoming.lastTime === 'number' && incoming.lastTime > 0) ex.lastTime = incoming.lastTime
+  if (typeof incoming.fromMeLast === 'boolean') ex.fromMeLast = incoming.fromMeLast
+  if (typeof incoming.unread === 'number') ex.unread = incoming.unread
+  ex.id = incoming.id
+  // mantém o resto (alias, tags, status, etc — CRM_ONLY_FIELDS)
+  store.chats.set(incoming.id, ex)
+  storeDirty = true
+}
+
+// Push em massa: extensão manda lista completa a cada N segundos.
+app.post('/ingest/chats', (req, res) => {
+  const list = Array.isArray(req.body?.chats) ? req.body.chats : []
+  let n = 0
+  for (const c of list) {
+    mergeChatFromExtension(c)
+    n++
+  }
+  if (n > 0) sseSend('changed', { kind: 'chats' })
+  console.log(`🔌  ingest/chats: ${n} conversas`)
+  res.json({ ok: true, count: n })
+})
+
+// Push incremental de um chat (chats.update).
+app.post('/ingest/chat', (req, res) => {
+  mergeChatFromExtension(req.body?.chat || {})
+  sseSend('changed', { kind: 'chats' })
+  res.json({ ok: true })
+})
+
+// Push de mensagem nova individual.
+app.post('/ingest/message', (req, res) => {
+  const m = req.body?.message
+  if (!m?.chatId || !isRealChat(m.chatId)) {
+    return res.status(400).json({ ok: false, error: 'mensagem inválida' })
+  }
+  // mesmo formato do recordMessage interno
+  const jid = m.chatId
+  const rec = {
+    id: m.id,
+    fromMe: !!m.fromMe,
+    text: m.text || '',
+    type: m.type || 'texto',
+    time: Number(m.time) || Math.floor(Date.now() / 1000),
+    pushName: m.pushName || '',
+    participant: '',
+  }
+  let arr = store.messages.get(jid)
+  if (!arr) { arr = []; store.messages.set(jid, arr) }
+  const i = rec.id ? arr.findIndex((x) => x.id === rec.id) : -1
+  if (i >= 0) arr[i] = rec
+  else arr.push(rec)
+  arr.sort((a, b) => a.time - b.time)
+  if (arr.length > 200) arr.splice(0, arr.length - 200)
+
+  // atualiza chat também (lastText/lastTime/fromMeLast)
+  const chat = store.chats.get(jid) || { id: jid, unread: 0, status: 'LEAD' }
+  if (rec.time >= (chat.lastTime || 0)) {
+    chat.lastText = rec.text
+    chat.lastTime = rec.time
+    chat.fromMeLast = rec.fromMe
+  }
+  store.chats.set(jid, chat)
+  storeDirty = true
+  sseSend('changed', { kind: 'messages', chats: [jid] })
+  res.json({ ok: true })
+})
+
 // Adiciona uma conversa ao inbox manualmente — útil pra contatos
 // que não vieram no sync inicial do Baileys (sync gap conhecido).
 // Valida que o número tem WhatsApp via onWhatsApp() antes.
