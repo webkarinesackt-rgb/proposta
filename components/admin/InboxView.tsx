@@ -189,23 +189,36 @@ function ChatRow({
             )}
             {chat.lastText || '—'}
           </span>
-          {chat.unread > 0 ? (
-            <span
-              className="text-[10px] font-bold rounded-full flex-shrink-0 flex items-center justify-center text-white"
-              style={{
-                background: T.green,
-                minWidth: 18,
-                height: 18,
-                padding: '0 5px',
-              }}
-            >
-              {chat.unread}
-            </span>
-          ) : (
-            <div
-              className="relative flex-shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div
+            className="relative flex-shrink-0 flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {chat.unread > 0 && (
+              <span
+                className="text-[10px] font-bold rounded-full flex items-center justify-center text-white"
+                style={{
+                  background: T.green,
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
+                }}
+              >
+                {chat.unread}
+              </span>
+            )}
+            {chat.unread > 0 ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMenuOpen((o) => !o)
+                }}
+                title="Ações da conversa"
+                className="rounded p-0.5 transition-colors hover:bg-black/5"
+                style={{ color: T.textDim }}
+              >
+                <ChevronDown size={14} />
+              </button>
+            ) : (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -224,6 +237,7 @@ function ChatRow({
                   : statusMeta.label}
                 <ChevronDown size={9} />
               </button>
+            )}
               {menuOpen && (
                 <>
                   <div
@@ -286,8 +300,7 @@ function ChatRow({
                   </div>
                 </>
               )}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
