@@ -366,6 +366,7 @@ function recordMessage(m) {
     if (!isRealChat(jid)) return
     const { text, type } = msgContent(m.message)
     const time = tsToNum(m.messageTimestamp)
+    const isGroup = jid.endsWith('@g.us')
     const rec = {
       id: m.key.id,
       fromMe: !!m.key.fromMe,
@@ -373,6 +374,8 @@ function recordMessage(m) {
       type,
       time,
       pushName: m.pushName || '',
+      // em grupo, qual participante mandou (pra prefixar a prévia)
+      participant: isGroup ? (m.key.participant || '') : '',
     }
     // guarda o conteúdo bruto de mídias para download sob demanda
     if (['audio', 'imagem', 'video', 'documento'].includes(type)) {
@@ -389,7 +392,20 @@ function recordMessage(m) {
     const chat = store.chats.get(jid) || { id: jid, unread: 0, status: 'LEAD' }
     chat.id = jid
     if (time >= (chat.lastTime || 0)) {
-      chat.lastText = text
+      // prévia: em grupo, prefixa com o nome (primeiro nome) do remetente
+      // em chat 1-1 ou mensagem minha, só o texto
+      let preview = text
+      if (isGroup && !rec.fromMe) {
+        const sender =
+          rec.pushName ||
+          (rec.participant ? store.contacts.get(rec.participant) : '') ||
+          ''
+        if (sender) {
+          const short = sender.split(/\s+/)[0]
+          preview = `${short}: ${text}`
+        }
+      }
+      chat.lastText = preview
       chat.lastTime = time
       chat.fromMeLast = rec.fromMe
     }
@@ -855,6 +871,39 @@ app.get('/search', (req, res) => {
   })).sort((a, b) => b.time - a.time).slice(0, 40)
   res.json({ q, results })
 })
+
+// Tenta buscar o nome (subject) de grupos que estão sem nome no store,
+// chamando sock.groupMetadata. Roda em background, atualiza o store.
+const groupFetchAttempted = new Set()
+async function backfillGroupNames() {
+  if (!sock || connState !== 'open') return
+  let fetched = 0
+  for (const [jid, c] of store.chats) {
+    if (!jid.endsWith('@g.us')) continue
+    if (c.name && c.name.trim()) continue
+    if (groupFetchAttempted.has(jid)) continue
+    groupFetchAttempted.add(jid)
+    try {
+      const meta = await sock.groupMetadata(jid)
+      if (meta?.subject) {
+        c.name = meta.subject
+        store.chats.set(jid, c)
+        storeDirty = true
+        fetched++
+      }
+    } catch {
+      // grupo pode ter sido apagado / ela não é mais membro
+    }
+    // limita pra não inundar o WhatsApp
+    if (fetched >= 5) break
+  }
+  if (fetched > 0) {
+    console.log(`👥  Nomes de ${fetched} grupos preenchidos`)
+    sseSend('changed', { kind: 'chats' })
+  }
+}
+// roda a cada 30s — preenche aos poucos sem martelar o WhatsApp
+setInterval(() => { backfillGroupNames().catch(() => {}) }, 30_000)
 
 // lista de conversas (mais recentes primeiro)
 app.get('/chats', (_req, res) => {
