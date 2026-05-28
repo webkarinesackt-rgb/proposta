@@ -19,20 +19,15 @@
   }
 
   // ── helpers ────────────────────────────────────────────────────────────
-  async function post(path, body) {
-    try {
-      const r = await fetch(WA_URL + path, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + WA_TOKEN,
-        },
-        body: JSON.stringify(body),
-      })
-      if (!r.ok) console.warn(TAG, path, r.status, await r.text())
-    } catch (e) {
-      console.warn(TAG, path, 'erro:', e.message)
-    }
+  // NÃO usar fetch() direto: WhatsApp Web tem CSP estrita que bloqueia
+  // chamadas pra domínios fora do allowlist deles. Em vez disso, posta
+  // pro content script (que vive no contexto da extensão, sem essa CSP)
+  // via window.postMessage.
+  function post(path, body) {
+    window.postMessage(
+      { __fysiBridge: true, path, body },
+      window.location.origin
+    )
   }
 
   // converte um chat do wppconnect num shape que o wa-server entende
@@ -69,9 +64,13 @@
       const list = await window.WPP.chat.list({ withLabels: false })
       const chats = list.map(chatToIngest).filter(Boolean)
       console.log(TAG, 'full sync —', chats.length, 'conversas')
-      await post('/ingest/chats', { chats })
+      post('/ingest/chats', { chats })
     } catch (e) {
-      console.warn(TAG, 'fullSync erro:', e.message)
+      // 'dropping db read operation due to logout' acontece quando o WPP
+      // está em estado de transição; ignora e tenta no próximo ciclo.
+      if (!String(e?.message).includes('dropping db')) {
+        console.warn(TAG, 'fullSync erro:', e.message)
+      }
     }
   }
 

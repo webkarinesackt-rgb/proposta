@@ -37,3 +37,41 @@ chrome.storage.onChanged.addListener((changes) => {
     document.documentElement.setAttribute('data-fysi-wa-token', changes.waToken.newValue || '')
   }
 })
+
+// ── Relay POST: inject.js → window.postMessage → aqui → fetch ─────────
+// Necessário porque o WhatsApp Web tem CSP estrita que bloqueia fetch
+// de outros domínios direto do MAIN world. Content scripts vivem no
+// "isolated world" da extensão e usam a CSP do manifest (que lista
+// nip.io no host_permissions).
+let currentUrl = ''
+let currentToken = ''
+chrome.storage.local.get(['waUrl', 'waToken'], (cfg) => {
+  currentUrl = cfg.waUrl || 'https://wa-fysi.177-73-235-85.nip.io'
+  currentToken = cfg.waToken || 'cbdfc4cdb6aa39ccd397bc562d1731d6fdf74639319b00efce16acb8a3a715ce'
+})
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.waUrl) currentUrl = changes.waUrl.newValue || currentUrl
+  if (changes.waToken) currentToken = changes.waToken.newValue || currentToken
+})
+
+window.addEventListener('message', async (ev) => {
+  // só aceita mensagens da própria página
+  if (ev.source !== window) return
+  const d = ev.data
+  if (!d || !d.__fysiBridge || !d.path) return
+  try {
+    const r = await fetch(currentUrl + d.path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + currentToken,
+      },
+      body: JSON.stringify(d.body || {}),
+    })
+    if (!r.ok) {
+      console.warn('[Fysi Bridge:relay]', d.path, r.status)
+    }
+  } catch (e) {
+    console.warn('[Fysi Bridge:relay]', d.path, 'falhou:', e.message)
+  }
+})
