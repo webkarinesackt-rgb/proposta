@@ -953,15 +953,17 @@ async function backfillGroupNames() {
 // roda a cada 30s — preenche aos poucos sem martelar o WhatsApp
 setInterval(() => { backfillGroupNames().catch(() => {}) }, 30_000)
 
-// lista de conversas (mais recentes primeiro)
+// lista de conversas (mais recentes primeiro).
+// Inclui conversas SEM lastTime (vieram do sync mas sem mensagens
+// carregadas no histórico) — ficam no final, marcadas como "(sem
+// histórico)". Sem isso, conversas antigas/inativas somem da lista.
 app.get('/chats', (_req, res) => {
   const chats = [...store.chats.values()]
-    .filter((c) => c.lastTime)
     .map((c) => ({
       id: c.id,
       name: chatDisplayName(c.id),
       isGroup: c.id.endsWith('@g.us'),
-      lastText: c.lastText || '',
+      lastText: c.lastText || (c.lastTime ? '' : '(abra para puxar mensagens)'),
       lastTime: c.lastTime || 0,
       fromMeLast: !!c.fromMeLast,
       unread: c.unread || 0,
@@ -974,6 +976,8 @@ app.get('/chats', (_req, res) => {
       notes: c.notes || '',
       linkedProposalId: c.linkedProposalId || '',
     }))
+    // exclui só conversas que ainda nem nome têm (lixo do sync)
+    .filter((c) => c.lastTime || c.name)
     .sort((a, b) => b.lastTime - a.lastTime)
   res.json({ chats })
 })
