@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -377,8 +377,19 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           </p>
         )}
         <p
-          className="text-[10px] mt-1 text-right"
+          className="text-[10px] mt-1 text-right cursor-help"
           style={{ color: mine ? 'rgba(255,255,255,0.5)' : T.textDim }}
+          title={
+            msg.time
+              ? new Date(msg.time * 1000).toLocaleString('pt-BR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : ''
+          }
         >
           {fmtTime(msg.time)}
         </p>
@@ -408,7 +419,40 @@ export default function InboxView() {
   const [listOpen, setListOpen] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+  const [isAtBottom, setIsAtBottom] = useState(true)
+  const [newCount, setNewCount] = useState(0)
+  const [searchHits, setSearchHits] = useState<Set<string>>(new Set())
   const msgEndRef = useRef<HTMLDivElement>(null)
+  const msgScrollRef = useRef<HTMLDivElement>(null)
+
+  // busca server-side em mensagens (debounced)
+  useEffect(() => {
+    const q = search.trim()
+    if (q.length < 2) {
+      setSearchHits(new Set())
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        const hits = await waServer.searchMessages(q)
+        setSearchHits(new Set(hits.map((h) => h.chatId)))
+      } catch {}
+    }, 250)
+    return () => clearTimeout(t)
+  }, [search])
+
+  function handleMessagesScroll() {
+    const el = msgScrollRef.current
+    if (!el) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    setIsAtBottom(nearBottom)
+    if (nearBottom) setNewCount(0)
+  }
+
+  function scrollMessagesToBottom() {
+    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setNewCount(0)
+  }
 
   // poll: status + lista de conversas
   useEffect(() => {
@@ -456,18 +500,29 @@ export default function InboxView() {
   }, [selectedId])
 
   // rola para a última mensagem APENAS quando chega mensagem nova
-  // (evita o scroll automático a cada poll bagunçar a leitura)
+  // E o usuário está perto do final. Se ele estiver lendo histórico
+  // mais acima, não bagunça — em vez disso aparece o botão "↓ X novas".
   const lastMsgIdRef = useRef<string | null>(null)
   useEffect(() => {
     const last = messages[messages.length - 1]?.id ?? null
     if (last && last !== lastMsgIdRef.current) {
+      const prevId = lastMsgIdRef.current
       lastMsgIdRef.current = last
-      msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      if (isAtBottom) {
+        msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        setNewCount(0)
+      } else {
+        const idx = prevId ? messages.findIndex((m) => m.id === prevId) : -1
+        const added = idx >= 0 ? messages.length - idx - 1 : 1
+        if (added > 0) setNewCount((c) => c + added)
+      }
     }
-  }, [messages])
+  }, [messages, isAtBottom])
   useEffect(() => {
     // ao trocar de conversa, reseta — a próxima leva rola
     lastMsgIdRef.current = null
+    setNewCount(0)
+    setIsAtBottom(true)
   }, [selectedId])
 
   // ?filter=unanswered → ativa o filtro / ?chat=jid → abre a conversa
@@ -549,7 +604,12 @@ export default function InboxView() {
   })()
 
   const filtered = chats.filter((c) => {
-    if (search.trim() && !c.name.toLowerCase().includes(search.toLowerCase())) return false
+    const q = search.trim().toLowerCase()
+    if (q) {
+      const nameMatch = c.name.toLowerCase().includes(q)
+      const msgMatch = searchHits.has(c.id)
+      if (!nameMatch && !msgMatch) return false
+    }
     if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
     if (chatFilter === 'archived') return !!c.archived
     if (c.archived) return false
@@ -578,8 +638,8 @@ export default function InboxView() {
             color: '#B91C1C',
           }}
         >
-          Servidor do WhatsApp offline. Rode <code>npm start</code> em{' '}
-          <code>wa-server</code>.
+          Servidor do WhatsApp offline. Verifique o container{' '}
+          <code>wa-server</code> na VPS.
         </div>
       )}
       {conn !== 'open' && !serverOff && (
@@ -990,31 +1050,52 @@ export default function InboxView() {
               </div>
 
               {/* mensagens */}
-              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-2">
-                {messages.length === 0 ? (
-                  <p
-                    className="text-[12px] text-center py-8"
-                    style={{ color: T.textDim }}
+              <div className="flex-1 min-h-0 relative">
+                <div
+                  ref={msgScrollRef}
+                  onScroll={handleMessagesScroll}
+                  className="absolute inset-0 overflow-y-auto px-6 py-5 flex flex-col gap-2"
+                >
+                  {messages.length === 0 ? (
+                    <p
+                      className="text-[12px] text-center py-8"
+                      style={{ color: T.textDim }}
+                    >
+                      Sem mensagens nesta conversa.
+                    </p>
+                  ) : (
+                    (() => {
+                      let lastDay = ''
+                      return messages.map((m) => {
+                        const day = dayKey(m.time)
+                        const showSep = day !== lastDay
+                        lastDay = day
+                        return (
+                          <div key={m.id}>
+                            {showSep && <DaySeparator timestamp={m.time} />}
+                            <Bubble msg={m} chatId={selectedId} />
+                          </div>
+                        )
+                      })
+                    })()
+                  )}
+                  <div ref={msgEndRef} />
+                </div>
+                {newCount > 0 && (
+                  <button
+                    onClick={scrollMessagesToBottom}
+                    className="absolute bottom-3 right-4 flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      background: T.accent,
+                      color: T.accentBright,
+                      boxShadow: '0 6px 20px rgba(13,56,57,0.25)',
+                    }}
+                    title="Ir para as mensagens novas"
                   >
-                    Sem mensagens nesta conversa.
-                  </p>
-                ) : (
-                  (() => {
-                    let lastDay = ''
-                    return messages.map((m) => {
-                      const day = dayKey(m.time)
-                      const showSep = day !== lastDay
-                      lastDay = day
-                      return (
-                        <div key={m.id}>
-                          {showSep && <DaySeparator timestamp={m.time} />}
-                          <Bubble msg={m} chatId={selectedId} />
-                        </div>
-                      )
-                    })
-                  })()
+                    <ArrowDown size={12} />
+                    {newCount} {newCount === 1 ? 'nova' : 'novas'}
+                  </button>
                 )}
-                <div ref={msgEndRef} />
               </div>
 
               {/* composer */}

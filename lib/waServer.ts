@@ -118,6 +118,15 @@ export interface WaDashboard {
   longestWaitH: number
 }
 
+export interface WaSearchHit {
+  chatId: string
+  name: string
+  count: number
+  snippet: string
+  time: number
+  fromMe: boolean
+}
+
 export const waServer = {
   base: WA,
 
@@ -206,6 +215,13 @@ export const waServer = {
   async dashboard(period: string): Promise<WaDashboard> {
     const r = await waFetch(`/dashboard?period=${period}`)
     return r.json()
+  },
+
+  async searchMessages(q: string): Promise<WaSearchHit[]> {
+    if (!q || q.trim().length < 2) return []
+    const r = await waFetch(`/search?q=${encodeURIComponent(q)}`)
+    const j = await r.json()
+    return j.results || []
   },
 
   async setStatus(chatId: string, status: string) {

@@ -301,6 +301,13 @@ export default function LeadsView() {
   const [chats, setChats] = useState<WaChat[]>([])
   const [serverOff, setServerOff] = useState(false)
   const [includeGroups, setIncludeGroups] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 2200)
+    return () => clearTimeout(t)
+  }, [toast])
 
   async function load() {
     try {
@@ -319,12 +326,19 @@ export default function LeadsView() {
   }, [])
 
   async function handleSetStatus(id: string, status: string) {
+    const prev = chats.find((c) => c.id === id)
+    if (prev?.status === status) return
+    const meta = STATUS_META[status]
     // otimista
     setChats((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)))
+    if (prev && meta) {
+      setToast(`${prev.name} → ${meta.label}`)
+    }
     try {
       await waServer.setStatus(id, status)
     } catch {
       load()
+      setToast('Erro ao mudar etapa — desfazendo')
     }
   }
 
@@ -343,7 +357,20 @@ export default function LeadsView() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
+    <div className="flex-1 min-h-0 overflow-y-auto thin-scroll relative">
+      {toast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] font-semibold px-4 py-2.5 rounded-full transition-all"
+          style={{
+            background: '#0D3839',
+            color: '#F4F99D',
+            boxShadow: '0 10px 30px rgba(13,56,57,0.25)',
+            maxWidth: '90vw',
+          }}
+        >
+          {toast}
+        </div>
+      )}
       <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
@@ -395,8 +422,8 @@ export default function LeadsView() {
               color: '#B91C1C',
             }}
           >
-            Servidor do WhatsApp offline. Rode <code>npm start</code> em{' '}
-            <code>wa-server</code>.
+            Servidor do WhatsApp offline. Verifique o container{' '}
+            <code>wa-server</code> na VPS.
           </div>
         )}
 

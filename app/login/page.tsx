@@ -11,11 +11,14 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setInfo('')
     const supabase = createClient()
     const { error: err } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -33,6 +36,33 @@ function LoginForm() {
     const next = sp.get('next') || '/admin'
     router.push(next)
     router.refresh()
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setError('Digite seu e-mail acima primeiro.')
+      return
+    }
+    setResetting(true)
+    setError('')
+    setInfo('')
+    const supabase = createClient()
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/login`
+        : undefined
+    const { error: err } = await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      { redirectTo }
+    )
+    setResetting(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setInfo(
+      `Enviamos um link de redefinição para ${email.trim()}. Confira sua caixa.`
+    )
   }
 
   return (
@@ -146,6 +176,14 @@ function LoginForm() {
               {error}
             </p>
           )}
+          {info && (
+            <p
+              className="text-[12px] font-semibold px-3 py-2 rounded-lg"
+              style={{ background: '#F0FDF4', color: '#15803D' }}
+            >
+              {info}
+            </p>
+          )}
 
           <button
             type="submit"
@@ -154,6 +192,16 @@ function LoginForm() {
             style={{ background: '#0D3839', color: '#F4F99D' }}
           >
             {loading ? 'Entrando…' : 'Entrar'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={resetting}
+            className="text-[12px] font-semibold underline-offset-2 hover:underline transition-opacity disabled:opacity-50 -mt-1 text-center"
+            style={{ color: '#6B8585' }}
+          >
+            {resetting ? 'Enviando…' : 'Esqueci minha senha'}
           </button>
         </form>
 

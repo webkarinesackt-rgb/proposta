@@ -735,6 +735,42 @@ app.post('/library/audio/:id/send', async (req, res) => {
 
 // ─── Inbox: conversas e mensagens ────────────────────────────────
 
+// busca uma string nas mensagens já em cache (case-insensitive),
+// devolve os chats que tiveram match + 1 trecho/contagem por chat.
+app.get('/search', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase()
+  if (q.length < 2) return res.json({ q, results: [] })
+  const byChat = new Map() // jid → { count, firstSnippet, firstTime, firstFromMe }
+  for (const [jid, msgs] of store.messages) {
+    if (!isRealChat(jid)) continue
+    for (const m of msgs) {
+      const text = (m.text || '').toLowerCase()
+      if (!text.includes(q)) continue
+      const ex = byChat.get(jid) || { count: 0 }
+      ex.count++
+      if (ex.count === 1) {
+        // primeiro trecho — pega ~60 chars de contexto ao redor do termo
+        const i = text.indexOf(q)
+        const start = Math.max(0, i - 25)
+        const end = Math.min(m.text.length, i + q.length + 35)
+        ex.firstSnippet = (start > 0 ? '…' : '') + m.text.slice(start, end) + (end < m.text.length ? '…' : '')
+        ex.firstTime = m.time
+        ex.firstFromMe = !!m.fromMe
+      }
+      byChat.set(jid, ex)
+    }
+  }
+  const results = [...byChat.entries()].map(([jid, info]) => ({
+    chatId: jid,
+    name: chatDisplayName(jid),
+    count: info.count,
+    snippet: info.firstSnippet,
+    time: info.firstTime,
+    fromMe: info.firstFromMe,
+  })).sort((a, b) => b.time - a.time).slice(0, 40)
+  res.json({ q, results })
+})
+
 // lista de conversas (mais recentes primeiro)
 app.get('/chats', (_req, res) => {
   const chats = [...store.chats.values()]

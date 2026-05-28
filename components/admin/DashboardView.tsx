@@ -196,8 +196,8 @@ export default function DashboardView() {
             }}
           >
             <p className="text-[13px]">
-              Servidor do WhatsApp offline. Rode <code>npm start</code> na pasta{' '}
-              <code>wa-server</code>.
+              Servidor do WhatsApp offline. Verifique o container{' '}
+              <code>wa-server</code> na VPS — pode estar reiniciando ou desconectado.
             </p>
           </div>
         ) : !data ? (
