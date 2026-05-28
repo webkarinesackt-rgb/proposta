@@ -30,16 +30,31 @@
     )
   }
 
+  // tenta extrair o melhor nome possível pra um chat
+  function bestName(c) {
+    return (
+      c.name ||
+      c.formattedTitle ||
+      c.contact?.name ||
+      c.contact?.formattedName ||
+      c.contact?.pushname ||
+      c.contact?.verifiedName ||
+      c.contact?.shortName ||
+      c.groupMetadata?.subject ||
+      ''
+    )
+  }
+
   // converte um chat do wppconnect num shape que o wa-server entende
   function chatToIngest(c) {
     const id = c.id?._serialized || c.id
     if (!id || typeof id !== 'string') return null
     return {
       id,
-      name: c.name || c.formattedTitle || c.contact?.name || c.contact?.pushname || '',
+      name: bestName(c),
       isGroup: !!c.isGroup,
       lastTime: Number(c.t) || 0, // timestamp (segundos)
-      lastText: c.lastReceivedKey?.fromMe ? (c.lastMessage?.body || '') : (c.lastMessage?.body || ''),
+      lastText: c.lastMessage?.body || c.lastMessage?.caption || '',
       fromMeLast: !!c.lastReceivedKey?.fromMe,
       unread: c.unreadCount || 0,
     }

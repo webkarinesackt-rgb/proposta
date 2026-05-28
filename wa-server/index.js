@@ -647,7 +647,8 @@ const upload = multer({
 })
 
 app.use(cors())
-app.use(express.json())
+// limite grande pra aguentar push de 1000+ conversas da extensão (~500KB)
+app.use(express.json({ limit: '10mb' }))
 app.use(express.static(path.join(__dirname, 'public')))
 
 // ─── auth: token compartilhado (Bearer ou ?t=) ───────────────────
