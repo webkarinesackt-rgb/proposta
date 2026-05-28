@@ -5,10 +5,13 @@ function setStatus(msg, cls) {
   $('status').className = cls || ''
 }
 
-// carrega config salva
+const DEFAULT_URL = 'https://wa-fysi.177-73-235-85.nip.io'
+const DEFAULT_TOKEN = 'cbdfc4cdb6aa39ccd397bc562d1731d6fdf74639319b00efce16acb8a3a715ce'
+
+// carrega config salva, ou usa default (zero-config inicial)
 chrome.storage.local.get(['waUrl', 'waToken'], (cfg) => {
-  if (cfg.waUrl) $('waUrl').value = cfg.waUrl
-  if (cfg.waToken) $('waToken').value = cfg.waToken
+  $('waUrl').value = cfg.waUrl || DEFAULT_URL
+  $('waToken').value = cfg.waToken || DEFAULT_TOKEN
 })
 
 // testa a URL com o token
