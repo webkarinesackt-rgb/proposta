@@ -26,7 +26,7 @@ import QRCode from 'qrcode'
 import express from 'express'
 import multer from 'multer'
 import cors from 'cors'
-import { rmSync } from 'node:fs'
+import { rmSync, readdirSync } from 'node:fs'
 import { writeFile, readFile, unlink, mkdir } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -132,8 +132,15 @@ async function startSock() {
       sseSend('status', { state: 'close', me: null })
 
       if (loggedOut) {
-        // sessão revogada — apaga credenciais para gerar um novo QR
-        rmSync(AUTH_DIR, { recursive: true, force: true })
+        // sessão revogada — apaga conteúdo de AUTH_DIR pra gerar novo QR.
+        // NÃO remove o próprio diretório (é um volume mount no Docker → EBUSY).
+        try {
+          for (const f of readdirSync(AUTH_DIR)) {
+            try {
+              rmSync(path.join(AUTH_DIR, f), { recursive: true, force: true })
+            } catch {}
+          }
+        } catch {}
       }
       // reconecta automaticamente (gera novo QR se necessário)
       setTimeout(startSock, 2000)
@@ -870,6 +877,47 @@ app.get('/search', (req, res) => {
     fromMe: info.firstFromMe,
   })).sort((a, b) => b.time - a.time).slice(0, 40)
   res.json({ q, results })
+})
+
+// Adiciona uma conversa ao inbox manualmente — útil pra contatos
+// que não vieram no sync inicial do Baileys (sync gap conhecido).
+// Valida que o número tem WhatsApp via onWhatsApp() antes.
+app.post('/chats/add', async (req, res) => {
+  if (!ensureConnected(res)) return
+  const { number, name } = req.body || {}
+  if (!number) return res.status(400).json({ ok: false, error: 'Informe "number".' })
+  try {
+    const r = await resolveJid(number)
+    if (!r.exists) {
+      return res.status(404).json({
+        ok: false,
+        error: `O número ${r.tried} não tem WhatsApp. Confira DDI (55) e DDD.`,
+      })
+    }
+    if (!store.chats.has(r.jid)) {
+      store.chats.set(r.jid, {
+        id: r.jid,
+        name: name || '',
+        unread: 0,
+        status: 'LEAD',
+        lastText: '(adicionado manualmente — envie uma mensagem)',
+        lastTime: Date.now() / 1000,
+        fromMeLast: false,
+      })
+      storeDirty = true
+      sseSend('changed', { kind: 'chats' })
+    } else if (name) {
+      // já existia — opcionalmente atualiza o nome
+      const ex = store.chats.get(r.jid)
+      ex.name = name
+      store.chats.set(r.jid, ex)
+      storeDirty = true
+      sseSend('changed', { kind: 'chats' })
+    }
+    res.json({ ok: true, jid: r.jid })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
 })
 
 // Tenta buscar o nome (subject) de grupos que estão sem nome no store,
