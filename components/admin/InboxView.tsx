@@ -172,6 +172,7 @@ function ChatRow({
   onClick,
   onSetStatus,
   onArchive,
+  onIgnore,
   matchSnippet,
 }: {
   chat: WaChat
@@ -179,6 +180,7 @@ function ChatRow({
   onClick: () => void
   onSetStatus: (status: string) => void
   onArchive: () => void
+  onIgnore: () => void
   matchSnippet?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -347,6 +349,18 @@ function ChatRow({
                       className="my-1"
                       style={{ borderTop: `1px solid ${T.borderSubtle}` }}
                     />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onIgnore()
+                        setMenuOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6B8585]"
+                      title='Tira essa conversa do filtro "Sem resposta" sem precisar responder'
+                    >
+                      <span className="text-[11px]">🔕</span>
+                      {chat.ignored ? 'Não ignorar mais' : 'Ignorar (sair de Sem resposta)'}
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -753,6 +767,14 @@ export default function InboxView() {
     reloadChats()
   }
 
+  async function handleToggleIgnore(id: string, ignored: boolean) {
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, ignored } : c)))
+    try {
+      await waServer.updateChat(id, { ignored })
+    } catch {}
+    reloadChats()
+  }
+
   async function handleArchiveChat(id: string, archived: boolean) {
     setChats((cs) => cs.map((c) => (c.id === id ? { ...c, archived } : c)))
     try {
@@ -773,8 +795,27 @@ export default function InboxView() {
         setDraft(text)
         alert('Erro ao enviar: ' + (r.error || 'desconhecido'))
       } else {
+        // update otimista: marca a conversa como "respondida"
+        // (fromMeLast=true) IMEDIATAMENTE, sem esperar SSE.
+        // Antes ela ficava ainda no filtro "Sem resposta" alguns
+        // segundos até o servidor empurrar o evento de atualização.
+        setChats((cs) =>
+          cs.map((c) =>
+            c.id === selectedId
+              ? {
+                  ...c,
+                  fromMeLast: true,
+                  lastText: text,
+                  lastTime: Math.floor(Date.now() / 1000),
+                }
+              : c
+          )
+        )
         const m = await waServer.messages(selectedId)
         setMessages(m.messages || [])
+        // recarrega lista do servidor pra confirmar (caso outro
+        // dispositivo tenha enviado algo ao mesmo tempo)
+        reloadChats()
       }
     } catch {
       setDraft(text)
@@ -785,7 +826,7 @@ export default function InboxView() {
   }
 
   const unansweredCount = chats.filter(
-    (c) => !c.archived && !c.isGroup && !c.fromMeLast
+    (c) => !c.archived && !c.isGroup && !c.fromMeLast && !c.ignored
   ).length
   const archivedCount = chats.filter((c) => c.archived).length
   const groupsCount = chats.filter((c) => !c.archived && c.isGroup).length
@@ -811,7 +852,7 @@ export default function InboxView() {
     if (chatFilter === 'archived') return !!c.archived
     if (c.archived) return false
     if (chatFilter === 'groups') return c.isGroup
-    if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast)) return false
+    if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored)) return false
     return true
   })
 
@@ -1131,6 +1172,7 @@ export default function InboxView() {
                     onClick={() => setSelectedId(c.id)}
                     onSetStatus={(s) => handleSetChatStatus(c.id, s)}
                     onArchive={() => handleArchiveChat(c.id, !c.archived)}
+                    onIgnore={() => handleToggleIgnore(c.id, !c.ignored)}
                     matchSnippet={snippet}
                   />
                 )

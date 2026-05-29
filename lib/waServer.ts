@@ -31,6 +31,7 @@ export interface WaChat {
   unread: number
   status: string
   archived: boolean
+  ignored: boolean
   tags: string[]
   value: number
   source: string
@@ -41,8 +42,9 @@ export interface WaChat {
 
 export interface WaChatPatch {
   name?: string
-  alias?: string // rename custom — sobrevive a sync do WA (prec. max)
+  alias?: string
   archived?: boolean
+  ignored?: boolean
   tags?: string[]
   value?: number
   source?: string
@@ -69,6 +71,7 @@ export const LEAD_STATUSES = [
   { id: 'REUNIAO',    label: 'Reunião agendada',    color: '#F97316', bg: '#FFF7ED' },
   { id: 'PROPOSTA',   label: 'Proposta enviada',    color: '#EF4444', bg: '#FEF2F2' },
   { id: 'AGUARDANDO', label: 'Aguardando resposta', color: '#A855F7', bg: '#FAF5FF' },
+  { id: 'ACEITA',     label: 'Proposta aceita',     color: '#0EA5E9', bg: '#E0F2FE' },
   { id: 'FECHADO',    label: 'Fechado',             color: '#22C55E', bg: '#F0FDF4' },
   { id: 'PERDIDA',    label: 'Perdida',             color: '#64748B', bg: '#F1F5F9' },
 ] as const

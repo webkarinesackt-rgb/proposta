@@ -578,7 +578,7 @@ function computeMetrics(period) {
     // recebida está DENTRO do período selecionado — antes contava
     // 571 da semana porque pegava TODO o histórico independente
     // do filtro de Hoje/Semana/Mês.
-    if (!c.fromMeLast && c.lastTime >= since) {
+    if (!c.fromMeLast && !c.ignored && c.lastTime >= since) {
       unanswered++
       longestWait = Math.max(longestWait, now - c.lastTime)
     }
@@ -954,7 +954,7 @@ app.get('/search', (req, res) => {
 // Campos que SOMENTE o CRM controla (alias, tags, value, status, etc.)
 // são preservados — só atualizamos os campos vindos do WhatsApp.
 
-const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', 'linkedProposalId', 'status', 'archived']
+const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', 'linkedProposalId', 'status', 'archived', 'ignored']
 
 function mergeChatFromExtension(incoming) {
   if (!incoming?.id || !isRealChat(incoming.id)) return
@@ -1121,6 +1121,7 @@ app.get('/chats', (_req, res) => {
       unread: c.unread || 0,
       status: c.status || 'LEAD',
       archived: !!c.archived,
+      ignored: !!c.ignored,
       tags: c.tags || [],
       value: c.value || 0,
       source: c.source || '',
@@ -1270,6 +1271,7 @@ const LEAD_STATUSES = [
   'REUNIAO',
   'PROPOSTA',
   'AGUARDANDO',
+  'ACEITA',
   'FECHADO',
   'PERDIDA',
 ]
@@ -1291,8 +1293,9 @@ app.post('/chats/:id/status', (req, res) => {
 // atualiza qualquer campo do lead (archived, tags, value, source, etc.)
 const PATCHABLE = [
   'name',
-  'alias', // rename custom que sobrevive ao sync (precedência max em chatDisplayName)
+  'alias',
   'archived',
+  'ignored', // marca pra não aparecer em "Sem resposta" mesmo sem ter respondido
   'tags',
   'value',
   'source',
