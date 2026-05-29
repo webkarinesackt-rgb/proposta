@@ -574,7 +574,11 @@ function computeMetrics(period) {
     if (!c.lastTime) continue
     totalChats++
     if (c.id.endsWith('@g.us')) continue
-    if (!c.fromMeLast) {
+    // só conta como "esperando resposta" se a última mensagem
+    // recebida está DENTRO do período selecionado — antes contava
+    // 571 da semana porque pegava TODO o histórico independente
+    // do filtro de Hoje/Semana/Mês.
+    if (!c.fromMeLast && c.lastTime >= since) {
       unanswered++
       longestWait = Math.max(longestWait, now - c.lastTime)
     }
