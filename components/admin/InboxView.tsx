@@ -438,9 +438,9 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
             {renderText(msg.text, mine)}
           </p>
         )}
-        <p
-          className="text-[10px] mt-1 text-right cursor-help"
-          style={{ color: mine ? 'rgba(255,255,255,0.5)' : T.textDim }}
+        <div
+          className="text-[10px] mt-1 flex items-center justify-end gap-1 cursor-help"
+          style={{ color: mine ? 'rgba(255,255,255,0.55)' : T.textDim }}
           title={
             msg.time
               ? new Date(msg.time * 1000).toLocaleString('pt-BR', {
@@ -453,8 +453,26 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
               : ''
           }
         >
-          {fmtTime(msg.time)}
-        </p>
+          <span>{fmtTime(msg.time)}</span>
+          {mine && msg.status != null && msg.status >= 2 && (
+            <span
+              style={{
+                // 4/5 = lida/tocada → azul; 3 = entregue ✓✓; 2 = enviada ✓
+                color:
+                  msg.status >= 4
+                    ? '#60A5FA'
+                    : 'rgba(255,255,255,0.55)',
+                fontWeight: 700,
+                letterSpacing: '-2px',
+              }}
+              aria-label={
+                msg.status >= 4 ? 'lida' : msg.status === 3 ? 'entregue' : 'enviada'
+              }
+            >
+              {msg.status >= 3 ? '✓✓' : '✓'}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -864,6 +882,21 @@ export default function InboxView() {
       setSelectedId(firstFilteredId)
     }
   }, [chatFilter, firstFilteredId, selectedId])
+
+  // Quando abre uma conversa com unread, marca como lida no Baileys
+  // (limpa contador aqui E no seu celular). Pequeno delay pra não
+  // disparar em troca rápida de chat (browse acidental).
+  useEffect(() => {
+    if (!selectedId || !currentChat?.unread) return
+    const t = setTimeout(() => {
+      waServer.markRead(selectedId).catch(() => {})
+      // update otimista local
+      setChats((cs) =>
+        cs.map((c) => (c.id === selectedId ? { ...c, unread: 0 } : c))
+      )
+    }, 800)
+    return () => clearTimeout(t)
+  }, [selectedId, currentChat?.unread])
 
   return (
     <div className="flex-1 min-h-0 flex flex-col" style={{ background: T.card }}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { waServer, WaDashboard } from '@/lib/waServer'
+import { waServer, WaDashboard, WaSeriesPoint } from '@/lib/waServer'
 import {
   Inbox,
   MessageSquare,
@@ -53,6 +53,62 @@ function fmtWait(h: number) {
   if (!h) return '—'
   if (h < 24) return `${h}h`
   return `${Math.floor(h / 24)}d`
+}
+
+/* ── sparkline ───────────────────────────────────────── */
+
+function Sparkline({ series }: { series: WaSeriesPoint[] }) {
+  const W = 800
+  const H = 110
+  const PAD_X = 8
+  const PAD_Y = 12
+  const n = series.length
+  if (n < 2) return null
+  const maxVal = Math.max(1, ...series.map((p) => p.received + p.sent))
+  const stepX = (W - PAD_X * 2) / (n - 1)
+
+  function path(key: 'received' | 'sent') {
+    return series
+      .map((p, i) => {
+        const x = PAD_X + i * stepX
+        const y = PAD_Y + (H - PAD_Y * 2) * (1 - p[key] / maxVal)
+        return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+      })
+      .join(' ')
+  }
+
+  // path da área (preenchimento sob a linha)
+  function area(key: 'received' | 'sent') {
+    const top = series.map((p, i) => {
+      const x = PAD_X + i * stepX
+      const y = PAD_Y + (H - PAD_Y * 2) * (1 - p[key] / maxVal)
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+    }).join(' ')
+    const bottom = `L ${(PAD_X + (n - 1) * stepX).toFixed(1)} ${(H - PAD_Y).toFixed(1)} L ${PAD_X.toFixed(1)} ${(H - PAD_Y).toFixed(1)} Z`
+    return top + ' ' + bottom
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ height: H, overflow: 'visible' }}
+      preserveAspectRatio="none"
+    >
+      {/* baseline */}
+      <line
+        x1={PAD_X} x2={W - PAD_X}
+        y1={H - PAD_Y} y2={H - PAD_Y}
+        stroke="#E6E6E1" strokeWidth={1} strokeDasharray="2 3"
+      />
+      {/* received (azul) */}
+      <path d={area('received')} fill="#3B82F6" fillOpacity={0.08} />
+      <path d={path('received')} fill="none" stroke="#3B82F6" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* sent (verde) */}
+      <path d={area('sent')} fill="#22C55E" fillOpacity={0.08} />
+      <path d={path('sent')} fill="none" stroke="#22C55E" strokeWidth={1.5} strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 /* ── card ────────────────────────────────────────────── */
@@ -115,15 +171,20 @@ export default function DashboardView() {
   const router = useRouter()
   const [period, setPeriod] = useState<string>('week')
   const [data, setData] = useState<WaDashboard | null>(null)
+  const [series, setSeries] = useState<WaSeriesPoint[]>([])
   const [serverOff, setServerOff] = useState(false)
 
   useEffect(() => {
     let alive = true
     async function load() {
       try {
-        const d = await waServer.dashboard(period)
+        const [d, s] = await Promise.all([
+          waServer.dashboard(period),
+          waServer.dashboardSeries(period),
+        ])
         if (alive) {
           setData(d)
+          setSeries(s.series || [])
           setServerOff(false)
         }
       } catch {
@@ -313,6 +374,34 @@ export default function DashboardView() {
                 sub={`total de mensagens (${periodSub})`}
               />
             </div>
+
+            {/* sparkline: mensagens por dia (ou hora se period=today) */}
+            {series.length > 0 && (
+              <div
+                className="rounded-2xl p-5 mt-3"
+                style={{ background: T.card, border: `1px solid ${T.border}` }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: T.textDim }}
+                  >
+                    Volume {period === 'today' ? 'por hora' : 'por dia'}
+                  </span>
+                  <div className="flex items-center gap-3 text-[10px]" style={{ color: T.textMuted }}>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#3B82F6' }} />
+                      Recebidas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+                      Enviadas
+                    </span>
+                  </div>
+                </div>
+                <Sparkline series={series} />
+              </div>
+            )}
 
             <p
               className="text-[11px] mt-6 leading-relaxed"

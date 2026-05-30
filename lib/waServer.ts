@@ -89,6 +89,14 @@ export interface WaMessage {
   time: number
   pushName: string
   hasMedia?: boolean
+  /** 0=desconhecido, 2=enviada (✓), 3=entregue (✓✓ cinza), 4/5=lida/tocada (✓✓ azul) */
+  status?: number
+}
+
+export interface WaSeriesPoint {
+  t: number
+  received: number
+  sent: number
 }
 
 export interface WaStatus {
@@ -236,6 +244,18 @@ export const waServer = {
 
   async dashboard(period: string): Promise<WaDashboard> {
     const r = await waFetch(`/dashboard?period=${period}`)
+    return r.json()
+  },
+
+  async dashboardSeries(period: string): Promise<{ period: string; step: number; series: WaSeriesPoint[] }> {
+    const r = await waFetch(`/dashboard/series?period=${period}`)
+    return r.json()
+  },
+
+  async markRead(chatId: string) {
+    const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/read`, {
+      method: 'POST',
+    })
     return r.json()
   },
 

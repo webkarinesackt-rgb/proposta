@@ -208,6 +208,32 @@ async function startSock() {
     }
   })
 
+  // status de delivery/leitura das MINHAS mensagens (✓ / ✓✓ / ✓✓ lido).
+  // Baileys.WAMessageStatus: 1=ERROR, 2=PENDING, 3=SERVER_ACK, 4=DELIVERY_ACK,
+  // 5=READ, 6=PLAYED. Persistimos só pra mensagens nossas (fromMe=true).
+  sock.ev.on('messages.update', (updates) => {
+    const touched = new Set()
+    for (const u of updates || []) {
+      const jid = u.key?.remoteJid
+      const id = u.key?.id
+      const status = u.update?.status
+      if (!isRealChat(jid) || !id || status == null) continue
+      const arr = store.messages.get(jid)
+      if (!arr) continue
+      const idx = arr.findIndex((m) => m.id === id)
+      if (idx < 0) continue
+      // só armazena se mudou (evita SSE ruidoso)
+      if (arr[idx].status !== status) {
+        arr[idx].status = status
+        touched.add(jid)
+      }
+    }
+    if (touched.size > 0) {
+      storeDirty = true
+      sseSend('changed', { kind: 'messages', chats: [...touched] })
+    }
+  })
+
   // emite eventos quando chats são atualizados
   sock.ev.on('chats.upsert', () => {
     sseSend('changed', { kind: 'chats' })
@@ -1145,6 +1171,7 @@ app.get('/chats/:id/messages', (req, res) => {
     time: m.time,
     pushName: m.pushName,
     hasMedia: !!m.raw,
+    status: m.status || 0, // 0=desconhecido, 2=enviada, 3=entregue, 4/5=lida
   }))
   res.json({
     id: req.params.id,
@@ -1198,6 +1225,46 @@ app.get('/chats/:id/presence', (req, res) => {
     sock.presenceSubscribe(jid).catch(() => {})
   }
   res.json({ presence: presenceStore.get(jid) || null })
+})
+
+// marca conversa como lida — limpa o unread tanto no nosso store
+// quanto no WhatsApp (Baileys chatModify), pra o seu celular tb zerar.
+app.post('/chats/:id/read', async (req, res) => {
+  const jid = req.params.id
+  if (!isRealChat(jid)) return res.status(400).json({ ok: false })
+  const ex = store.chats.get(jid)
+  if (ex) {
+    ex.unread = 0
+    store.chats.set(jid, ex)
+    storeDirty = true
+    sseSend('changed', { kind: 'chats' })
+  }
+  // tenta sincronizar com o celular via Baileys (se a sessão estiver viva).
+  // Se falhar (sessão queimada), pelo menos limpa local — ainda é útil.
+  if (sock && connState === 'open') {
+    try {
+      // pega a última mensagem recebida pra usar como anchor
+      const arr = store.messages.get(jid) || []
+      const lastIncoming = [...arr].reverse().find((m) => !m.fromMe)
+      if (lastIncoming?.id) {
+        await sock.chatModify(
+          {
+            markRead: true,
+            lastMessages: [
+              {
+                key: { remoteJid: jid, id: lastIncoming.id, fromMe: false },
+                messageTimestamp: lastIncoming.time,
+              },
+            ],
+          },
+          jid
+        )
+      }
+    } catch (e) {
+      console.warn('[markRead]', e.message)
+    }
+  }
+  res.json({ ok: true })
 })
 
 // foto de perfil de um contato/grupo (proxy + cache)
@@ -1327,6 +1394,35 @@ app.get('/dashboard', (req, res) => {
   const allowed = ['today', 'week', 'month', 'all']
   const period = allowed.includes(req.query.period) ? req.query.period : 'week'
   res.json(computeMetrics(period))
+})
+
+// série temporal de mensagens por dia (pra sparkline do dashboard).
+// 'today' = 24 buckets horários, demais = N buckets diários.
+app.get('/dashboard/series', (req, res) => {
+  const allowed = ['today', 'week', 'month', 'all']
+  const period = allowed.includes(req.query.period) ? req.query.period : 'week'
+  const now = Math.floor(Date.now() / 1000)
+  const buckets = period === 'today' ? 24 : period === 'month' ? 30 : period === 'all' ? 52 : 7
+  const stepS = period === 'today' ? 3600 : period === 'all' ? 7 * 86400 : 86400
+  const startS = now - buckets * stepS
+
+  const series = Array.from({ length: buckets }, (_, i) => ({
+    t: startS + i * stepS,
+    received: 0,
+    sent: 0,
+  }))
+
+  for (const msgs of store.messages.values()) {
+    for (const m of msgs) {
+      if (m.time < startS) continue
+      const idx = Math.min(buckets - 1, Math.floor((m.time - startS) / stepS))
+      if (idx < 0) continue
+      if (m.fromMe) series[idx].sent++
+      else series[idx].received++
+    }
+  }
+
+  res.json({ period, step: stepS, series })
 })
 
 app.listen(PORT, () => {
