@@ -81,6 +81,20 @@ export type LeadStatusId = (typeof LEAD_STATUSES)[number]['id']
 export const STATUS_META: Record<string, { label: string; color: string; bg: string }> =
   Object.fromEntries(LEAD_STATUSES.map((s) => [s.id, s]))
 
+export interface WaQuoted {
+  text: string
+  type: string
+  fromMe: boolean
+  sender: string // display name de quem foi citado, se conhecido
+}
+
+export interface WaMessageMeta {
+  caption?: string
+  fileName?: string
+  mimetype?: string
+  fileLength?: number
+}
+
 export interface WaMessage {
   id: string
   fromMe: boolean
@@ -91,6 +105,8 @@ export interface WaMessage {
   hasMedia?: boolean
   /** 0=desconhecido, 2=enviada (✓), 3=entregue (✓✓ cinza), 4/5=lida/tocada (✓✓ azul) */
   status?: number
+  meta?: WaMessageMeta | null
+  quoted?: WaQuoted | null
 }
 
 export interface WaSeriesPoint {

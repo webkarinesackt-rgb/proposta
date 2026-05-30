@@ -339,9 +339,17 @@ function msgContent(message) {
   if (message.extendedTextMessage?.text)
     return { text: message.extendedTextMessage.text, type: 'texto' }
   if (message.imageMessage)
-    return { text: message.imageMessage.caption || '🖼️ Imagem', type: 'imagem' }
+    return {
+      text: message.imageMessage.caption || '',
+      type: 'imagem',
+      meta: { caption: message.imageMessage.caption || '' },
+    }
   if (message.videoMessage)
-    return { text: message.videoMessage.caption || '🎬 Vídeo', type: 'video' }
+    return {
+      text: message.videoMessage.caption || '',
+      type: 'video',
+      meta: { caption: message.videoMessage.caption || '' },
+    }
   if (message.audioMessage)
     return {
       text: message.audioMessage.ptt ? '🎙️ Mensagem de voz' : '🎵 Áudio',
@@ -351,6 +359,11 @@ function msgContent(message) {
     return {
       text: '📎 ' + (message.documentMessage.fileName || 'Documento'),
       type: 'documento',
+      meta: {
+        fileName: message.documentMessage.fileName || 'arquivo',
+        mimetype: message.documentMessage.mimetype || '',
+        fileLength: Number(message.documentMessage.fileLength) || 0,
+      },
     }
   if (message.stickerMessage) return { text: '🌟 Figurinha', type: 'figurinha' }
   if (message.locationMessage) return { text: '📍 Localização', type: 'local' }
@@ -448,12 +461,33 @@ function ingestContact(ct) {
   if (name) store.contacts.set(ct.id, name)
 }
 
+/** Extrai info da mensagem citada (reply/quote). */
+function extractQuoted(message) {
+  const m = unwrapMessage(message)
+  const ctx =
+    m?.extendedTextMessage?.contextInfo ||
+    m?.imageMessage?.contextInfo ||
+    m?.videoMessage?.contextInfo ||
+    m?.audioMessage?.contextInfo ||
+    m?.documentMessage?.contextInfo ||
+    null
+  if (!ctx?.quotedMessage) return null
+  const quoted = msgContent(ctx.quotedMessage)
+  return {
+    text: quoted.text || '',
+    type: quoted.type,
+    participant: ctx.participant || '', // quem mandou a mensagem citada
+    fromMe: !!ctx.participant ? false : !!ctx.fromMe,
+  }
+}
+
 /** Registra uma mensagem no store e atualiza a conversa. */
 function recordMessage(m) {
   try {
     const jid = m?.key?.remoteJid
     if (!isRealChat(jid)) return
-    const { text, type } = msgContent(m.message)
+    const { text, type, meta } = msgContent(m.message)
+    const quoted = extractQuoted(m.message)
     const time = tsToNum(m.messageTimestamp)
     const isGroup = jid.endsWith('@g.us')
     const rec = {
@@ -466,6 +500,8 @@ function recordMessage(m) {
       // em grupo, qual participante mandou (pra prefixar a prévia)
       participant: isGroup ? (m.key.participant || '') : '',
     }
+    if (meta) rec.meta = meta
+    if (quoted) rec.quoted = quoted
     // guarda o conteúdo bruto de mídias para download sob demanda
     if (['audio', 'imagem', 'video', 'documento'].includes(type)) {
       rec.raw = unwrapMessage(m.message)
@@ -684,6 +720,51 @@ app.use(cors())
 // limite grande pra aguentar push de 1000+ conversas da extensão (~500KB)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.static(path.join(__dirname, 'public')))
+
+// ─── Rate limit simples (sem dep externa) ────────────────────────
+// Token bucket por IP — 200 req/min é suficiente pra polls do CRM
+// + extensão. Bloqueia bots/loops descontrolados ANTES da auth.
+const rateBuckets = new Map() // ip → { tokens, last }
+const RATE_MAX = 200
+const RATE_REFILL_PER_S = RATE_MAX / 60 // refill no minuto
+app.use((req, res, next) => {
+  // skip SSE — conexão long-lived legítima
+  if (req.path === '/events') return next()
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown'
+  const now = Date.now() / 1000
+  const ex = rateBuckets.get(ip) || { tokens: RATE_MAX, last: now }
+  // refill
+  const elapsed = now - ex.last
+  ex.tokens = Math.min(RATE_MAX, ex.tokens + elapsed * RATE_REFILL_PER_S)
+  ex.last = now
+  if (ex.tokens < 1) {
+    rateBuckets.set(ip, ex)
+    return res.status(429).json({ ok: false, error: 'Rate limit exceeded' })
+  }
+  ex.tokens -= 1
+  rateBuckets.set(ip, ex)
+  next()
+})
+// limpa buckets velhos periodicamente
+setInterval(() => {
+  const cutoff = Date.now() / 1000 - 3600
+  for (const [ip, b] of rateBuckets) if (b.last < cutoff) rateBuckets.delete(ip)
+}, 5 * 60_000)
+
+/** Valida JID no formato esperado. Bloqueia path traversal / SQL-like. */
+function isValidJid(jid) {
+  return typeof jid === 'string' &&
+    jid.length < 80 &&
+    /^[0-9a-zA-Z._-]+@(s\.whatsapp\.net|g\.us|lid)$/.test(jid)
+}
+
+/** Middleware pra endpoints /chats/:id/* — rejeita JID malformado. */
+function requireValidJid(req, res, next) {
+  if (!isValidJid(req.params.id)) {
+    return res.status(400).json({ ok: false, error: 'JID inválido' })
+  }
+  next()
+}
 
 // ─── auth: token compartilhado (Bearer ou ?t=) ───────────────────
 // Em prod (VPS exposto à internet) WA_AUTH_TOKEN é obrigatório. Sem ele
@@ -1162,7 +1243,7 @@ app.get('/chats', (_req, res) => {
 })
 
 // mensagens de uma conversa
-app.get('/chats/:id/messages', (req, res) => {
+app.get('/chats/:id/messages', requireValidJid, (req, res) => {
   const msgs = (store.messages.get(req.params.id) || []).map((m) => ({
     id: m.id,
     fromMe: m.fromMe,
@@ -1172,6 +1253,18 @@ app.get('/chats/:id/messages', (req, res) => {
     pushName: m.pushName,
     hasMedia: !!m.raw,
     status: m.status || 0, // 0=desconhecido, 2=enviada, 3=entregue, 4/5=lida
+    meta: m.meta || null,   // fileName/mimetype para documentos, caption para mídias
+    quoted: m.quoted
+      ? {
+          text: m.quoted.text,
+          type: m.quoted.type,
+          // resolve o nome do remetente da mensagem citada quando der
+          fromMe: !!m.quoted.fromMe,
+          sender: m.quoted.participant
+            ? chatDisplayName(m.quoted.participant)
+            : '',
+        }
+      : null,
   }))
   res.json({
     id: req.params.id,
@@ -1181,7 +1274,7 @@ app.get('/chats/:id/messages', (req, res) => {
 })
 
 // baixa a mídia de uma mensagem, sob demanda
-app.get('/chats/:id/media/:messageId', async (req, res) => {
+app.get('/chats/:id/media/:messageId', requireValidJid, async (req, res) => {
   if (!sock) return res.status(409).json({ ok: false, error: 'WhatsApp não conectado.' })
   const arr = store.messages.get(req.params.id) || []
   const rec = arr.find((m) => m.id === req.params.messageId)
@@ -1217,7 +1310,7 @@ app.get('/chats/:id/media/:messageId', async (req, res) => {
 
 // presence (online / digitando / etc). Assina o JID na primeira chamada
 // e devolve o último estado conhecido + timestamp.
-app.get('/chats/:id/presence', (req, res) => {
+app.get('/chats/:id/presence', requireValidJid, (req, res) => {
   if (!sock) return res.status(409).json({ presence: null })
   const jid = req.params.id
   if (!subscribedJids.has(jid)) {
@@ -1229,7 +1322,7 @@ app.get('/chats/:id/presence', (req, res) => {
 
 // marca conversa como lida — limpa o unread tanto no nosso store
 // quanto no WhatsApp (Baileys chatModify), pra o seu celular tb zerar.
-app.post('/chats/:id/read', async (req, res) => {
+app.post('/chats/:id/read', requireValidJid, async (req, res) => {
   const jid = req.params.id
   if (!isRealChat(jid)) return res.status(400).json({ ok: false })
   const ex = store.chats.get(jid)
@@ -1268,7 +1361,7 @@ app.post('/chats/:id/read', async (req, res) => {
 })
 
 // foto de perfil de um contato/grupo (proxy + cache)
-app.get('/chats/:id/photo', async (req, res) => {
+app.get('/chats/:id/photo', requireValidJid, async (req, res) => {
   if (!sock) {
     res.setHeader('Cache-Control', 'no-store')
     return res.status(409).send()
@@ -1295,7 +1388,7 @@ app.get('/chats/:id/photo', async (req, res) => {
 })
 
 // enviar texto para uma conversa existente
-app.post('/chats/:id/send-text', async (req, res) => {
+app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
   if (!ensureConnected(res)) return
   const { text } = req.body || {}
   if (!text) return res.status(400).json({ ok: false, error: 'Informe "text".' })
@@ -1310,7 +1403,7 @@ app.post('/chats/:id/send-text', async (req, res) => {
 })
 
 // enviar um áudio salvo para uma conversa existente
-app.post('/chats/:id/send-audio/:audioId', async (req, res) => {
+app.post('/chats/:id/send-audio/:audioId', requireValidJid, async (req, res) => {
   if (!ensureConnected(res)) return
   const lib = await readLibrary()
   const audio = lib.audios.find((a) => a.id === req.params.audioId)
@@ -1342,7 +1435,7 @@ const LEAD_STATUSES = [
   'FECHADO',
   'PERDIDA',
 ]
-app.post('/chats/:id/status', (req, res) => {
+app.post('/chats/:id/status', requireValidJid, (req, res) => {
   const { status } = req.body || {}
   if (!LEAD_STATUSES.includes(status)) {
     return res.status(400).json({ ok: false, error: 'Status inválido.' })
@@ -1371,7 +1464,7 @@ const PATCHABLE = [
   'linkedProposalId',
   'status',
 ]
-app.patch('/chats/:id', (req, res) => {
+app.patch('/chats/:id', requireValidJid, (req, res) => {
   const body = req.body || {}
   const ex = store.chats.get(req.params.id) || {
     id: req.params.id,

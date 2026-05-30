@@ -387,8 +387,14 @@ function ChatRow({
 function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const mine = msg.fromMe
   const isAudio = msg.type === 'audio' && msg.hasMedia
+  const isImage = msg.type === 'imagem' && msg.hasMedia
+  const isVideo = msg.type === 'video' && msg.hasMedia
+  const isDocument = msg.type === 'documento' && msg.hasMedia
+  const isMedia = isAudio || isImage || isVideo || isDocument
+  const caption = msg.meta?.caption || ''
   const [copied, setCopied] = useState(false)
-  const canCopy = !isAudio && !!msg.text && msg.text !== '[mensagem]'
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const canCopy = !isMedia && !!msg.text && msg.text !== '[mensagem]'
 
   async function copyText() {
     try {
@@ -398,10 +404,17 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
     } catch {}
   }
 
+  function fmtBytes(n: number) {
+    if (!n) return ''
+    if (n < 1024) return `${n} B`
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+    return `${(n / 1024 / 1024).toFixed(1)} MB`
+  }
+
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'} group`}>
       <div
-        className="relative max-w-[72%] px-3.5 py-2 rounded-2xl"
+        className="relative max-w-[72%] rounded-2xl overflow-hidden"
         style={{
           background: mine ? T.accent : '#FFFFFF',
           color: mine ? '#FFFFFF' : T.textPrimary,
@@ -415,7 +428,7 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           <button
             onClick={copyText}
             title={copied ? 'Copiado!' : 'Copiar texto'}
-            className="absolute -top-2 -right-2 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-1 right-1 z-10 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
               background: '#FFFFFF',
               border: `1px solid ${T.border}`,
@@ -426,20 +439,105 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
             {copied ? <Check size={11} /> : <Copy size={11} />}
           </button>
         )}
-        {isAudio ? (
-          <audio
-            controls
-            preload="none"
-            src={waServer.mediaUrl(chatId, msg.id)}
-            style={{ height: 36, maxWidth: 240, display: 'block' }}
-          />
+
+        {/* Mensagem citada (quoted/reply) */}
+        {msg.quoted && (
+          <div
+            className="m-2 mb-0 px-2.5 py-1.5 rounded-lg text-[11px] border-l-2"
+            style={{
+              background: mine ? 'rgba(255,255,255,0.08)' : '#FAFAF8',
+              borderColor: mine ? '#F4F99D' : T.accent,
+              color: mine ? 'rgba(255,255,255,0.85)' : T.textMuted,
+            }}
+          >
+            <span
+              className="font-semibold block leading-tight"
+              style={{ color: mine ? '#F4F99D' : T.accent, fontSize: 10 }}
+            >
+              {msg.quoted.fromMe ? 'Você' : msg.quoted.sender || 'Citação'}
+            </span>
+            <span className="block truncate leading-snug">
+              {msg.quoted.text || (msg.quoted.type === 'imagem' ? '🖼️ Imagem' : msg.quoted.type === 'audio' ? '🎙️ Áudio' : '[mensagem]')}
+            </span>
+          </div>
+        )}
+
+        {/* Conteúdo principal */}
+        {isImage ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={waServer.mediaUrl(chatId, msg.id)}
+              alt={caption || 'imagem'}
+              onLoad={() => setImgLoaded(true)}
+              className="block w-full max-w-[320px] cursor-zoom-in"
+              style={{
+                maxHeight: 320,
+                objectFit: 'cover',
+                background: '#F4F3EF',
+                minHeight: imgLoaded ? undefined : 160,
+              }}
+              onClick={() => window.open(waServer.mediaUrl(chatId, msg.id), '_blank')}
+            />
+            {caption && (
+              <p className="px-3 pt-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
+                {renderText(caption, mine)}
+              </p>
+            )}
+          </div>
+        ) : isVideo ? (
+          <div>
+            <video
+              controls
+              preload="metadata"
+              src={waServer.mediaUrl(chatId, msg.id)}
+              className="block w-full max-w-[320px]"
+              style={{ maxHeight: 320, background: '#000' }}
+            />
+            {caption && (
+              <p className="px-3 pt-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
+                {renderText(caption, mine)}
+              </p>
+            )}
+          </div>
+        ) : isDocument ? (
+          <a
+            href={waServer.mediaUrl(chatId, msg.id)}
+            target="_blank"
+            rel="noopener"
+            download={msg.meta?.fileName || 'arquivo'}
+            className="m-2 mb-0 px-3 py-2.5 rounded-lg flex items-center gap-3 transition-opacity hover:opacity-80"
+            style={{
+              background: mine ? 'rgba(255,255,255,0.10)' : '#FAFAF8',
+              border: `1px solid ${mine ? 'rgba(255,255,255,0.15)' : T.border}`,
+            }}
+          >
+            <span className="text-[20px]">📎</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold truncate" style={{ color: mine ? '#FFF' : T.textPrimary }}>
+                {msg.meta?.fileName || 'arquivo'}
+              </p>
+              <p className="text-[10px]" style={{ color: mine ? 'rgba(255,255,255,0.6)' : T.textDim }}>
+                {fmtBytes(msg.meta?.fileLength || 0)} · clique pra baixar
+              </p>
+            </div>
+          </a>
+        ) : isAudio ? (
+          <div className="px-3 py-2">
+            <audio
+              controls
+              preload="none"
+              src={waServer.mediaUrl(chatId, msg.id)}
+              style={{ height: 36, maxWidth: 240, display: 'block' }}
+            />
+          </div>
         ) : (
-          <p className="text-[13px] leading-snug whitespace-pre-wrap break-words">
+          <p className="px-3.5 py-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
             {renderText(msg.text, mine)}
           </p>
         )}
         <div
-          className="text-[10px] mt-1 flex items-center justify-end gap-1 cursor-help"
+          className="px-3 pb-1.5 text-[10px] mt-1 flex items-center justify-end gap-1 cursor-help"
           style={{ color: mine ? 'rgba(255,255,255,0.55)' : T.textDim }}
           title={
             msg.time
