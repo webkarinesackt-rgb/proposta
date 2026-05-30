@@ -173,6 +173,51 @@ const MENSAL_PLANS: Plan[] = [
   },
 ]
 
+/* ── Posicionamento online ────────────────────────────── */
+
+const POSICIONAMENTO_PLANS: Plan[] = [
+  {
+    id: pid(30),
+    name: 'Identidade Essencial',
+    tagline: 'Marca + base digital',
+    description:
+      'Construção da identidade visual e dos fundamentos da sua presença online — pra você ter uma marca clara e profissional pra começar.',
+    delivery_days: 15,
+    price_cash: 2800,
+    price_installments_count: 6,
+    price_installment_value: 490,
+    highlight_phrase: 'Pra quem está começando agora',
+    features: [
+      'Logo + paleta + tipografia',
+      'Manual de marca enxuto',
+      'Templates de post (Instagram)',
+      'Configuração de Bio + Linktree',
+      'Sessão de definição de público',
+    ],
+  },
+  {
+    id: pid(31),
+    name: 'Posicionamento Completo',
+    tagline: 'Estratégia + identidade + conteúdo',
+    description:
+      'Tudo do plano essencial mais estratégia de posicionamento, calendário editorial inicial e mentoria pra você executar com clareza.',
+    delivery_days: 25,
+    price_cash: 4900,
+    price_installments_count: 10,
+    price_installment_value: 520,
+    highlight_phrase: 'Pra quem quer crescer com direção',
+    is_recommended: true,
+    features: [
+      'Tudo do Identidade Essencial',
+      'Diagnóstico de marca + concorrência',
+      'Definição de pilares e tom de voz',
+      'Calendário editorial dos primeiros 30 dias',
+      'Estratégia de aquisição (orgânico + ads)',
+      '2 sessões de mentoria 1:1',
+    ],
+  },
+]
+
 /* ── Export ───────────────────────────────────────────── */
 
 export type LpConfig = 'sem_copy_com_copy' | 'start_scale' | '3_planos' | 'so_copy'
@@ -192,8 +237,9 @@ export function getPlansForScope(
       default:                  return [LP_START, LP_PERSUASIVO]
     }
   }
-  if (type === 'site_completo') return sitePlan(sitePages ?? '3-5')
-  if (type === 'mensal')        return MENSAL_PLANS
+  if (type === 'site_completo')  return sitePlan(sitePages ?? '3-5')
+  if (type === 'mensal')         return MENSAL_PLANS
+  if (type === 'posicionamento') return POSICIONAMENTO_PLANS
   return [LP_PERSUASIVO] // custom — empty shell
 }
 

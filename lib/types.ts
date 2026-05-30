@@ -1,4 +1,9 @@
-export type ProjectType = 'landing_page' | 'site_completo' | 'mensal' | 'custom'
+export type ProjectType =
+  | 'landing_page'
+  | 'site_completo'
+  | 'mensal'
+  | 'posicionamento'
+  | 'custom'
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired'
 export type Currency = 'BRL' | 'EUR' | 'USD'
 

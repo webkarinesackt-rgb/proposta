@@ -59,11 +59,12 @@ function SectionCard({ step, title, desc, children }: { step: string; title: str
 
 /* ── scope selector ──────────────────────────────────── */
 
-const SCOPE_TYPES: { value: ProjectType; label: string; icon: string; desc: string }[] = [
-  { value: 'landing_page',  label: 'Landing Page', icon: '⚡', desc: 'Uma página focada em conversão' },
-  { value: 'site_completo', label: 'Site Completo', icon: '🏛', desc: 'Múltiplas páginas e seções' },
-  { value: 'mensal',        label: 'Mensal',        icon: '🔄', desc: 'Gestão recorrente' },
-  { value: 'custom',        label: 'Custom',        icon: '✏️', desc: 'Escopo personalizado' },
+const SCOPE_TYPES: { value: ProjectType; label: string; desc: string }[] = [
+  { value: 'landing_page',   label: 'Landing Page',          desc: 'Uma página focada em conversão' },
+  { value: 'site_completo',  label: 'Site Completo',         desc: 'Múltiplas páginas e seções' },
+  { value: 'mensal',         label: 'Mensal',                desc: 'Gestão recorrente' },
+  { value: 'posicionamento', label: 'Posicionamento online', desc: 'Estratégia, identidade e presença digital' },
+  { value: 'custom',         label: 'Custom',                desc: 'Escopo personalizado' },
 ]
 
 /* ── plan editor ─────────────────────────────────────── */
@@ -456,27 +457,41 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
         {/* ── SEÇÃO 0: Escopo ── */}
         <SectionCard step="◈" title="Escopo da proposta" desc="Define quais planos serão apresentados ao cliente">
           {/* scope type */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            {SCOPE_TYPES.map(s => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => handleScopeType(s.value)}
-                className="rounded-xl p-4 text-left transition-all"
-                style={{
-                  background: form.project_type === s.value ? '#0D3839' : '#F4F3EF',
-                  border: `1px solid ${form.project_type === s.value ? '#0D3839' : '#DFE0DB'}`,
-                  color: form.project_type === s.value ? '#FFFFFF' : '#162322',
-                }}
-              >
-                <div className="text-lg mb-2">{s.icon}</div>
-                <p className="text-[12px] font-bold">{s.label}</p>
-                <p className="text-[10px] mt-0.5"
-                  style={{ color: form.project_type === s.value ? '#8BB7AF' : '#8AA09A' }}>
-                  {s.desc}
-                </p>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-6">
+            {SCOPE_TYPES.map((s, i) => {
+              const active = form.project_type === s.value
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => handleScopeType(s.value)}
+                  className="relative rounded-xl px-4 py-5 text-left transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: active ? '#0D3839' : '#FFFFFF',
+                    border: `1px solid ${active ? '#0D3839' : '#E6E6E1'}`,
+                    color: active ? '#FFFFFF' : '#162322',
+                    boxShadow: active
+                      ? '0 8px 24px rgba(13,56,57,0.18)'
+                      : '0 1px 2px rgba(0,0,0,0.02)',
+                  }}
+                >
+                  {/* eyebrow numerado pra dar hierarquia premium */}
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-[0.18em] block mb-2"
+                    style={{ color: active ? '#F4F99D' : '#A8B5B0' }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <p className="text-[14px] font-semibold leading-tight">{s.label}</p>
+                  <p
+                    className="text-[11px] mt-1.5 leading-snug"
+                    style={{ color: active ? '#8BB7AF' : '#8AA09A' }}
+                  >
+                    {s.desc}
+                  </p>
+                </button>
+              )
+            })}
           </div>
 
           {/* lp config */}

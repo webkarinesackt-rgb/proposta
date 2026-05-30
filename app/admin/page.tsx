@@ -46,10 +46,11 @@ const STATUS_META: Record<
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  landing_page:  'Landing Page',
-  site_completo: 'Site Completo',
-  mensal:        'Mensal',
-  custom:        'Custom',
+  landing_page:   'Landing Page',
+  site_completo:  'Site Completo',
+  mensal:         'Mensal',
+  posicionamento: 'Posicionamento online',
+  custom:         'Custom',
 }
 
 function fmt(iso: string) {
