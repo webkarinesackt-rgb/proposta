@@ -394,11 +394,13 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const caption = msg.meta?.caption || ''
   const [copied, setCopied] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
-  const canCopy = !isMedia && !!msg.text && msg.text !== '[mensagem]'
+  // copiável: texto puro OU caption de mídia
+  const copyable = msg.text || caption
+  const canCopy = !isAudio && !!copyable && copyable !== '[mensagem]'
 
   async function copyText() {
     try {
-      await navigator.clipboard.writeText(msg.text)
+      await navigator.clipboard.writeText(copyable)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {}
@@ -703,20 +705,32 @@ export default function InboxView() {
         setConn(d.state)
       } catch {}
     })
-    es.addEventListener('changed', (ev) => {
-      // recarrega lista de conversas
+    // Debounce: rajada de SSE 'changed' (10 chats em 100ms) coalesce em
+    // 1 fetch só. Antes, N eventos disparavam N requests paralelos e
+    // a última a chegar ganhava — UI piscando com dados velhos.
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    let pendingMsgRefresh = false
+    function flushChanged() {
+      debounceTimer = null
       loadChats()
+      if (pendingMsgRefresh) {
+        pendingMsgRefresh = false
+        refreshMessagesRef.current?.()
+      }
+    }
+    es.addEventListener('changed', (ev) => {
       try {
         const d = JSON.parse((ev as MessageEvent).data) as {
           kind: string
           chats?: string[]
         }
-        // se a conversa selecionada teve mensagem nova, refetch dela
         const sel = selectedIdRef.current
         if (sel && d.chats && d.chats.includes(sel)) {
-          refreshMessagesRef.current?.()
+          pendingMsgRefresh = true
         }
       } catch {}
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(flushChanged, 250)
     })
     es.addEventListener('presence', (ev) => {
       try {
@@ -754,6 +768,7 @@ export default function InboxView() {
       es.close()
       clearInterval(iv)
       clearInterval(ivStatus)
+      if (debounceTimer) clearTimeout(debounceTimer)
     }
   }, [])
 
@@ -984,16 +999,25 @@ export default function InboxView() {
   // Quando abre uma conversa com unread, marca como lida no Baileys
   // (limpa contador aqui E no seu celular). Pequeno delay pra não
   // disparar em troca rápida de chat (browse acidental).
+  // CAPTURA selectedId no escopo do effect: se trocar de chat antes
+  // do timeout, o cleanup cancela; mesmo se vazar, a chamada usa o
+  // ID certo (não o atual). Também AbortController pra não confirmar
+  // no Baileys se já mudamos de chat.
   useEffect(() => {
     if (!selectedId || !currentChat?.unread) return
+    const idAtDispatch = selectedId
+    const controller = new AbortController()
     const t = setTimeout(() => {
-      waServer.markRead(selectedId).catch(() => {})
-      // update otimista local
+      if (controller.signal.aborted) return
+      waServer.markRead(idAtDispatch).catch(() => {})
       setChats((cs) =>
-        cs.map((c) => (c.id === selectedId ? { ...c, unread: 0 } : c))
+        cs.map((c) => (c.id === idAtDispatch ? { ...c, unread: 0 } : c))
       )
     }, 800)
-    return () => clearTimeout(t)
+    return () => {
+      clearTimeout(t)
+      controller.abort()
+    }
   }, [selectedId, currentChat?.unread])
 
   return (

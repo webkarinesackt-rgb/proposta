@@ -742,6 +742,11 @@ async function toWhatsAppVoice(inputBuffer) {
 
 // ─── API HTTP ────────────────────────────────────────────────────
 const app = express()
+// 1 = Traefik na frente. Faz req.ip respeitar X-Forwarded-For —
+// senão TODOS os requests viriam do IP do proxy e o rate-limit global
+// bloquearia clientes legítimos quando 1 abusivo estourasse.
+app.set('trust proxy', 1)
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 16 * 1024 * 1024 },
@@ -798,9 +803,10 @@ function requireValidJid(req, res, next) {
 }
 
 // ─── auth: token compartilhado (Bearer ou ?t=) ───────────────────
-// Em prod (VPS exposto à internet) WA_AUTH_TOKEN é obrigatório. Sem ele
-// definido, segue aberto (modo dev local). Aplicado depois do static pra
-// a UI de QR seguir abrindo no navegador; o JS dela injeta o token.
+// WA_AUTH_TOKEN é obrigatório por padrão (fail-closed).
+// Pra rodar local sem token: WA_AUTH_TOKEN=dev WA_DEV_OPEN=true
+const WA_DEV_OPEN = process.env.WA_DEV_OPEN === 'true' && process.env.NODE_ENV !== 'production'
+
 if (AUTH_TOKEN) {
   app.use((req, res, next) => {
     const header = req.headers.authorization || ''
@@ -810,10 +816,10 @@ if (AUTH_TOKEN) {
     res.status(401).json({ ok: false, error: 'Unauthorized' })
   })
   console.log('🔒  WA_AUTH_TOKEN ativo — endpoints protegidos por bearer/?t=')
-} else if (process.env.NODE_ENV === 'production') {
-  // fail-CLOSED em prod: se esquecer o env var, o servidor recusa
-  // qualquer chamada em vez de expor tudo à internet.
-  console.error('❌  WA_AUTH_TOKEN obrigatório em produção. Recusando todas as chamadas.')
+} else if (!WA_DEV_OPEN) {
+  // FAIL-CLOSED por padrão. Antes só falhava em production; agora
+  // bloqueia também em dev a menos que WA_DEV_OPEN=true seja explícito.
+  console.error('❌  WA_AUTH_TOKEN não configurado. Recusando todas as chamadas. Pra abrir em dev: WA_DEV_OPEN=true')
   app.use((_req, res) => {
     res.status(503).json({ ok: false, error: 'WA_AUTH_TOKEN não configurado' })
   })
@@ -841,19 +847,28 @@ app.get('/events', (req, res) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
-    // anti-buffer pra proxies (Traefik, nginx)
     'X-Accel-Buffering': 'no',
   })
   res.write(`event: hello\ndata: {"state":"${connState}","me":${JSON.stringify(meNumber)}}\n\n`)
   sseClients.add(res)
-  // keepalive a cada 25s pro proxy não derrubar a conexão por idle
+  // keepalive a cada 25s pro proxy não derrubar a conexão por idle.
+  // Se write falha (socket morto), limpa pra evitar leak.
   const ping = setInterval(() => {
-    try { res.write(': ping\n\n') } catch {}
+    try { res.write(': ping\n\n') } catch { cleanup() }
   }, 25_000)
-  req.on('close', () => {
+  // Limpa em close/error/end de AMBOS req e res — req.on('close') sozinho
+  // não dispara em sockets meio-fechados/abrupt resets.
+  let cleaned = false
+  function cleanup() {
+    if (cleaned) return
+    cleaned = true
     clearInterval(ping)
     sseClients.delete(res)
-  })
+  }
+  req.on('close', cleanup)
+  req.on('error', cleanup)
+  res.on('close', cleanup)
+  res.on('error', cleanup)
 })
 
 // diagnóstico: confere um número e mostra o JID resolvido no WhatsApp
@@ -1052,14 +1067,20 @@ app.post('/library/audio/:id/send', async (req, res) => {
 // devolve os chats que tiveram match + 1 trecho/contagem por chat.
 app.get('/search', (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase()
-  if (q.length < 2) return res.json({ q, results: [] })
+  // mínimo 3 chars: 2 era barato demais (atacante manda 'aa' 200x e
+  // satura CPU iterando 1M de mensagens por request)
+  if (q.length < 3) return res.json({ q, results: [] })
   const byChat = new Map() // jid → { count, snippet, time, fromMe } da MAIS NOVA
+  let scanned = 0
+  const SCAN_BUDGET = 200_000 // cap total de mensagens checadas por request
   for (const [jid, msgs] of store.messages) {
     if (!isRealChat(jid)) continue
-    // mensagens vêm em ordem cronológica (antigas → novas).
-    // iteramos NORMAL contando todos os matches, mas o snippet sobrescreve
-    // a cada match, então no fim fica o trecho da mensagem MAIS RECENTE.
+    // pula chats arquivados/ignorados na busca — UX limpa
+    const chat = store.chats.get(jid)
+    if (chat?.archived || chat?.ignored) continue
+    if (scanned >= SCAN_BUDGET) break
     for (const m of msgs) {
+      if (++scanned >= SCAN_BUDGET) break
       const text = (m.text || '').toLowerCase()
       if (!text.includes(q)) continue
       const ex = byChat.get(jid) || { count: 0 }
@@ -1176,24 +1197,43 @@ app.post('/ingest/message', (req, res) => {
   if (!m?.chatId || !isRealChat(m.chatId)) {
     return res.status(400).json({ ok: false, error: 'mensagem inválida' })
   }
-  // mesmo formato do recordMessage interno
+  // Caps anti-DoS
+  if (typeof m.text === 'string' && m.text.length > 64_000) {
+    return res.status(413).json({ ok: false, error: 'text muito grande' })
+  }
   const jid = m.chatId
-  const rec = {
+  const incoming = {
     id: m.id,
     fromMe: !!m.fromMe,
-    text: m.text || '',
-    type: m.type || 'texto',
+    text: typeof m.text === 'string' ? m.text : '',
+    type: typeof m.type === 'string' ? m.type : 'texto',
     time: Number(m.time) || Math.floor(Date.now() / 1000),
-    pushName: m.pushName || '',
+    pushName: typeof m.pushName === 'string' ? m.pushName : '',
     participant: '',
   }
   let arr = store.messages.get(jid)
   if (!arr) { arr = []; store.messages.set(jid, arr) }
-  const i = rec.id ? arr.findIndex((x) => x.id === rec.id) : -1
-  if (i >= 0) arr[i] = rec
-  else arr.push(rec)
+  const i = incoming.id ? arr.findIndex((x) => x.id === incoming.id) : -1
+  if (i >= 0) {
+    // MERGE: preserva campos ricos que vieram do Baileys (raw, quoted,
+    // meta, status, hasIngestedMedia). Extensão tipicamente manda só
+    // os básicos; não queremos perder o que já tínhamos.
+    const existing = arr[i]
+    arr[i] = {
+      ...existing,
+      ...incoming,
+      // só sobrescreve text/type se vierem não-vazios da extensão
+      text: incoming.text || existing.text,
+      type: incoming.type || existing.type,
+      // pushName: prefere o mais informativo
+      pushName: incoming.pushName || existing.pushName,
+    }
+  } else {
+    arr.push(incoming)
+  }
   arr.sort((a, b) => a.time - b.time)
   if (arr.length > 200) arr.splice(0, arr.length - 200)
+  const rec = arr[i >= 0 ? i : arr.findIndex((x) => x.id === incoming.id)]
 
   // atualiza chat também (lastText/lastTime/fromMeLast)
   const chat = store.chats.get(jid) || { id: jid, unread: 0, status: 'LEAD' }
@@ -1485,13 +1525,25 @@ app.get('/chats/:id/photo', requireValidJid, async (req, res) => {
 app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
   if (!ensureConnected(res)) return
   const { text } = req.body || {}
-  if (!text) return res.status(400).json({ ok: false, error: 'Informe "text".' })
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Informe "text".' })
+  }
+  if (text.length > 64_000) {
+    return res.status(413).json({ ok: false, error: 'mensagem muito longa' })
+  }
   try {
-    const sent = await sock.sendMessage(req.params.id, { text: String(text) })
-    if (sent) recordMessage(sent)
-    res.json({ ok: true })
+    const sent = await sock.sendMessage(req.params.id, { text })
+    // Baileys: status 1 = ERROR, 0 ou undefined = pendente; sem retorno = falha
+    if (!sent || !sent.key) {
+      return res.status(500).json({ ok: false, error: 'WhatsApp não confirmou o envio' })
+    }
+    if (sent.status === 1) {
+      return res.status(500).json({ ok: false, error: 'WhatsApp rejeitou a mensagem' })
+    }
+    recordMessage(sent)
+    res.json({ ok: true, id: sent.key.id })
   } catch (err) {
-    console.error('[chats/send-text]', err)
+    console.error('[chats/send-text]', err.message)
     res.status(500).json({ ok: false, error: err.message })
   }
 })
@@ -1558,21 +1610,47 @@ const PATCHABLE = [
   'linkedProposalId',
   'status',
 ]
+// Schema/type-check por campo — rejeita types errados em vez de gravar
+// lixo (proto pollution / type confusion).
+const FIELD_VALIDATORS = {
+  name:             (v) => typeof v === 'string' && v.length < 200,
+  alias:            (v) => typeof v === 'string' && v.length < 100,
+  archived:         (v) => typeof v === 'boolean',
+  ignored:          (v) => typeof v === 'boolean',
+  tags:             (v) => Array.isArray(v) && v.length < 30 &&
+                            v.every((t) => typeof t === 'string' && t.length > 0 && t.length < 40),
+  value:            (v) => Number.isFinite(v) && v >= 0 && v < 1e9,
+  source:           (v) => typeof v === 'string' && v.length < 100,
+  email:            (v) => typeof v === 'string' && v.length < 200,
+  notes:            (v) => typeof v === 'string' && v.length < 5000,
+  linkedProposalId: (v) => typeof v === 'string' && v.length < 100,
+  status:           (v) => typeof v === 'string' && LEAD_STATUSES.includes(v),
+}
+
 app.patch('/chats/:id', requireValidJid, (req, res) => {
   const body = req.body || {}
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ ok: false, error: 'body inválido' })
+  }
+  // Valida ANTES de aplicar — falha tudo se algum campo for inválido
+  const updates = {}
+  for (const k of PATCHABLE) {
+    if (!(k in body)) continue
+    const validator = FIELD_VALIDATORS[k]
+    if (!validator || !validator(body[k])) {
+      return res.status(400).json({ ok: false, error: `campo '${k}' inválido` })
+    }
+    updates[k] = body[k]
+  }
   const ex = store.chats.get(req.params.id) || {
     id: req.params.id,
     unread: 0,
     status: 'LEAD',
   }
-  for (const k of PATCHABLE) {
-    if (k in body) {
-      if (k === 'status' && !LEAD_STATUSES.includes(body[k])) continue
-      ex[k] = body[k]
-    }
-  }
+  Object.assign(ex, updates)
   store.chats.set(req.params.id, ex)
   storeDirty = true
+  sseSend('changed', { kind: 'chats' })
   res.json({ ok: true })
 })
 
