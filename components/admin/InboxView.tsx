@@ -19,11 +19,19 @@ const T = {
   borderSubtle: '#F0F0EC',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
-  conversationBg: '#F0EDE4',
+  // WhatsApp Web exato — fundo beige da área de mensagens
+  conversationBg: '#EFEAE2',
   accent: '#0D3839',
   accentBright: '#F4F99D',
   green: '#22C55E',
 }
+
+// Padrão sutil estilo doodle do WhatsApp Web (dots minúsculos em SVG inline,
+// data URL pra não precisar de fetch). Aplicado em background-image junto
+// com conversationBg.
+const WA_PATTERN = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="2" cy="2" r="1" fill="%23000" fill-opacity="0.04"/><circle cx="29" cy="29" r="0.7" fill="%23000" fill-opacity="0.03"/><circle cx="48" cy="14" r="0.6" fill="%23000" fill-opacity="0.025"/><circle cx="14" cy="48" r="0.8" fill="%23000" fill-opacity="0.035"/></svg>'
+)}")`
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -1358,10 +1366,13 @@ export default function InboxView() {
         {/* ── conversa ── */}
         <div
           className="flex-1 min-w-0 flex flex-col relative"
-          style={{ background: T.conversationBg }}
+          style={{
+            background: T.conversationBg,
+            backgroundImage: WA_PATTERN,
+          }}
         >
           {!selectedId ? (
-            <div className="flex-1 flex items-center justify-center flex-col gap-3 px-6 text-center relative">
+            <div className="flex-1 flex items-center justify-center flex-col gap-4 px-6 text-center relative">
               {!listOpen && (
                 <button
                   onClick={() => setListOpen(true)}
@@ -1372,29 +1383,58 @@ export default function InboxView() {
                   <PanelLeftOpen size={16} />
                 </button>
               )}
+              {/* logo Fysi grande, igual o estilo do login */}
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                className="w-24 h-24 rounded-3xl flex items-center justify-center"
                 style={{
-                  background: '#FFFFFF',
-                  border: `1px solid ${T.border}`,
+                  background:
+                    'radial-gradient(circle at 30% 25%, #F4F99D 0%, #C8E6E0 60%, #6BA89E 100%)',
+                  boxShadow: '0 8px 32px rgba(13,56,57,0.15)',
                 }}
               >
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={T.textDim}
-                  strokeWidth="1.5"
+                <span
+                  style={{
+                    fontFamily: '"ivypresto-display", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontWeight: 700,
+                    fontSize: 52,
+                    color: '#0D3839',
+                    lineHeight: 1,
+                  }}
                 >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                  F
+                </span>
               </div>
-              <p
-                className="text-[13px]"
-                style={{ color: T.textMuted, maxWidth: 280 }}
-              >
-                Selecione uma conversa à esquerda para começar a responder.
+              <div className="mt-2 max-w-[360px]">
+                <h2
+                  className="leading-tight mb-2"
+                  style={{
+                    fontFamily: '"ivypresto-display", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontWeight: 300,
+                    fontSize: '1.8rem',
+                    color: T.textPrimary,
+                  }}
+                >
+                  Inbox Fysi
+                </h2>
+                <p className="text-[13px] leading-relaxed" style={{ color: T.textMuted }}>
+                  Selecione uma conversa à esquerda para começar a responder, ou use{' '}
+                  <kbd
+                    className="px-1.5 py-0.5 text-[10px] font-mono rounded"
+                    style={{
+                      background: '#FFFFFF',
+                      border: `1px solid ${T.border}`,
+                      color: T.textPrimary,
+                    }}
+                  >
+                    ⌘K
+                  </kbd>
+                  {' '}para buscar.
+                </p>
+              </div>
+              <p className="text-[10px] mt-4 opacity-60" style={{ color: T.textDim }}>
+                💬 Suas mensagens são criptografadas ponta-a-ponta pelo WhatsApp
               </p>
             </div>
           ) : (

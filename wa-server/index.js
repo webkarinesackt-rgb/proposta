@@ -44,6 +44,7 @@ const LIB_FILE = path.join(LIB_DIR, 'library.json')
 const DATA_DIR = path.join(__dirname, 'data')
 const STORE_FILE = path.join(DATA_DIR, 'store.json')
 const MEDIA_DIR = path.join(DATA_DIR, 'media')
+const PHOTOS_DIR = path.join(DATA_DIR, 'photos')
 const PORT = Number(process.env.PORT) || 3100
 const AUTH_TOKEN = process.env.WA_AUTH_TOKEN || ''
 
@@ -1151,6 +1152,41 @@ app.post('/ingest/chat', (req, res) => {
   res.json({ ok: true })
 })
 
+// Foto de perfil empurrada pela extensão (mais confiável que Baileys,
+// que tem rate limit e falha pra @lid). Armazena como arquivo em
+// /app/data/photos/{hash-do-jid} pra servir via /chats/:id/photo.
+import { createHash } from 'node:crypto'
+function jidHash(jid) {
+  return createHash('sha256').update(String(jid)).digest('hex').slice(0, 24)
+}
+app.post('/ingest/photo', async (req, res) => {
+  const { chatId, dataBase64, mimetype } = req.body || {}
+  if (!chatId || !dataBase64) {
+    return res.status(400).json({ ok: false, error: 'faltando chatId/dataBase64' })
+  }
+  if (!isValidJid(chatId)) {
+    return res.status(400).json({ ok: false, error: 'chatId inválido' })
+  }
+  try {
+    await mkdir(PHOTOS_DIR, { recursive: true })
+    const buf = Buffer.from(dataBase64, 'base64')
+    if (buf.length > 2 * 1024 * 1024) {
+      return res.status(413).json({ ok: false, error: 'foto > 2MB' })
+    }
+    await writeFile(path.join(PHOTOS_DIR, jidHash(chatId)), buf)
+    // grava o mimetype no chat record
+    const ex = store.chats.get(chatId) || { id: chatId, unread: 0, status: 'LEAD' }
+    ex.photoMime = mimetype || 'image/jpeg'
+    ex.photoIngestedAt = Math.floor(Date.now() / 1000)
+    store.chats.set(chatId, ex)
+    storeDirty = true
+    markIngest()
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message })
+  }
+})
+
 // A extensão Chrome baixa mídia via wppconnect e empurra base64 aqui.
 // Mais confiável que tentar baixar via Baileys (sessão queima).
 // Salva em /app/data/media/{msgId} e marca hasMedia=true na mensagem.
@@ -1496,6 +1532,20 @@ app.post('/chats/:id/read', requireValidJid, async (req, res) => {
 
 // foto de perfil de um contato/grupo (proxy + cache)
 app.get('/chats/:id/photo', requireValidJid, async (req, res) => {
+  // 1) tenta foto empurrada pela extensão (disco) — confiável, sem
+  //    rate limit, funciona pra @lid também
+  const chat = store.chats.get(req.params.id)
+  if (chat?.photoIngestedAt) {
+    try {
+      const buffer = await readFile(path.join(PHOTOS_DIR, jidHash(req.params.id)))
+      res.setHeader('Content-Type', chat.photoMime || 'image/jpeg')
+      res.setHeader('Cache-Control', 'private, max-age=3600')
+      return res.send(buffer)
+    } catch {
+      // arquivo sumiu — cai pra Baileys
+    }
+  }
+  // 2) fallback: Baileys
   if (!sock) {
     res.setHeader('Cache-Control', 'no-store')
     return res.status(409).send()

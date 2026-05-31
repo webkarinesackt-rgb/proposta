@@ -80,6 +80,8 @@
       const chats = list.map(chatToIngest).filter(Boolean)
       console.log(TAG, 'full sync —', chats.length, 'conversas')
       post('/ingest/chats', { chats })
+      // dispara download de fotos em background (throttled)
+      queuePhotos(list)
     } catch (e) {
       // 'dropping db read operation due to logout' acontece quando o WPP
       // está em estado de transição; ignora e tenta no próximo ciclo.
@@ -120,6 +122,59 @@
     } catch (e) {
       // download falha quando msg expira / mídia revogada — silencia
     }
+  }
+
+  // ── Foto de perfil ─────────────────────────────────────────────────────
+  // Pra cada chat sem foto cachada, baixa via WPP.contact.getProfilePictureUrl
+  // e empurra base64 pra wa-server. Throttle pra não martelar o WhatsApp.
+  const photoCache = new Set() // chatIds que já tentamos baixar (sucesso ou não)
+  let photoQueue = []
+  let photoBusy = false
+
+  async function processPhotoQueue() {
+    if (photoBusy || photoQueue.length === 0) return
+    photoBusy = true
+    while (photoQueue.length > 0) {
+      const id = photoQueue.shift()
+      if (photoCache.has(id)) continue
+      photoCache.add(id)
+      try {
+        const url = await window.WPP.contact.getProfilePictureUrl(id)
+        if (!url) continue
+        const resp = await fetch(url, { mode: 'cors' })
+        if (!resp.ok) continue
+        const blob = await resp.blob()
+        if (blob.size > 2_000_000) continue
+        const reader = new FileReader()
+        await new Promise((resolve) => {
+          reader.onloadend = () => {
+            const dataBase64 = String(reader.result || '').split(',')[1] || ''
+            if (dataBase64) {
+              post('/ingest/photo', {
+                chatId: id,
+                mimetype: blob.type || 'image/jpeg',
+                dataBase64,
+              })
+            }
+            resolve()
+          }
+          reader.readAsDataURL(blob)
+        })
+      } catch {
+        // contato pode ter foto privada, ser @lid sem mapping, etc — silencia
+      }
+      // 250ms entre downloads → 4/s, ~6min pra 1500 conversas
+      await new Promise((r) => setTimeout(r, 250))
+    }
+    photoBusy = false
+  }
+
+  function queuePhotos(chats) {
+    for (const c of chats) {
+      const id = c.id?._serialized || c.id
+      if (id && !photoCache.has(id)) photoQueue.push(id)
+    }
+    processPhotoQueue()
   }
 
   // ── eventos em tempo real ──────────────────────────────────────────────
