@@ -43,6 +43,7 @@ const LIB_AUDIO_DIR = path.join(LIB_DIR, 'audios')
 const LIB_FILE = path.join(LIB_DIR, 'library.json')
 const DATA_DIR = path.join(__dirname, 'data')
 const STORE_FILE = path.join(DATA_DIR, 'store.json')
+const MEDIA_DIR = path.join(DATA_DIR, 'media')
 const PORT = Number(process.env.PORT) || 3100
 const AUTH_TOKEN = process.env.WA_AUTH_TOKEN || ''
 
@@ -366,10 +367,40 @@ function msgContent(message) {
       },
     }
   if (message.stickerMessage) return { text: '🌟 Figurinha', type: 'figurinha' }
-  if (message.locationMessage) return { text: '📍 Localização', type: 'local' }
+  if (message.locationMessage || message.liveLocationMessage)
+    return { text: '📍 Localização', type: 'local' }
   if (message.contactMessage || message.contactsArrayMessage)
     return { text: '👤 Contato', type: 'contato' }
-  return { text: '[mensagem]', type: 'outro' }
+  if (message.reactionMessage) {
+    const emoji = message.reactionMessage.text || '❤️'
+    return { text: `Reagiu com ${emoji}`, type: 'reacao' }
+  }
+  if (message.pollCreationMessage || message.pollCreationMessageV3) {
+    const poll = message.pollCreationMessage || message.pollCreationMessageV3
+    return { text: `📊 Enquete: ${poll.name || ''}`, type: 'enquete' }
+  }
+  if (message.buttonsResponseMessage)
+    return { text: message.buttonsResponseMessage.selectedDisplayText || '🔘 Resposta', type: 'botao' }
+  if (message.listResponseMessage)
+    return { text: message.listResponseMessage.title || '📋 Resposta', type: 'lista' }
+  if (message.templateButtonReplyMessage)
+    return { text: message.templateButtonReplyMessage.selectedDisplayText || '🔘 Resposta', type: 'botao' }
+  if (message.groupInviteMessage)
+    return { text: `👥 Convite pra grupo: ${message.groupInviteMessage.groupName || ''}`, type: 'convite' }
+  if (message.pinInChatMessage) return { text: '📌 Mensagem fixada', type: 'sistema' }
+  if (message.protocolMessage) {
+    const t = message.protocolMessage.type
+    // 0=REVOKE (apagada pra todos), 14=MESSAGE_EDIT, etc.
+    if (t === 0) return { text: '🗑️ Mensagem apagada', type: 'sistema' }
+    if (t === 14) return { text: '✏️ Mensagem editada', type: 'sistema' }
+    return { text: '⚙️ Atualização do sistema', type: 'sistema' }
+  }
+  if (message.senderKeyDistributionMessage)
+    return { text: '🔐 Atualização de criptografia', type: 'sistema' }
+  if (message.callLog) return { text: '📞 Chamada', type: 'chamada' }
+  // último fallback — mostra o nome do tipo em vez de "[mensagem]"
+  const knownType = Object.keys(message)[0] || 'desconhecido'
+  return { text: `[${knownType.replace('Message', '')}]`, type: 'outro' }
 }
 
 /** Detecta nome "mascarado" como "+55∙∙∙∙∙∙04" que WhatsApp manda
@@ -1099,6 +1130,46 @@ app.post('/ingest/chat', (req, res) => {
   res.json({ ok: true })
 })
 
+// A extensão Chrome baixa mídia via wppconnect e empurra base64 aqui.
+// Mais confiável que tentar baixar via Baileys (sessão queima).
+// Salva em /app/data/media/{msgId} e marca hasMedia=true na mensagem.
+app.post('/ingest/media', async (req, res) => {
+  const { chatId, msgId, mimetype, dataBase64 } = req.body || {}
+  if (!chatId || !msgId || !dataBase64) {
+    return res.status(400).json({ ok: false, error: 'faltando chatId/msgId/dataBase64' })
+  }
+  if (!isValidJid(chatId)) {
+    return res.status(400).json({ ok: false, error: 'chatId inválido' })
+  }
+  try {
+    // sanitiza msgId pro filename — só hex/A-Z/digits
+    const safeId = String(msgId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
+    if (!safeId) return res.status(400).json({ ok: false, error: 'msgId vazio' })
+    await mkdir(MEDIA_DIR, { recursive: true })
+    const buf = Buffer.from(dataBase64, 'base64')
+    if (buf.length > 25 * 1024 * 1024) {
+      return res.status(413).json({ ok: false, error: 'mídia maior que 25MB' })
+    }
+    const filePath = path.join(MEDIA_DIR, safeId)
+    await writeFile(filePath, buf)
+    // marca hasMedia + mimetype no record (se a msg existe no store)
+    const arr = store.messages.get(chatId)
+    if (arr) {
+      const rec = arr.find((m) => m.id === msgId)
+      if (rec) {
+        rec.hasIngestedMedia = true
+        rec.ingestedMime = mimetype || ''
+        storeDirty = true
+      }
+    }
+    markIngest()
+    sseSend('changed', { kind: 'messages', chats: [chatId] })
+    res.json({ ok: true, size: buf.length })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message })
+  }
+})
+
 // Push de mensagem nova individual.
 app.post('/ingest/message', (req, res) => {
   const m = req.body?.message
@@ -1251,7 +1322,7 @@ app.get('/chats/:id/messages', requireValidJid, (req, res) => {
     type: m.type,
     time: m.time,
     pushName: m.pushName,
-    hasMedia: !!m.raw,
+    hasMedia: !!m.raw || !!m.hasIngestedMedia,
     status: m.status || 0, // 0=desconhecido, 2=enviada, 3=entregue, 4/5=lida
     meta: m.meta || null,   // fileName/mimetype para documentos, caption para mídias
     quoted: m.quoted
@@ -1273,12 +1344,35 @@ app.get('/chats/:id/messages', requireValidJid, (req, res) => {
   })
 })
 
-// baixa a mídia de uma mensagem, sob demanda
+// baixa a mídia de uma mensagem, sob demanda.
+// Checa PRIMEIRO o ingest da extensão (disco /app/data/media/) — mais
+// confiável. Cai pro Baileys downloadMediaMessage só se não tiver disco.
 app.get('/chats/:id/media/:messageId', requireValidJid, async (req, res) => {
-  if (!sock) return res.status(409).json({ ok: false, error: 'WhatsApp não conectado.' })
   const arr = store.messages.get(req.params.id) || []
   const rec = arr.find((m) => m.id === req.params.messageId)
-  if (!rec || !rec.raw) {
+  if (!rec) {
+    return res.status(404).json({ ok: false, error: 'Mensagem não encontrada.' })
+  }
+  // 1) tenta ingest da extensão
+  const safeId = String(req.params.messageId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
+  if (rec.hasIngestedMedia && safeId) {
+    try {
+      const buffer = await readFile(path.join(MEDIA_DIR, safeId))
+      const ct = rec.ingestedMime ||
+        (rec.type === 'audio' ? 'audio/ogg' :
+         rec.type === 'imagem' ? 'image/jpeg' :
+         rec.type === 'video' ? 'video/mp4' :
+         'application/octet-stream')
+      res.setHeader('Content-Type', ct)
+      res.setHeader('Cache-Control', 'private, max-age=86400')
+      return res.send(buffer)
+    } catch {
+      // arquivo deletado/corrompido — tenta Baileys abaixo
+    }
+  }
+  // 2) fallback: Baileys
+  if (!sock) return res.status(409).json({ ok: false, error: 'WhatsApp não conectado.' })
+  if (!rec.raw) {
     return res.status(404).json({ ok: false, error: 'Mídia indisponível.' })
   }
   try {

@@ -89,13 +89,50 @@
     }
   }
 
+  // tipos de mensagem com mídia (wppconnect)
+  const MEDIA_TYPES = new Set(['image', 'video', 'audio', 'ptt', 'document', 'sticker'])
+
+  /** Baixa o blob da mídia via wppconnect e empurra base64 pro wa-server. */
+  async function pushMediaIfAny(msg) {
+    try {
+      const type = msg.type
+      if (!MEDIA_TYPES.has(type)) return
+      const id = msg.id?._serialized || msg.id
+      const chatId = msg.from?._serialized || msg.from
+      if (!id || !chatId) return
+      // WPP.chat.downloadMedia aceita o msgId ou o msg inteiro
+      const blob = await window.WPP.chat.downloadMedia(id)
+      if (!blob) return
+      // converte Blob → base64
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result || ''
+        const dataBase64 = String(result).split(',')[1] || ''
+        if (!dataBase64) return
+        post('/ingest/media', {
+          chatId,
+          msgId: id,
+          mimetype: blob.type || msg.mimetype || '',
+          dataBase64,
+        })
+      }
+      reader.readAsDataURL(blob)
+    } catch (e) {
+      // download falha quando msg expira / mídia revogada — silencia
+    }
+  }
+
   // ── eventos em tempo real ──────────────────────────────────────────────
   function bindEvents() {
     if (!window.WPP || !window.WPP.on) return
     // mensagem nova
     window.WPP.on('chat.new_message', (msg) => {
       const m = msgToIngest(msg)
-      if (m.chatId) post('/ingest/message', { message: m })
+      if (m.chatId) {
+        post('/ingest/message', { message: m })
+        // pra mensagens de mídia, baixa e empurra binário também
+        pushMediaIfAny(msg)
+      }
     })
     // chat atualizado (rename, unread, archive)
     if (window.WPP.chat?.on) {
