@@ -358,6 +358,211 @@ function StatusGroup({
   )
 }
 
+/* ── kanban column (horizontal layout) ──────────────── */
+
+function KanbanColumn({
+  status,
+  chats,
+  onOpenChat,
+  onSetStatus,
+  onSetValue,
+}: {
+  status: (typeof LEAD_STATUSES)[number]
+  chats: WaChat[]
+  onOpenChat: (id: string) => void
+  onSetStatus: (id: string, status: string) => void
+  onSetValue: (id: string, value: number) => void
+}) {
+  const [dragOver, setDragOver] = useState(false)
+  const totalValue = chats.reduce((sum, c) => sum + (Number(c.value) || 0), 0)
+
+  return (
+    <div
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('text/wa-chat-id')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          if (!dragOver) setDragOver(true)
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const id = e.dataTransfer.getData('text/wa-chat-id')
+        if (id) onSetStatus(id, status.id)
+      }}
+      className="flex flex-col rounded-2xl overflow-hidden transition-all"
+      style={{
+        width: 304,
+        minWidth: 304,
+        background: dragOver ? status.bg : '#F4F3EF',
+        border: dragOver
+          ? `2px dashed ${status.color}`
+          : '1px solid #E6E6E1',
+        maxHeight: 'calc(100vh - 280px)',
+      }}
+    >
+      {/* header sticky */}
+      <div
+        className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
+        style={{ borderBottom: '1px solid #E6E6E1', background: '#F4F3EF' }}
+      >
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.08em] px-2.5 py-0.5 rounded-full"
+          style={{
+            background: status.bg,
+            color: status.color,
+            border: `1px solid ${status.color}30`,
+          }}
+        >
+          {status.label}
+        </span>
+        <span className="text-[11px] font-bold ml-auto" style={{ color: '#6B8585' }}>
+          {chats.length}
+        </span>
+        {totalValue > 0 && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: status.bg, color: status.color }}
+          >
+            {fmtBRL(totalValue)}
+          </span>
+        )}
+      </div>
+
+      {/* lista scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto thin-scroll p-2 flex flex-col gap-2">
+        {chats.length === 0 ? (
+          <p
+            className="text-[11px] text-center py-6 px-2 italic"
+            style={{ color: '#A8B5B0' }}
+          >
+            arraste leads pra cá
+          </p>
+        ) : (
+          chats.map((c) => (
+            <KanbanCard
+              key={c.id}
+              chat={c}
+              onOpen={() => onOpenChat(c.id)}
+              onSetValue={onSetValue}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function KanbanCard({
+  chat,
+  onOpen,
+  onSetValue,
+}: {
+  chat: WaChat
+  onOpen: () => void
+  onSetValue: (id: string, value: number) => void
+}) {
+  const [editingValue, setEditingValue] = useState(false)
+  const [valueDraft, setValueDraft] = useState('')
+  return (
+    <div
+      onClick={onOpen}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/wa-chat-id', chat.id)
+        e.dataTransfer.effectAllowed = 'move'
+        const el = e.currentTarget as HTMLDivElement
+        requestAnimationFrame(() => { el.style.opacity = '0.4' })
+      }}
+      onDragEnd={(e) => {
+        ;(e.currentTarget as HTMLDivElement).style.opacity = '1'
+      }}
+      className="rounded-xl p-3 cursor-grab active:cursor-grabbing transition-all hover:-translate-y-0.5"
+      style={{
+        background: '#FFFFFF',
+        border: '1px solid #E6E6E1',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+      }}
+    >
+      <div className="flex items-start gap-2 mb-2">
+        <Avatar chatId={chat.id} name={chat.name} isGroup={chat.isGroup} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-bold truncate" style={{ color: '#162322' }}>
+            {chat.name}
+          </p>
+          <p className="text-[10px] mt-0.5" style={{ color: '#A8B5B0' }}>
+            {fmtTime(chat.lastTime)}
+          </p>
+        </div>
+      </div>
+      {chat.lastText && (
+        <p className="text-[11px] line-clamp-2 mb-2" style={{ color: '#6B8585' }}>
+          {chat.fromMeLast && (
+            <span style={{ color: '#A8B5B0' }}>Você: </span>
+          )}
+          {chat.lastText}
+        </p>
+      )}
+      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 flex-wrap">
+        {editingValue ? (
+          <input
+            autoFocus
+            type="number"
+            placeholder="0"
+            value={valueDraft}
+            onChange={(e) => setValueDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onSetValue(chat.id, Math.max(0, Math.round(Number(valueDraft) || 0)))
+                setEditingValue(false)
+              } else if (e.key === 'Escape') {
+                setEditingValue(false)
+              }
+            }}
+            onBlur={() => {
+              onSetValue(chat.id, Math.max(0, Math.round(Number(valueDraft) || 0)))
+              setEditingValue(false)
+            }}
+            className="w-20 text-[10px] font-bold px-2 py-0.5 rounded outline-none"
+            style={{ background: '#F4F3EF', border: '1px solid #C8D8D4', color: '#162322' }}
+          />
+        ) : (
+          <button
+            onClick={() => {
+              setValueDraft(chat.value ? String(chat.value) : '')
+              setEditingValue(true)
+            }}
+            className="text-[10px] font-bold px-2 py-0.5 rounded transition-all"
+            style={{
+              background: chat.value ? '#0D3839' : 'transparent',
+              color: chat.value ? '#F4F99D' : '#A8B5B0',
+              border: chat.value ? 'none' : '1px dashed #C8D8D4',
+            }}
+          >
+            {chat.value ? fmtBRL(chat.value) : '+ R$'}
+          </button>
+        )}
+        {(chat.tags || []).slice(0, 2).map((t) => (
+          <span
+            key={t}
+            className="text-[9px] px-1.5 py-0.5 rounded"
+            style={{ background: '#F4F3EF', color: '#6B8585' }}
+          >
+            {t}
+          </span>
+        ))}
+        {(chat.tags || []).length > 2 && (
+          <span className="text-[9px]" style={{ color: '#A8B5B0' }}>
+            +{(chat.tags || []).length - 2}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ── main ────────────────────────────────────────────── */
 
 export default function LeadsView() {
@@ -366,6 +571,8 @@ export default function LeadsView() {
   const [serverOff, setServerOff] = useState(false)
   const [includeGroups, setIncludeGroups] = useState(false)
   const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
   const { show: showToast, Toast } = useToast()
 
   async function load() {
@@ -422,9 +629,16 @@ export default function LeadsView() {
     router.push(`/admin/inbox?chat=${encodeURIComponent(id)}`)
   }
 
+  const q = search.trim().toLowerCase()
   const filteredChats = (includeGroups ? chats : chats.filter((c) => !c.isGroup))
     .filter((c) => !c.archived)
     .filter((c) => !tagFilter || (c.tags || []).includes(tagFilter))
+    .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q))
+    .sort((a, b) => {
+      if (sortBy === 'value') return (b.value || 0) - (a.value || 0)
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'pt-BR')
+      return (b.lastTime || 0) - (a.lastTime || 0) // recent (default)
+    })
 
   // todas as etiquetas em uso, com contagem
   const allTags: [string, number][] = (() => {
@@ -454,9 +668,10 @@ export default function LeadsView() {
   )
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto thin-scroll relative">
+    <div className="flex-1 min-h-0 flex flex-col relative" style={{ background: '#FAFAF8' }}>
       <Toast />
-      <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
+      {/* hero compacto e fixo no topo (pra dar espaço pro kanban) */}
+      <div className="px-8 pt-8 pb-4 flex-shrink-0">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
@@ -574,47 +789,79 @@ export default function LeadsView() {
           </div>
         )}
 
-        {serverOff && (
+        {/* nova linha: busca + sort */}
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
           <div
-            className="rounded-2xl p-6 mb-4 text-[13px] font-semibold"
-            style={{
-              background: '#FEF2F2',
-              border: '1px solid #FCA5A5',
-              color: '#B91C1C',
-            }}
-          >
-            Servidor do WhatsApp offline. Verifique o container{' '}
-            <code>wa-server</code> na VPS.
-          </div>
-        )}
-
-        {chats.length === 0 && !serverOff ? (
-          <div
-            className="rounded-2xl p-12 text-center flex flex-col items-center gap-3"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl flex-1 min-w-[220px]"
             style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
           >
-            <Tag size={28} className="text-[#A8B5B0]" />
-            <p className="text-[13px] text-[#8AA09A]">
-              Sincronizando conversas…
-            </p>
-          </div>
-        ) : (
-          LEAD_STATUSES.map((s) => (
-            <StatusGroup
-              key={s.id}
-              status={s}
-              chats={byStatus[s.id]}
-              onOpenChat={openChat}
-              onSetStatus={handleSetStatus}
-              onSetValue={handleSetValue}
-              initialOpen={
-                ['LEAD', 'AGUARDANDO', 'PROPOSTA'].includes(s.id) ||
-                byStatus[s.id].length > 0
-              }
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar lead por nome ou nota…"
+              className="flex-1 bg-transparent text-[13px] outline-none"
+              style={{ color: '#162322' }}
             />
-          ))
-        )}
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="text-[10px] opacity-60 hover:opacity-100"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div
+            className="flex items-center gap-1 px-2 py-1.5 rounded-xl"
+            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#A8B5B0] px-1">Ordenar:</span>
+            {(['recent', 'value', 'name'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSortBy(s)}
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors"
+                style={{
+                  background: sortBy === s ? '#0D3839' : 'transparent',
+                  color: sortBy === s ? '#F4F99D' : '#6B8585',
+                }}
+              >
+                {s === 'recent' ? 'Recente' : s === 'value' ? 'Valor' : 'Nome'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* kanban horizontal */}
+      {serverOff ? (
+        <div className="px-8 pb-8">
+          <div
+            className="rounded-2xl p-6 text-[13px] font-semibold"
+            style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C' }}
+          >
+            Servidor do WhatsApp offline. Verifique o container <code>wa-server</code> na VPS.
+          </div>
+        </div>
+      ) : (
+        <div
+          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden thin-scroll"
+          style={{ paddingBottom: 16 }}
+        >
+          <div className="flex gap-3 h-full px-8 pb-2" style={{ minWidth: 'fit-content' }}>
+            {LEAD_STATUSES.map((s) => (
+              <KanbanColumn
+                key={s.id}
+                status={s}
+                chats={byStatus[s.id] || []}
+                onOpenChat={openChat}
+                onSetStatus={handleSetStatus}
+                onSetValue={handleSetValue}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import {
   XCircle,
   Mail,
   Send,
+  ChevronDown,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -107,13 +108,16 @@ function ProposalCard({
   onDelete,
   onCopy,
   onPublish,
+  onSetStatus,
 }: {
   proposal: Proposal
   onDelete: (id: string) => void
   onCopy: (p: Proposal) => void
   onPublish: (id: string) => void
+  onSetStatus: (id: string, status: ProposalStatus) => void
 }) {
   const router = useRouter()
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const meta = STATUS_META[proposal.status] ?? STATUS_META.draft
   const expired = isExpired(proposal.valid_until)
   const isDraft = proposal.status === 'draft'
@@ -143,16 +147,71 @@ function ProposalCard({
             </p>
           )}
         </div>
-        <span
-          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
-          style={{
-            color: meta.color,
-            background: meta.bg,
-          }}
-        >
-          {meta.icon}
-          {expired && proposal.status !== 'accepted' ? 'Expirada' : meta.label}
-        </span>
+        {isDraft ? (
+          <span
+            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
+            style={{ color: meta.color, background: meta.bg }}
+          >
+            {meta.icon}
+            {meta.label}
+          </span>
+        ) : (
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setStatusMenuOpen((o) => !o)}
+              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-all hover:opacity-80"
+              style={{ color: meta.color, background: meta.bg }}
+              title="Clique pra mudar o status"
+            >
+              {meta.icon}
+              {expired && proposal.status !== 'accepted' ? 'Expirada' : meta.label}
+              <ChevronDown size={9} />
+            </button>
+            {statusMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setStatusMenuOpen(false)}
+                />
+                <div
+                  className="absolute z-40 right-0 top-full mt-1.5 w-44 rounded-xl py-1"
+                  style={{
+                    background: '#FFFFFF',
+                    border: `1px solid ${T.border}`,
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  {(['sent', 'viewed', 'accepted', 'rejected', 'expired'] as ProposalStatus[]).map(
+                    (s) => {
+                      const sm = STATUS_META[s]
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            onSetStatus(proposal.id, s)
+                            setStatusMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                        >
+                          <span
+                            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                            style={{ color: sm.color, background: sm.bg }}
+                          >
+                            {sm.icon}
+                            {sm.label}
+                          </span>
+                          {proposal.status === s && (
+                            <span className="ml-auto text-[10px]" style={{ color: T.textDim }}>atual</span>
+                          )}
+                        </button>
+                      )
+                    }
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -286,6 +345,13 @@ export default function AdminDashboard() {
     await refresh()
   }
 
+  async function handleSetStatus(id: string, status: ProposalStatus) {
+    // update otimista — UI muda na hora, depois sincroniza com store
+    setProposals((ps) => ps.map((p) => (p.id === id ? { ...p, status } : p)))
+    await proposalStore.updateStatus(id, status)
+    refresh()
+  }
+
   const FILTERS: { value: ProposalStatus | 'all'; label: string }[] = [
     { value: 'all',      label: 'Todas' },
     { value: 'draft',    label: 'Rascunho' },
@@ -400,6 +466,7 @@ export default function AdminDashboard() {
                 onDelete={handleDelete}
                 onCopy={handleCopy}
                 onPublish={handlePublish}
+                onSetStatus={handleSetStatus}
               />
             ))}
           </div>
