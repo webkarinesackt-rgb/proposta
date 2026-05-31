@@ -38,6 +38,8 @@ export interface WaChat {
   email: string
   notes: string
   linkedProposalId: string
+  nextAction?: string
+  nextActionDate?: number // unix timestamp em segundos
 }
 
 export interface WaChatPatch {
@@ -52,6 +54,8 @@ export interface WaChatPatch {
   notes?: string
   linkedProposalId?: string
   status?: string
+  nextAction?: string
+  nextActionDate?: number
 }
 
 export const LEAD_SOURCES = [

@@ -60,6 +60,12 @@ export default function LeadDetailsPanel({
   const [source, setSource] = useState(chat.source || '')
   const [email, setEmail] = useState(chat.email || '')
   const [notes, setNotes] = useState(chat.notes || '')
+  const [nextAction, setNextAction] = useState(chat.nextAction || '')
+  const [nextActionDate, setNextActionDate] = useState(
+    chat.nextActionDate
+      ? new Date(chat.nextActionDate * 1000).toISOString().slice(0, 10)
+      : ''
+  )
   const [linkedProposalId, setLinkedProposalId] = useState(
     chat.linkedProposalId || ''
   )
@@ -74,8 +80,14 @@ export default function LeadDetailsPanel({
     setSource(chat.source || '')
     setEmail(chat.email || '')
     setNotes(chat.notes || '')
+    setNextAction(chat.nextAction || '')
+    setNextActionDate(
+      chat.nextActionDate
+        ? new Date(chat.nextActionDate * 1000).toISOString().slice(0, 10)
+        : ''
+    )
     setLinkedProposalId(chat.linkedProposalId || '')
-  }, [chat.id, chat.tags, chat.value, chat.source, chat.email, chat.notes, chat.linkedProposalId])
+  }, [chat.id, chat.tags, chat.value, chat.source, chat.email, chat.notes, chat.linkedProposalId, chat.nextAction, chat.nextActionDate])
 
   useEffect(() => {
     proposalStore.getAll().then(setProposals).catch(() => {})
@@ -299,6 +311,30 @@ export default function LeadDetailsPanel({
             placeholder="cliente@email.com"
             className={INPUT}
             style={INPUT_STYLE}
+          />
+        </Field>
+
+        {/* próxima ação */}
+        <Field label="📌 Próxima ação">
+          <input
+            type="text"
+            value={nextAction}
+            onChange={(e) => setNextAction(e.target.value)}
+            onBlur={() => nextAction !== (chat.nextAction || '') && patch({ nextAction })}
+            placeholder='Ex: "Ligar pra confirmar"'
+            className={INPUT}
+            style={INPUT_STYLE}
+          />
+          <input
+            type="date"
+            value={nextActionDate}
+            onChange={(e) => {
+              setNextActionDate(e.target.value)
+              const ts = e.target.value ? Math.floor(new Date(e.target.value).getTime() / 1000) : 0
+              if (ts !== (chat.nextActionDate || 0)) patch({ nextActionDate: ts })
+            }}
+            className={INPUT}
+            style={{ ...INPUT_STYLE, marginTop: 6 }}
           />
         </Field>
 

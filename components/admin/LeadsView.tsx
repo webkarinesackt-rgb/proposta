@@ -455,6 +455,32 @@ function KanbanColumn({
   )
 }
 
+function inactivityBadge(lastTime: number) {
+  if (!lastTime) return null
+  const days = Math.floor((Date.now() / 1000 - lastTime) / 86400)
+  if (days < 3) return null
+  let bg = '#F4F3EF', color = '#8AA09A', label = `${days}d sem mexer`
+  if (days >= 14) { bg = '#FEF2F2'; color = '#B91C1C' }
+  else if (days >= 7) { bg = '#FFF7ED'; color = '#C2410C' }
+  return { bg, color, label }
+}
+
+function nextActionBadge(action: string, ts: number) {
+  if (!action) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const todayS = today.getTime() / 1000
+  let bg = '#EFF6FF', color = '#1D4ED8', prefix = ''
+  if (ts) {
+    if (ts < todayS) { bg = '#FEF2F2'; color = '#B91C1C'; prefix = '⚠ ' }
+    else if (ts < todayS + 86400) { bg = '#FEFCE8'; color = '#A16207'; prefix = 'Hoje · ' }
+    else {
+      const dd = new Date(ts * 1000)
+      prefix = dd.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' · '
+    }
+  }
+  return { bg, color, label: prefix + action }
+}
+
 function KanbanCard({
   chat,
   onOpen,
@@ -466,6 +492,8 @@ function KanbanCard({
 }) {
   const [editingValue, setEditingValue] = useState(false)
   const [valueDraft, setValueDraft] = useState('')
+  const inactivity = inactivityBadge(chat.lastTime)
+  const nextAction = nextActionBadge(chat.nextAction || '', chat.nextActionDate || 0)
   return (
     <div
       onClick={onOpen}
@@ -492,11 +520,30 @@ function KanbanCard({
           <p className="text-[12px] font-bold truncate" style={{ color: '#162322' }}>
             {chat.name}
           </p>
-          <p className="text-[10px] mt-0.5" style={{ color: '#A8B5B0' }}>
-            {fmtTime(chat.lastTime)}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <p className="text-[10px]" style={{ color: '#A8B5B0' }}>
+              {fmtTime(chat.lastTime)}
+            </p>
+            {inactivity && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: inactivity.bg, color: inactivity.color }}
+              >
+                {inactivity.label}
+              </span>
+            )}
+          </div>
         </div>
       </div>
+      {nextAction && (
+        <div
+          className="text-[10px] font-semibold mb-2 px-2 py-1 rounded flex items-center gap-1"
+          style={{ background: nextAction.bg, color: nextAction.color }}
+          title="Próxima ação programada"
+        >
+          📌 {nextAction.label}
+        </div>
+      )}
       {chat.lastText && (
         <p className="text-[11px] line-clamp-2 mb-2" style={{ color: '#6B8585' }}>
           {chat.fromMeLast && (

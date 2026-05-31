@@ -646,23 +646,88 @@ export default function InboxView() {
     return () => clearTimeout(t)
   }, [search])
 
-  // atalho ⌘K / Ctrl+K → foca a busca; Esc → limpa
+  // Atalhos de teclado (estilo Superhuman/Front):
+  //  ⌘K        — focar busca
+  //  Esc       — limpar busca / des-focar
+  //  J / ↓     — próxima conversa
+  //  K / ↑     — conversa anterior
+  //  E         — arquivar/desarquivar conversa aberta
+  //  R         — focar composer pra responder
+  //  ?         — mostra/esconde overlay de atalhos
+  const composerRef = useRef<HTMLTextAreaElement>(null)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // ref atualizado a cada render — handler usa SEM stale closure
+  const navStateRef = useRef<{
+    filtered: WaChat[]
+    selectedId: string | null
+    currentChat: WaChat | undefined
+  }>({ filtered: [], selectedId: null, currentChat: undefined })
+  useEffect(() => {
+    if (composerRef.current !== null) { /* só pra tipar o ref */ }
+  })
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const meta = e.metaKey || e.ctrlKey
+      // ignora se está digitando em input/textarea (exceto atalhos específicos)
+      const active = document.activeElement as HTMLElement | null
+      const isTyping =
+        active &&
+        (active.tagName === 'INPUT' ||
+          active.tagName === 'TEXTAREA' ||
+          active.isContentEditable)
+
+      // ⌘K sempre funciona
       if (meta && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         searchInputRef.current?.focus()
         searchInputRef.current?.select()
+        return
       }
-      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
-        setSearch('')
-        searchInputRef.current?.blur()
+      // Esc só na busca
+      if (e.key === 'Escape') {
+        if (shortcutsOpen) { setShortcutsOpen(false); return }
+        if (active === searchInputRef.current) {
+          setSearch('')
+          searchInputRef.current?.blur()
+        }
+        return
+      }
+      // ? abre overlay de atalhos (mesmo digitando? sim, com Shift)
+      if (e.key === '?' && !meta) {
+        e.preventDefault()
+        setShortcutsOpen((o) => !o)
+        return
+      }
+      // Atalhos de navegação só quando NÃO está digitando
+      if (isTyping) return
+
+      const { filtered, selectedId, currentChat } = navStateRef.current
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        const idx = filtered.findIndex((c) => c.id === selectedId)
+        const next = filtered[Math.min(filtered.length - 1, idx + 1)]
+        if (next) setSelectedId(next.id)
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const idx = filtered.findIndex((c) => c.id === selectedId)
+        const prev = filtered[Math.max(0, idx - 1)]
+        if (prev) setSelectedId(prev.id)
+      } else if (e.key === 'e') {
+        if (currentChat) {
+          e.preventDefault()
+          handleArchiveChat(currentChat.id, !currentChat.archived)
+        }
+      } else if (e.key === 'r') {
+        if (selectedId) {
+          e.preventDefault()
+          composerRef.current?.focus()
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [shortcutsOpen])
 
   function handleMessagesScroll() {
     const el = msgScrollRef.current
@@ -1021,6 +1086,11 @@ export default function InboxView() {
     () => chats.find((c) => c.id === selectedId),
     [chats, selectedId]
   )
+
+  // sincroniza ref pros atalhos de teclado lerem o estado atual sem stale closure
+  useEffect(() => {
+    navStateRef.current = { filtered, selectedId, currentChat }
+  }, [filtered, selectedId, currentChat])
 
   const firstFilteredId = filtered[0]?.id || null
   useEffect(() => {
@@ -1737,6 +1807,7 @@ export default function InboxView() {
                 }}
               >
                 <textarea
+                  ref={composerRef}
                   value={draft}
                   rows={1}
                   onChange={(e) => setDraft(e.target.value)}
@@ -1806,6 +1877,48 @@ export default function InboxView() {
       </div>
 
       {/* Modal: + Conversa (adicionar contato manualmente) */}
+      {/* Overlay de atalhos (pressione "?" pra abrir) */}
+      {shortcutsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            className="w-[440px] max-w-[90vw] rounded-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}
+          >
+            <h2 className="text-[16px] font-bold mb-4" style={{ color: T.textPrimary }}>
+              Atalhos do teclado
+            </h2>
+            {[
+              ['⌘K', 'Focar busca'],
+              ['Esc', 'Limpar busca / fechar'],
+              ['J  / ↓', 'Próxima conversa'],
+              ['K  / ↑', 'Conversa anterior'],
+              ['E', 'Arquivar / desarquivar'],
+              ['R', 'Focar composer pra responder'],
+              ['Enter', 'Enviar mensagem'],
+              ['Shift+Enter', 'Quebrar linha'],
+              ['?', 'Abrir/fechar este overlay'],
+            ].map(([k, d]) => (
+              <div key={k} className="flex items-center justify-between py-2" style={{ borderTop: `1px solid ${T.borderSubtle}` }}>
+                <kbd
+                  className="text-[11px] font-mono px-2 py-1 rounded"
+                  style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+                >
+                  {k}
+                </kbd>
+                <span className="text-[12px]" style={{ color: T.textMuted }}>{d}</span>
+              </div>
+            ))}
+            <p className="text-[11px] mt-4 text-center" style={{ color: T.textDim }}>
+              Pressione <kbd className="font-mono">Esc</kbd> ou clique fora pra fechar
+            </p>
+          </div>
+        </div>
+      )}
+
       {showAddChat && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"

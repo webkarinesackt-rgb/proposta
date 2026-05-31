@@ -1114,7 +1114,7 @@ app.get('/search', (req, res) => {
 // Campos que SOMENTE o CRM controla (alias, tags, value, status, etc.)
 // são preservados — só atualizamos os campos vindos do WhatsApp.
 
-const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', 'linkedProposalId', 'status', 'archived', 'ignored']
+const CRM_ONLY_FIELDS = ['alias', 'tags', 'value', 'source', 'email', 'notes', 'linkedProposalId', 'status', 'archived', 'ignored', 'nextAction', 'nextActionDate']
 
 function mergeChatFromExtension(incoming) {
   if (!incoming?.id || !isRealChat(incoming.id)) return
@@ -1382,6 +1382,8 @@ app.get('/chats', (_req, res) => {
       email: c.email || '',
       notes: c.notes || '',
       linkedProposalId: c.linkedProposalId || '',
+      nextAction: c.nextAction || '',
+      nextActionDate: c.nextActionDate || 0,
     }))
     // exclui só conversas que ainda nem nome têm (lixo do sync)
     .filter((c) => c.lastTime || c.name)
@@ -1651,7 +1653,7 @@ const PATCHABLE = [
   'name',
   'alias',
   'archived',
-  'ignored', // marca pra não aparecer em "Sem resposta" mesmo sem ter respondido
+  'ignored',
   'tags',
   'value',
   'source',
@@ -1659,6 +1661,8 @@ const PATCHABLE = [
   'notes',
   'linkedProposalId',
   'status',
+  'nextAction',
+  'nextActionDate',
 ]
 // Schema/type-check por campo — rejeita types errados em vez de gravar
 // lixo (proto pollution / type confusion).
@@ -1675,6 +1679,8 @@ const FIELD_VALIDATORS = {
   notes:            (v) => typeof v === 'string' && v.length < 5000,
   linkedProposalId: (v) => typeof v === 'string' && v.length < 100,
   status:           (v) => typeof v === 'string' && LEAD_STATUSES.includes(v),
+  nextAction:       (v) => typeof v === 'string' && v.length < 200,
+  nextActionDate:   (v) => v === 0 || (Number.isFinite(v) && v >= 0 && v < 4e9),
 }
 
 app.patch('/chats/:id', requireValidJid, (req, res) => {

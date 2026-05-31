@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProposalStatus } from '@/lib/types'
+import { waServer } from '@/lib/waServer'
+import { useToast } from '@/lib/useToast'
 import {
   Plus,
   Eye,
@@ -301,6 +303,7 @@ function ProposalCard({
 export default function AdminDashboard() {
   const router = useRouter()
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const { show: showToast, Toast } = useToast()
   const [filter, setFilter] = useState<ProposalStatus | 'all'>('all')
 
   useEffect(() => {
@@ -333,23 +336,53 @@ export default function AdminDashboard() {
     if (!confirm('Deletar esta proposta?')) return
     await proposalStore.remove(id)
     await refresh()
+    showToast('Proposta deletada')
   }
 
   async function handleCopy(p: Proposal) {
     const url = `${window.location.origin}/p/${p.slug}`
     await navigator.clipboard.writeText(url)
+    showToast('Link da proposta copiado')
   }
 
   async function handlePublish(id: string) {
     await proposalStore.updateStatus(id, 'sent')
     await refresh()
+    showToast('Proposta publicada')
+    syncLinkedChat(id, 'sent')
   }
 
   async function handleSetStatus(id: string, status: ProposalStatus) {
-    // update otimista — UI muda na hora, depois sincroniza com store
     setProposals((ps) => ps.map((p) => (p.id === id ? { ...p, status } : p)))
     await proposalStore.updateStatus(id, status)
     refresh()
+    syncLinkedChat(id, status)
+  }
+
+  /** Quando o status de uma proposta muda, sincroniza o status do lead
+   *  vinculado (chat.linkedProposalId === proposal.id) no Pipeline.
+   *  Loop CRM ↔ Propostas que faltava: agora não precisa lembrar de
+   *  arrastar o card todo vez que a proposta avança. */
+  async function syncLinkedChat(proposalId: string, proposalStatus: ProposalStatus) {
+    const mapping: Record<string, string> = {
+      sent: 'PROPOSTA',
+      viewed: 'AGUARDANDO',
+      accepted: 'ACEITA',
+      rejected: 'PERDIDA',
+      expired: 'PERDIDA',
+    }
+    const targetStatus = mapping[proposalStatus]
+    if (!targetStatus) return
+    try {
+      const allChats = await waServer.chats()
+      const linked = allChats.find((c) => c.linkedProposalId === proposalId)
+      if (!linked) return
+      if (linked.status === targetStatus) return // já está lá
+      await waServer.updateChat(linked.id, { status: targetStatus })
+      showToast(`Lead "${linked.name}" → ${targetStatus}`, { kind: 'info' })
+    } catch {
+      // wa-server offline ou sem permissão — não bloqueia o flow de proposta
+    }
   }
 
   const FILTERS: { value: ProposalStatus | 'all'; label: string }[] = [
@@ -362,6 +395,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
+      <Toast />
       <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
