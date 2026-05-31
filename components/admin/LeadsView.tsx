@@ -620,6 +620,12 @@ export default function LeadsView() {
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>(
+    () => (typeof window !== 'undefined' && (localStorage.getItem('fysi.leads.view') as 'kanban' | 'list')) || 'kanban'
+  )
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('fysi.leads.view', viewMode)
+  }, [viewMode])
   const { show: showToast, Toast } = useToast()
 
   async function load() {
@@ -877,6 +883,35 @@ export default function LeadsView() {
               </button>
             ))}
           </div>
+          {/* toggle de layout (kanban × lista) */}
+          <div
+            className="flex items-center gap-1 px-2 py-1.5 rounded-xl"
+            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#A8B5B0] px-1">Vista:</span>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+              style={{
+                background: viewMode === 'kanban' ? '#0D3839' : 'transparent',
+                color: viewMode === 'kanban' ? '#F4F99D' : '#6B8585',
+              }}
+              title="Quadro horizontal estilo Trello"
+            >
+              ◫ Kanban
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+              style={{
+                background: viewMode === 'list' ? '#0D3839' : 'transparent',
+                color: viewMode === 'list' ? '#F4F99D' : '#6B8585',
+              }}
+              title="Lista vertical compacta com grupos colapsáveis"
+            >
+              ☰ Lista
+            </button>
+          </div>
         </div>
       </div>
 
@@ -890,7 +925,7 @@ export default function LeadsView() {
             Servidor do WhatsApp offline. Verifique o container <code>wa-server</code> na VPS.
           </div>
         </div>
-      ) : (
+      ) : viewMode === 'kanban' ? (
         <div
           className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden thin-scroll"
           style={{ paddingBottom: 16 }}
@@ -904,6 +939,25 @@ export default function LeadsView() {
                 onOpenChat={openChat}
                 onSetStatus={handleSetStatus}
                 onSetValue={handleSetValue}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto thin-scroll px-8 pb-8">
+          <div className="max-w-5xl mx-auto">
+            {LEAD_STATUSES.map((s) => (
+              <StatusGroup
+                key={s.id}
+                status={s}
+                chats={byStatus[s.id] || []}
+                onOpenChat={openChat}
+                onSetStatus={handleSetStatus}
+                onSetValue={handleSetValue}
+                initialOpen={
+                  ['LEAD', 'AGUARDANDO', 'PROPOSTA'].includes(s.id) ||
+                  (byStatus[s.id] || []).length > 0
+                }
               />
             ))}
           </div>

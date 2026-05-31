@@ -45,7 +45,36 @@
     )
   }
 
-  // converte um chat do wppconnect num shape que o wa-server entende
+  /** Extrai preview legível da última mensagem do chat (wppconnect).
+   *  Trata tipos especiais (sticker, reaction, vcard, etc) em vez de
+   *  mostrar JID/body cru. */
+  function extractLastText(lm) {
+    if (!lm) return ''
+    const t = lm.type || ''
+    const body = (lm.body || '').trim()
+    const caption = (lm.caption || '').trim()
+    // se body é um JID puro (caso de vcard que vem como "123@lid"),
+    // não mostra — substitui por label genérico
+    const isJid = /^[\d-]+@(s\.whatsapp\.net|lid|g\.us|c\.us)$/.test(body)
+    if (t === 'sticker') return '🌟 Figurinha'
+    if (t === 'ptt') return '🎙️ Mensagem de voz'
+    if (t === 'audio') return '🎵 Áudio'
+    if (t === 'image') return caption || '🖼️ Imagem'
+    if (t === 'video') return caption || '🎬 Vídeo'
+    if (t === 'document') return caption || ('📎 ' + (lm.filename || lm.mediaData?.filename || 'Documento'))
+    if (t === 'vcard' || t === 'multi_vcard' || t === 'contact_card') return '👤 Contato'
+    if (t === 'location' || t === 'live_location') return '📍 Localização'
+    if (t === 'revoked') return '🗑️ Mensagem apagada'
+    if (t === 'reaction' || t === 'reaction_in_chat') return 'Reagiu ' + (lm.reactionText || body || '👍')
+    if (t === 'poll_creation' || t === 'poll') return '📊 Enquete: ' + (lm.pollName || body || '')
+    if (t === 'order') return '🛍️ Pedido'
+    if (t === 'product') return '🛍️ Produto'
+    if (t === 'call_log') return '📞 Chamada'
+    if (t === 'gp2' || t === 'notification_template') return '⚙️ Notificação'
+    if (isJid) return '👤 Contato'
+    return body || caption || ''
+  }
+
   function chatToIngest(c) {
     const id = c.id?._serialized || c.id
     if (!id || typeof id !== 'string') return null
@@ -53,8 +82,8 @@
       id,
       name: bestName(c),
       isGroup: !!c.isGroup,
-      lastTime: Number(c.t) || 0, // timestamp (segundos)
-      lastText: c.lastMessage?.body || c.lastMessage?.caption || '',
+      lastTime: Number(c.t) || 0,
+      lastText: extractLastText(c.lastMessage),
       fromMeLast: !!c.lastReceivedKey?.fromMe,
       unread: c.unreadCount || 0,
     }
