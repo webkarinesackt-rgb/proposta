@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
 import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
@@ -90,7 +90,8 @@ function initials(name: string) {
 
 /* ── avatar ──────────────────────────────────────────── */
 
-function Avatar({
+const Avatar = memo(_Avatar)
+function _Avatar({
   chatId,
   name,
   isGroup,
@@ -137,6 +138,8 @@ function Avatar({
         <img
           src={waServer.photoUrl(chatId, bust || undefined)}
           alt=""
+          loading="lazy"
+          decoding="async"
           onError={() => setError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
@@ -174,7 +177,8 @@ function renderText(text: string, mine: boolean) {
 
 /* ── chat list row ───────────────────────────────────── */
 
-function ChatRow({
+const ChatRow = memo(_ChatRow)
+function _ChatRow({
   chat,
   active,
   onClick,
@@ -392,7 +396,8 @@ function ChatRow({
 
 /* ── bolha de mensagem ───────────────────────────────── */
 
-function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
+const Bubble = memo(_Bubble)
+function _Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
   const mine = msg.fromMe
   const isAudio = msg.type === 'audio' && msg.hasMedia
   const isImage = msg.type === 'imagem' && msg.hasMedia
@@ -479,13 +484,16 @@ function Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
             <img
               src={waServer.mediaUrl(chatId, msg.id)}
               alt={caption || 'imagem'}
+              loading="lazy"
+              decoding="async"
               onLoad={() => setImgLoaded(true)}
-              className="block w-full max-w-[320px] cursor-zoom-in"
+              className="block w-full max-w-[320px] cursor-zoom-in transition-opacity"
               style={{
                 maxHeight: 320,
                 objectFit: 'cover',
                 background: '#F4F3EF',
                 minHeight: imgLoaded ? undefined : 160,
+                opacity: imgLoaded ? 1 : 0.4,
               }}
               onClick={() => window.open(waServer.mediaUrl(chatId, msg.id), '_blank')}
             />
@@ -596,6 +604,7 @@ export default function InboxView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedName, setSelectedName] = useState('')
   const [messages, setMessages] = useState<WaMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [search, setSearch] = useState('')
@@ -792,9 +801,14 @@ export default function InboxView() {
   useEffect(() => {
     if (!selectedId) {
       setMessages([])
+      setMessagesLoading(false)
       return
     }
     let alive = true
+    // limpa imediato: ao trocar de chat, esconde mensagens do anterior
+    // e mostra skeleton enquanto o fetch vem
+    setMessages([])
+    setMessagesLoading(true)
     async function tick() {
       try {
         const r = await waServer.messages(selectedId!)
@@ -802,6 +816,9 @@ export default function InboxView() {
         setMessages(r.messages || [])
         setSelectedName(r.name)
       } catch {}
+      finally {
+        if (alive) setMessagesLoading(false)
+      }
     }
     refreshMessagesRef.current = tick
     tick()
@@ -980,22 +997,30 @@ export default function InboxView() {
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   })()
 
-  const filtered = chats.filter((c) => {
+  // Filtragem cara (1500+ chats × buscar dentro do nome × ler searchHits).
+  // useMemo evita refazer em todo render do componente (que dispara em
+  // qualquer keystroke do composer, toggle de painel etc.)
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (q) {
-      const nameMatch = c.name.toLowerCase().includes(q)
-      const msgMatch = searchHits.has(c.id)
-      if (!nameMatch && !msgMatch) return false
-    }
-    if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
-    if (chatFilter === 'archived') return !!c.archived
-    if (c.archived) return false
-    if (chatFilter === 'groups') return c.isGroup
-    if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored)) return false
-    return true
-  })
+    return chats.filter((c) => {
+      if (q) {
+        const nameMatch = c.name.toLowerCase().includes(q)
+        const msgMatch = searchHits.has(c.id)
+        if (!nameMatch && !msgMatch) return false
+      }
+      if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
+      if (chatFilter === 'archived') return !!c.archived
+      if (c.archived) return false
+      if (chatFilter === 'groups') return c.isGroup
+      if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored)) return false
+      return true
+    })
+  }, [chats, search, searchHits, tagFilter, chatFilter])
 
-  const currentChat = chats.find((c) => c.id === selectedId)
+  const currentChat = useMemo(
+    () => chats.find((c) => c.id === selectedId),
+    [chats, selectedId]
+  )
 
   const firstFilteredId = filtered[0]?.id || null
   useEffect(() => {
@@ -1319,8 +1344,6 @@ export default function InboxView() {
               )
             ) : (
               filtered.map((c) => {
-                // só mostra snippet se a busca matchou em mensagem
-                // E o nome do contato NÃO contém o termo (senão é redundante)
                 const q = search.trim().toLowerCase()
                 const nameHits = q && c.name.toLowerCase().includes(q)
                 const snippet =
@@ -1328,16 +1351,26 @@ export default function InboxView() {
                     ? searchHits.get(c.id)
                     : undefined
                 return (
-                  <ChatRow
+                  <div
                     key={c.id}
-                    chat={c}
-                    active={c.id === selectedId}
-                    onClick={() => setSelectedId(c.id)}
-                    onSetStatus={(s) => handleSetChatStatus(c.id, s)}
-                    onArchive={() => handleArchiveChat(c.id, !c.archived)}
-                    onIgnore={() => handleToggleIgnore(c.id, !c.ignored)}
-                    matchSnippet={snippet}
-                  />
+                    // browser pula layout/paint de linhas fora do viewport.
+                    // contain-intrinsic-size: altura estimada da linha pra
+                    // o scroll-bar não pular quando linhas saem do view.
+                    style={{
+                      contentVisibility: 'auto',
+                      containIntrinsicSize: '0 68px',
+                    }}
+                  >
+                    <ChatRow
+                      chat={c}
+                      active={c.id === selectedId}
+                      onClick={() => setSelectedId(c.id)}
+                      onSetStatus={(s) => handleSetChatStatus(c.id, s)}
+                      onArchive={() => handleArchiveChat(c.id, !c.archived)}
+                      onIgnore={() => handleToggleIgnore(c.id, !c.ignored)}
+                      matchSnippet={snippet}
+                    />
+                  </div>
                 )
               })
             )}
@@ -1623,12 +1656,34 @@ export default function InboxView() {
                   className="absolute inset-0 overflow-y-auto px-6 py-5 flex flex-col gap-2"
                 >
                   {messages.length === 0 ? (
-                    <p
-                      className="text-[12px] text-center py-8"
-                      style={{ color: T.textDim }}
-                    >
-                      Sem mensagens nesta conversa.
-                    </p>
+                    messagesLoading ? (
+                      // skeleton enquanto carrega — alterna bolha esq/dir
+                      <div className="flex flex-col gap-3 py-4 animate-pulse">
+                        {[64, 120, 80, 160, 100, 90].map((w, i) => (
+                          <div
+                            key={i}
+                            className={`flex ${i % 2 ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className="rounded-2xl px-3.5 py-3"
+                              style={{
+                                background: i % 2 ? 'rgba(13,56,57,0.08)' : '#FFFFFF',
+                                width: w,
+                                height: 14 + (i % 3) * 4,
+                                opacity: 1 - i * 0.1,
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p
+                        className="text-[12px] text-center py-8"
+                        style={{ color: T.textDim }}
+                      >
+                        Sem mensagens nesta conversa.
+                      </p>
+                    )
                   ) : (
                     (() => {
                       let lastDay = ''
@@ -1637,7 +1692,16 @@ export default function InboxView() {
                         const showSep = day !== lastDay
                         lastDay = day
                         return (
-                          <div key={m.id}>
+                          <div
+                            key={m.id}
+                            // browser pula paint pra bolhas fora do viewport.
+                            // estimativa de altura ~ 60px (linha curta) — pra
+                            // mensagens muito longas o browser ajusta sozinho.
+                            style={{
+                              contentVisibility: 'auto',
+                              containIntrinsicSize: '0 60px',
+                            }}
+                          >
                             {showSep && <DaySeparator timestamp={m.time} />}
                             <Bubble msg={m} chatId={selectedId} />
                           </div>
