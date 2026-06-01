@@ -30,7 +30,7 @@ const INPUT =
 const LABEL =
   'block text-[10px] font-bold uppercase tracking-[0.13em] text-[#8AA09A] mb-1.5'
 
-function Field({ label, children, span2 = false }: { label: string; children: React.ReactNode; span2?: boolean }) {
+function Field({ label, children, span2 = false }: { label: React.ReactNode; children: React.ReactNode; span2?: boolean }) {
   return (
     <div className={span2 ? 'sm:col-span-2' : ''}>
       <label className={LABEL}>{label}</label>
@@ -198,9 +198,42 @@ function PlanEditor({
               <input className={INPUT} type="number" value={plan.price_installments_count}
                 onChange={e => onChange(plan.id, 'price_installments_count', Number(e.target.value))} />
             </Field>
-            <Field label="Valor parcela (R$)">
+            <Field label={
+              <span className="flex items-center gap-1.5">
+                Valor parcela (R$)
+                {Math.round((plan.price_cash || 0) / Math.max(1, plan.price_installments_count || 1)) === plan.price_installment_value && (
+                  <span
+                    className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded"
+                    style={{ background: '#E0F2FE', color: '#0EA5E9' }}
+                    title="Calculado automaticamente. Você pode editar pra incluir juros."
+                  >
+                    auto
+                  </span>
+                )}
+              </span>
+            }>
               <input className={INPUT} type="number" value={plan.price_installment_value}
                 onChange={e => onChange(plan.id, 'price_installment_value', Number(e.target.value))} />
+              {plan.price_installments_count > 0 && plan.price_installment_value > 0 && (
+                <p className="text-[10px] mt-1" style={{ color: '#8AA09A' }}>
+                  Total: {formatMoney(
+                    plan.price_installment_value * plan.price_installments_count,
+                    currency,
+                    exchangeRate
+                  )}
+                  {plan.price_cash > 0 &&
+                    plan.price_installment_value * plan.price_installments_count > plan.price_cash &&
+                    (() => {
+                      const diff = plan.price_installment_value * plan.price_installments_count - plan.price_cash
+                      const pct = Math.round((diff / plan.price_cash) * 100)
+                      return (
+                        <span style={{ color: pct > 0 ? '#C2410C' : '#22C55E' }}>
+                          {' '}(+{pct}% vs à vista)
+                        </span>
+                      )
+                    })()}
+                </p>
+              )}
             </Field>
             <Field label="Prazo (dias úteis)">
               <input className={INPUT} type="number" value={plan.delivery_days}
@@ -353,7 +386,22 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
       setForm(f => ({ ...f, [k]: e.target.value }))
 
   const updatePlan = (id: string, field: keyof Plan, value: unknown) =>
-    setPlans(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)))
+    setPlans(prev =>
+      prev.map(p => {
+        if (p.id !== id) return p
+        const next = { ...p, [field]: value } as Plan
+        // Auto-calcula valor da parcela quando muda cash OU count.
+        // Fórmula: round(cash / count). Usuário ainda pode editar
+        // a parcela manualmente depois — mas se mexer em cash/count
+        // de novo, sobrescreve. Predicabilidade > teimosia.
+        if (field === 'price_cash' || field === 'price_installments_count') {
+          const cash = Number(next.price_cash) || 0
+          const count = Number(next.price_installments_count) || 0
+          next.price_installment_value = count > 0 ? Math.round(cash / count) : 0
+        }
+        return next
+      })
+    )
 
   const setRecommended = (id: string) =>
     setPlans(prev => prev.map(p => ({ ...p, is_recommended: p.id === id ? !p.is_recommended : false })))
