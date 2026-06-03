@@ -312,6 +312,14 @@ export default function DashboardView() {
   const [series, setSeries] = useState<WaSeriesPoint[]>([])
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [serverOff, setServerOff] = useState(false)
+  const [tab, setTab] = useState<'whatsapp' | 'propostas'>(() =>
+    (typeof window !== 'undefined' &&
+      (localStorage.getItem('fysi.dash.tab') as 'whatsapp' | 'propostas')) ||
+    'whatsapp'
+  )
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('fysi.dash.tab', tab)
+  }, [tab])
 
   // carrega propostas uma vez (pra distribuição em pizza)
   useEffect(() => {
@@ -366,32 +374,57 @@ export default function DashboardView() {
         >
           Métricas
         </h1>
-        <p className="text-[13px] mb-8" style={{ color: T.textMuted }}>
-          Termômetro do seu atendimento no WhatsApp.
+        <p className="text-[13px] mb-6" style={{ color: T.textMuted }}>
+          {tab === 'whatsapp'
+            ? 'Termômetro do seu atendimento no WhatsApp.'
+            : 'Relatório de propostas — distribuição e faturamento.'}
         </p>
 
-        {/* period tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {PERIODS.map((p) => {
-            const active = period === p.id
+        {/* tab switcher: WhatsApp × Propostas */}
+        <div className="flex gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: T.bgSubtle, border: `1px solid ${T.border}` }}>
+          {(['whatsapp', 'propostas'] as const).map((t) => {
+            const active = tab === t
             return (
               <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
-                className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
+                key={t}
+                onClick={() => setTab(t)}
+                className="text-[12px] font-bold px-4 py-1.5 rounded-lg transition-all"
                 style={{
-                  background: active ? T.accent : T.card,
+                  background: active ? T.accent : 'transparent',
                   color: active ? T.accentBright : T.textMuted,
-                  border: `1px solid ${active ? T.accent : T.border}`,
                 }}
               >
-                {p.label}
+                {t === 'whatsapp' ? 'WhatsApp' : 'Propostas'}
               </button>
             )
           })}
         </div>
 
-        {serverOff ? (
+        {/* period tabs — só pra WhatsApp */}
+        {tab === 'whatsapp' && (
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {PERIODS.map((p) => {
+              const active = period === p.id
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setPeriod(p.id)}
+                  className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
+                  style={{
+                    background: active ? T.accent : T.card,
+                    color: active ? T.accentBright : T.textMuted,
+                    border: `1px solid ${active ? T.accent : T.border}`,
+                  }}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {tab === 'whatsapp' && (
+          serverOff ? (
           <div
             className="rounded-2xl p-12 text-center"
             style={{
@@ -547,135 +580,127 @@ export default function DashboardView() {
               </div>
             )}
 
-            {/* ── Relatório de propostas ── */}
-            {(() => {
-              if (proposals.length === 0) return null
-              // distribuições
-              const byType = new Map<ProjectType, number>()
-              const byStatus = new Map<ProposalStatus, number>()
-              let totalAccepted = 0
-              let totalSent = 0
-              for (const p of proposals) {
-                byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
-                byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
-                const planValue = p.selected_plans.reduce(
-                  (s, pl) => s + (Number(pl.price_cash) || 0),
-                  0
-                )
-                if (p.status === 'accepted') totalAccepted += planValue
-                if (p.status === 'sent' || p.status === 'viewed') totalSent += planValue
-              }
-              const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
-                .map((t) => ({
-                  label: TYPE_META[t].label,
-                  value: byType.get(t) || 0,
-                  color: TYPE_META[t].color,
-                }))
-                .filter((s) => s.value > 0)
-              const statusSlices: Slice[] = (Object.keys(STATUS_META_PROP) as ProposalStatus[])
-                .map((s) => ({
-                  label: STATUS_META_PROP[s].label,
-                  value: byStatus.get(s) || 0,
-                  color: STATUS_META_PROP[s].color,
-                }))
-                .filter((s) => s.value > 0)
-
-              return (
-                <div className="mt-6">
-                  <div className="flex items-end justify-between mb-3">
-                    <h2
-                      className="leading-tight"
-                      style={{
-                        fontFamily: '"ivypresto-display", Georgia, serif',
-                        fontStyle: 'italic',
-                        fontWeight: 300,
-                        fontSize: '1.6rem',
-                        color: T.textPrimary,
-                      }}
-                    >
-                      Propostas
-                    </h2>
-                    <p className="text-[11px]" style={{ color: T.textMuted }}>
-                      Histórico completo · {proposals.length} proposta{proposals.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-
-                  {/* duas pizzas + cards de valor */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    {/* por tipo */}
-                    <div
-                      className="rounded-2xl p-5"
-                      style={{ background: T.card, border: `1px solid ${T.border}` }}
-                    >
-                      <p
-                        className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4"
-                        style={{ color: T.textDim }}
-                      >
-                        Por tipo de proposta
-                      </p>
-                      <div className="flex items-center gap-5 flex-wrap">
-                        <PieChart slices={typeSlices} size={170} />
-                        <div className="flex-1 min-w-[160px]">
-                          <PieLegend slices={typeSlices} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* por status */}
-                    <div
-                      className="rounded-2xl p-5"
-                      style={{ background: T.card, border: `1px solid ${T.border}` }}
-                    >
-                      <p
-                        className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4"
-                        style={{ color: T.textDim }}
-                      >
-                        Por status
-                      </p>
-                      <div className="flex items-center gap-5 flex-wrap">
-                        <PieChart slices={statusSlices} size={170} />
-                        <div className="flex-1 min-w-[160px]">
-                          <PieLegend slices={statusSlices} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* valores */}
-                  {(totalAccepted > 0 || totalSent > 0) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <MetricCard
-                        label="Faturamento aceito"
-                        value={fmtBRL(totalAccepted)}
-                        icon={<Activity size={15} />}
-                        accent="#22C55E"
-                        sub="soma das propostas marcadas como aceitas"
-                      />
-                      <MetricCard
-                        label="Pipeline pendente"
-                        value={fmtBRL(totalSent)}
-                        icon={<Send size={15} />}
-                        accent="#3B82F6"
-                        sub="enviadas / visualizadas, ainda em aberto"
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
             <p
               className="text-[11px] mt-6 leading-relaxed"
               style={{ color: T.textDim }}
             >
               &quot;Conversas ativas&quot;, &quot;mensagens&quot; e &quot;tempo de
               resposta&quot; contam o período selecionado. &quot;Não respondidas&quot;
-              e &quot;maior espera&quot; são o estado atual. As pizzas de propostas
-              consideram todo o histórico.
+              e &quot;maior espera&quot; são o estado atual.
             </p>
           </>
-        )}
+        ))}
+
+        {/* ── ABA PROPOSTAS ── */}
+        {tab === 'propostas' && <PropostasReport proposals={proposals} />}
       </div>
+    </div>
+  )
+}
+
+/* ── Relatório de Propostas (extraído como componente) ─── */
+
+function PropostasReport({ proposals }: { proposals: Proposal[] }) {
+  if (proposals.length === 0) {
+    return (
+      <div
+        className="rounded-2xl p-12 text-center"
+        style={{ background: T.card, border: `1px solid ${T.border}` }}
+      >
+        <p className="text-[13px]" style={{ color: T.textMuted }}>
+          Você ainda não tem propostas. Crie a primeira em{' '}
+          <a
+            href="/admin"
+            className="font-bold underline"
+            style={{ color: T.accent }}
+          >
+            Propostas
+          </a>
+          .
+        </p>
+      </div>
+    )
+  }
+  const byType = new Map<ProjectType, number>()
+  const byStatus = new Map<ProposalStatus, number>()
+  let totalAccepted = 0
+  let totalSent = 0
+  for (const p of proposals) {
+    byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
+    byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
+    const planValue = p.selected_plans.reduce(
+      (s, pl) => s + (Number(pl.price_cash) || 0),
+      0
+    )
+    if (p.status === 'accepted') totalAccepted += planValue
+    if (p.status === 'sent' || p.status === 'viewed') totalSent += planValue
+  }
+  const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
+    .map((t) => ({
+      label: TYPE_META[t].label,
+      value: byType.get(t) || 0,
+      color: TYPE_META[t].color,
+    }))
+    .filter((s) => s.value > 0)
+  const statusSlices: Slice[] = (Object.keys(STATUS_META_PROP) as ProposalStatus[])
+    .map((s) => ({
+      label: STATUS_META_PROP[s].label,
+      value: byStatus.get(s) || 0,
+      color: STATUS_META_PROP[s].color,
+    }))
+    .filter((s) => s.value > 0)
+  return (
+    <div>
+      <div className="flex items-end justify-between mb-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: T.textDim }}>
+          Histórico completo · {proposals.length} proposta{proposals.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: T.textDim }}>
+            Por tipo de proposta
+          </p>
+          <div className="flex items-center gap-5 flex-wrap">
+            <PieChart slices={typeSlices} size={170} />
+            <div className="flex-1 min-w-[160px]">
+              <PieLegend slices={typeSlices} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: T.textDim }}>
+            Por status
+          </p>
+          <div className="flex items-center gap-5 flex-wrap">
+            <PieChart slices={statusSlices} size={170} />
+            <div className="flex-1 min-w-[160px]">
+              <PieLegend slices={statusSlices} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {(totalAccepted > 0 || totalSent > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <MetricCard
+            label="Faturamento aceito"
+            value={fmtBRL(totalAccepted)}
+            icon={<Activity size={15} />}
+            accent="#22C55E"
+            sub="soma das propostas marcadas como aceitas"
+          />
+          <MetricCard
+            label="Pipeline pendente"
+            value={fmtBRL(totalSent)}
+            icon={<Send size={15} />}
+            accent="#3B82F6"
+            sub="enviadas / visualizadas, ainda em aberto"
+          />
+        </div>
+      )}
     </div>
   )
 }
