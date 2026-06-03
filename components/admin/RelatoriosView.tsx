@@ -213,20 +213,69 @@ export default function RelatoriosView() {
       .catch(() => setLoading(false))
   }, [])
 
+  // valor de uma proposta = soma dos price_cash dos planos selecionados
+  function propValue(p: Proposal) {
+    return p.selected_plans.reduce((s, pl) => s + (Number(pl.price_cash) || 0), 0)
+  }
+
   const byType = new Map<ProjectType, number>()
   const byStatus = new Map<ProposalStatus, number>()
+  const byMonth = new Map<string, number>() // 'YYYY-MM' → count
   let totalAccepted = 0
   let totalSent = 0
+  let totalLost = 0
+  let acceptedCount = 0
+  let closedCount = 0 // accepted + rejected + expired (todas que fecharam ciclo)
   for (const p of proposals) {
     byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
     byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
-    const planValue = p.selected_plans.reduce(
-      (s, pl) => s + (Number(pl.price_cash) || 0),
-      0
-    )
-    if (p.status === 'accepted') totalAccepted += planValue
-    if (p.status === 'sent' || p.status === 'viewed') totalSent += planValue
+    const v = propValue(p)
+    if (p.status === 'accepted') { totalAccepted += v; acceptedCount++; closedCount++ }
+    if (p.status === 'sent' || p.status === 'viewed') totalSent += v
+    if (p.status === 'rejected' || p.status === 'expired') { totalLost += v; closedCount++ }
+    // distribuição por mês (usa created_at)
+    if (p.created_at) {
+      const d = new Date(p.created_at)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      byMonth.set(key, (byMonth.get(key) || 0) + 1)
+    }
   }
+  const conversionRate = closedCount > 0 ? Math.round((acceptedCount / closedCount) * 100) : 0
+  const avgTicket = acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0
+
+  // Top 5 maiores propostas
+  const topDeals = [...proposals]
+    .map((p) => ({ p, v: propValue(p) }))
+    .filter((x) => x.v > 0)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 5)
+
+  // Vencendo em breve: enviadas/visualizadas com valid_until nos próximos 14 dias
+  const now = Date.now()
+  const in14d = now + 14 * 86400_000
+  const expiringSoon = proposals
+    .filter((p) =>
+      (p.status === 'sent' || p.status === 'viewed') &&
+      p.valid_until &&
+      new Date(p.valid_until).getTime() <= in14d &&
+      new Date(p.valid_until).getTime() >= now
+    )
+    .sort((a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime())
+    .slice(0, 8)
+
+  // Série de meses pra bar chart — últimos 6 meses, mesmo vazios
+  const months: { key: string; label: string; count: number }[] = []
+  const today = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    months.push({
+      key,
+      label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+      count: byMonth.get(key) || 0,
+    })
+  }
+  const maxMonthly = Math.max(1, ...months.map((m) => m.count))
   const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
     .map((t) => ({
       label: TYPE_META[t].label,
@@ -336,24 +385,185 @@ export default function RelatoriosView() {
               </div>
             </div>
 
-            {(totalAccepted > 0 || totalSent > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <MetricCard
-                  label="Faturamento aceito"
-                  value={fmtBRL(totalAccepted)}
-                  icon={<Activity size={15} />}
-                  accent="#22C55E"
-                  sub="soma das propostas marcadas como aceitas"
-                />
-                <MetricCard
-                  label="Pipeline pendente"
-                  value={fmtBRL(totalSent)}
-                  icon={<Send size={15} />}
-                  accent="#3B82F6"
-                  sub="enviadas / visualizadas, ainda em aberto"
-                />
+            {/* ── 5 KPIs de performance ── */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+              <MetricCard
+                label="Taxa de conversão"
+                value={closedCount > 0 ? `${conversionRate}%` : '—'}
+                icon={<Activity size={15} />}
+                accent={conversionRate >= 30 ? '#22C55E' : conversionRate >= 15 ? '#EAB308' : '#EF4444'}
+                sub={closedCount > 0 ? `${acceptedCount} de ${closedCount} fechadas` : 'sem ciclo fechado ainda'}
+              />
+              <MetricCard
+                label="Ticket médio aceito"
+                value={acceptedCount > 0 ? fmtBRL(avgTicket) : '—'}
+                icon={<Send size={15} />}
+                accent="#0EA5E9"
+                sub={acceptedCount > 0 ? `${acceptedCount} aceita${acceptedCount > 1 ? 's' : ''}` : 'nenhuma aceita'}
+              />
+              <MetricCard
+                label="Faturamento aceito"
+                value={fmtBRL(totalAccepted)}
+                icon={<Activity size={15} />}
+                accent="#22C55E"
+                sub="soma das aceitas"
+              />
+              <MetricCard
+                label="Pipeline pendente"
+                value={fmtBRL(totalSent)}
+                icon={<Send size={15} />}
+                accent="#3B82F6"
+                sub="enviadas / visualizadas"
+              />
+              <MetricCard
+                label="Valor perdido"
+                value={fmtBRL(totalLost)}
+                icon={<Activity size={15} />}
+                accent="#EF4444"
+                sub="rejeitadas + expiradas"
+              />
+            </div>
+
+            {/* ── Bar chart: propostas criadas por mês ── */}
+            <div
+              className="rounded-2xl p-5 mb-3"
+              style={{ background: T.card, border: `1px solid ${T.border}` }}
+            >
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4"
+                style={{ color: T.textDim }}
+              >
+                Propostas criadas — últimos 6 meses
+              </p>
+              <div className="flex items-end gap-3" style={{ height: 100 }}>
+                {months.map((m) => (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="flex-1 w-full flex items-end">
+                      <div
+                        className="w-full rounded-t transition-all"
+                        style={{
+                          height: `${(m.count / maxMonthly) * 100}%`,
+                          minHeight: m.count > 0 ? 4 : 0,
+                          background: m.count > 0 ? T.accent : 'transparent',
+                          border: m.count === 0 ? `1px dashed ${T.border}` : 'none',
+                        }}
+                        title={`${m.label}: ${m.count} proposta${m.count !== 1 ? 's' : ''}`}
+                      />
+                    </div>
+                    <span
+                      className="text-[10px] font-semibold tabular-nums"
+                      style={{ color: T.textPrimary }}
+                    >
+                      {m.count}
+                    </span>
+                    <span className="text-[9px] uppercase" style={{ color: T.textDim }}>
+                      {m.label}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* ── Top 5 maiores propostas + Vencendo em breve ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: T.card, border: `1px solid ${T.border}` }}
+              >
+                <p
+                  className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3"
+                  style={{ color: T.textDim }}
+                >
+                  Top 5 maiores
+                </p>
+                {topDeals.length === 0 ? (
+                  <p className="text-[12px]" style={{ color: T.textDim }}>
+                    Nenhuma proposta com valor definido ainda.
+                  </p>
+                ) : (
+                  <div className="flex flex-col">
+                    {topDeals.map(({ p, v }, i) => {
+                      const sm = STATUS_META_PROP[p.status]
+                      return (
+                        <a
+                          key={p.id}
+                          href={`/admin/edit/${p.id}`}
+                          className="flex items-center justify-between gap-3 py-2.5 transition-colors hover:bg-[#FAFAF8] px-2 -mx-2 rounded-lg"
+                          style={{ borderTop: i > 0 ? `1px solid ${T.border}` : 'none' }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold truncate" style={{ color: T.textPrimary }}>
+                              {p.client_name}
+                            </p>
+                            <span
+                              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                              style={{ color: sm.color, background: sm.color + '15' }}
+                            >
+                              {sm.label}
+                            </span>
+                          </div>
+                          <p className="text-[14px] font-bold tabular-nums" style={{ color: T.textPrimary }}>
+                            {fmtBRL(v)}
+                          </p>
+                        </a>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div
+                className="rounded-2xl p-5"
+                style={{ background: T.card, border: `1px solid ${T.border}` }}
+              >
+                <p
+                  className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3"
+                  style={{ color: T.textDim }}
+                >
+                  ⏰ Vencendo em 14 dias
+                </p>
+                {expiringSoon.length === 0 ? (
+                  <p className="text-[12px]" style={{ color: T.textDim }}>
+                    Nenhuma proposta vence nos próximos 14 dias.
+                  </p>
+                ) : (
+                  <div className="flex flex-col">
+                    {expiringSoon.map((p, i) => {
+                      const daysLeft = Math.ceil(
+                        (new Date(p.valid_until).getTime() - now) / 86400_000
+                      )
+                      const urgent = daysLeft <= 3
+                      return (
+                        <a
+                          key={p.id}
+                          href={`/admin/edit/${p.id}`}
+                          className="flex items-center justify-between gap-3 py-2.5 transition-colors hover:bg-[#FAFAF8] px-2 -mx-2 rounded-lg"
+                          style={{ borderTop: i > 0 ? `1px solid ${T.border}` : 'none' }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold truncate" style={{ color: T.textPrimary }}>
+                              {p.client_name}
+                            </p>
+                            <p className="text-[10px]" style={{ color: T.textMuted }}>
+                              vence {new Date(p.valid_until).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                          <span
+                            className="text-[10px] font-bold px-2 py-1 rounded"
+                            style={{
+                              background: urgent ? '#FEF2F2' : '#FEFCE8',
+                              color: urgent ? '#B91C1C' : '#A16207',
+                            }}
+                          >
+                            {daysLeft === 0 ? 'hoje' : `${daysLeft}d`}
+                          </span>
+                        </a>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

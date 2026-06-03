@@ -111,4 +111,7 @@ export interface Proposal {
   agency_settings: AgencySettings
   cases: Case[]
   testimonials: Testimonial[]
+  /** ISO timestamp da criação (vindo do Supabase). Opcional pra
+   *  compatibilidade com dados antigos. */
+  created_at?: string
 }

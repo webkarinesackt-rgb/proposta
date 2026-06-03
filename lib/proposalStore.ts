@@ -35,6 +35,7 @@ interface Row {
   slug: string
   data: Proposal
   status: Proposal['status']
+  created_at: string
 }
 
 function rowToProposal(row: Row): Proposal {
@@ -44,6 +45,7 @@ function rowToProposal(row: Row): Proposal {
     id: row.id,
     slug: row.slug,
     status: row.status,
+    created_at: row.created_at,
     // defaults defensivos: se a row antiga não tem o campo, evita crash no render
     selected_plans: data.selected_plans ?? [],
     cases: data.cases ?? [],
