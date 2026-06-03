@@ -60,23 +60,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           borderRight: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        {/* mark — logo Fysi */}
+        {/* mark — logo Fysi sem fundo, direto no verde da sidebar */}
         <div className="relative mb-10">
-          <div
-            className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-fysi-mark.png"
+            alt="Fysi"
             style={{
-              background: '#FFFFFF',
-              boxShadow:
-                '0 6px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.4)',
+              width: 52,
+              height: 52,
+              objectFit: 'contain',
+              // pequeno glow pra dar destaque sem precisar de fundo
+              filter: 'drop-shadow(0 2px 8px rgba(244,249,157,0.15))',
             }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-fysi-mark.png"
-              alt="Fysi"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          </div>
+          />
           {/* status do whatsapp como bolinha no canto */}
           <span
             title={`WhatsApp: ${conn}`}
