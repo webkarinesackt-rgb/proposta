@@ -72,9 +72,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/logo-fysi-mark.png"
               alt="Fysi"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
           {/* status do whatsapp como bolinha no canto */}
