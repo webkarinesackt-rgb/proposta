@@ -491,7 +491,7 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 pb-32 pt-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-32 pt-6 sm:pt-10">
         {/* header */}
         <div className="mb-10">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#A8B5B0] mb-2">

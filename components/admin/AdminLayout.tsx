@@ -43,16 +43,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="h-screen flex overflow-hidden"
+      className="h-screen flex flex-col md:flex-row overflow-hidden"
       style={{
         background: '#F7F7F4',
         fontFamily: 'var(--font-inter)',
         color: '#162322',
       }}
     >
-      {/* sidebar */}
+      {/* sidebar (desktop) — escondida no mobile, vira tab-bar abaixo */}
       <aside
-        className="w-[84px] flex-shrink-0 flex flex-col items-center py-5 h-screen"
+        className="hidden md:flex w-[84px] flex-shrink-0 flex-col items-center py-5 h-screen"
         style={{
           background:
             'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
@@ -178,10 +178,62 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* main — overflow-y-auto pra páginas sem scroll próprio (form) */}
-      <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto thin-scroll">
+      {/* main — overflow-y-auto pra páginas sem scroll próprio (form).
+          No mobile, deixa espaço pro tab-bar fixo (58px + safe area). */}
+      <main
+        className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto thin-scroll pb-[calc(58px+env(safe-area-inset-bottom))] md:pb-0"
+      >
         {children}
       </main>
+
+      {/* tab-bar mobile (md:hidden) */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex"
+        style={{
+          background:
+            'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
+          borderTop: '1px solid rgba(0,0,0,0.2)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.15)',
+        }}
+      >
+        {TABS.map((tab) => {
+          const active =
+            pathname === tab.path ||
+            (tab.path !== '/admin' && pathname.startsWith(tab.path))
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.path}
+              onClick={() => router.push(tab.path)}
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-all"
+              style={{
+                background: active ? 'rgba(244,249,157,0.08)' : 'transparent',
+              }}
+            >
+              {active && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full"
+                  style={{
+                    background: '#F4F99D',
+                    boxShadow: '0 0 8px rgba(244,249,157,0.6)',
+                  }}
+                />
+              )}
+              <Icon
+                size={20}
+                style={{ color: active ? '#F4F99D' : 'rgba(139,183,175,0.65)' }}
+              />
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: active ? '#E6F1EE' : 'rgba(139,183,175,0.55)' }}
+              >
+                {tab.label}
+              </span>
+            </button>
+          )
+        })}
+      </nav>
     </div>
   )
 }

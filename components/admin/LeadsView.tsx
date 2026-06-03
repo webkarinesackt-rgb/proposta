@@ -724,7 +724,7 @@ export default function LeadsView() {
     <div className="flex-1 min-h-0 flex flex-col relative" style={{ background: '#FAFAF8' }}>
       <Toast />
       {/* hero compacto e fixo no topo (pra dar espaço pro kanban) */}
-      <div className="px-8 pt-8 pb-4 flex-shrink-0">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 flex-shrink-0">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
@@ -917,7 +917,7 @@ export default function LeadsView() {
 
       {/* kanban horizontal */}
       {serverOff ? (
-        <div className="px-8 pb-8">
+        <div className="px-4 sm:px-8 pb-8">
           <div
             className="rounded-2xl p-6 text-[13px] font-semibold"
             style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C' }}
@@ -930,7 +930,7 @@ export default function LeadsView() {
           className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden thin-scroll"
           style={{ paddingBottom: 16 }}
         >
-          <div className="flex gap-3 h-full px-8 pb-2" style={{ minWidth: 'fit-content' }}>
+          <div className="flex gap-3 h-full px-4 sm:px-8 pb-2" style={{ minWidth: 'fit-content' }}>
             {LEAD_STATUSES.map((s) => (
               <KanbanColumn
                 key={s.id}
@@ -944,7 +944,7 @@ export default function LeadsView() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto thin-scroll px-8 pb-8">
+        <div className="flex-1 min-h-0 overflow-y-auto thin-scroll px-4 sm:px-8 pb-8">
           <div className="max-w-5xl mx-auto">
             {LEAD_STATUSES.map((s) => (
               <StatusGroup

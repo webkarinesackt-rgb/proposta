@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
-import { Proposal, ProposalStatus } from '@/lib/types'
+import { Proposal, ProposalStatus, ProjectType } from '@/lib/types'
 import { waServer } from '@/lib/waServer'
 import { useToast } from '@/lib/useToast'
+import { getPlansForScope } from '@/lib/scopeTemplates'
+import { mockProposal } from '@/lib/mockData'
 import {
   Plus,
   Eye,
@@ -18,6 +20,7 @@ import {
   Mail,
   Send,
   ChevronDown,
+  Check,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -99,6 +102,175 @@ function Stat({
       >
         {label}
       </p>
+    </div>
+  )
+}
+
+/* ── proposta rápida modal ───────────────────────────── */
+
+const QUICK_TEMPLATES: { type: ProjectType; label: string; desc: string }[] = [
+  { type: 'landing_page',   label: 'Landing Page',          desc: 'Página focada em conversão' },
+  { type: 'site_completo',  label: 'Site Completo',         desc: 'Múltiplas páginas e seções' },
+  { type: 'mensal',         label: 'Mensal',                desc: 'Gestão recorrente' },
+  { type: 'posicionamento', label: 'Posicionamento online', desc: 'Identidade + estratégia + conteúdo' },
+]
+
+function QuickProposalModal({
+  proposals,
+  onClose,
+  onPickTemplate,
+  onDuplicate,
+}: {
+  proposals: Proposal[]
+  onClose: () => void
+  onPickTemplate: (type: ProjectType, clientName: string) => void
+  onDuplicate: (sourceId: string, clientName: string) => void
+}) {
+  const [tab, setTab] = useState<'template' | 'duplicate'>('template')
+  const [clientName, setClientName] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectType>('landing_page')
+  const [selectedSource, setSelectedSource] = useState<string>('')
+
+  function submit() {
+    const name = clientName.trim()
+    if (!name) return
+    if (tab === 'template') onPickTemplate(selectedTemplate, name)
+    else if (selectedSource) onDuplicate(selectedSource, name)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: T.card, border: `1px solid ${T.border}`, boxShadow: '0 24px 60px rgba(0,0,0,0.2)' }}
+      >
+        <h2 className="text-[16px] sm:text-[18px] font-bold mb-1" style={{ color: T.textPrimary }}>
+          ⚡ Proposta rápida
+        </h2>
+        <p className="text-[12px] mb-4" style={{ color: T.textMuted }}>
+          Escolha um pacote padrão OU duplique de outro cliente. Você revisa e publica em 30s.
+        </p>
+
+        {/* tab switcher */}
+        <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{ background: T.bgSubtle }}>
+          <button
+            onClick={() => setTab('template')}
+            className="flex-1 text-[12px] font-bold py-2 rounded-lg transition-all"
+            style={{
+              background: tab === 'template' ? T.card : 'transparent',
+              color: tab === 'template' ? T.textPrimary : T.textMuted,
+              boxShadow: tab === 'template' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+            }}
+          >
+            Pacote padrão
+          </button>
+          <button
+            onClick={() => setTab('duplicate')}
+            className="flex-1 text-[12px] font-bold py-2 rounded-lg transition-all"
+            style={{
+              background: tab === 'duplicate' ? T.card : 'transparent',
+              color: tab === 'duplicate' ? T.textPrimary : T.textMuted,
+              boxShadow: tab === 'duplicate' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+            }}
+          >
+            Duplicar cliente
+          </button>
+        </div>
+
+        {tab === 'template' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            {QUICK_TEMPLATES.map((t) => {
+              const active = selectedTemplate === t.type
+              return (
+                <button
+                  key={t.type}
+                  onClick={() => setSelectedTemplate(t.type)}
+                  className="text-left rounded-xl px-3 py-3 transition-all"
+                  style={{
+                    background: active ? T.accent : T.card,
+                    border: `1px solid ${active ? T.accent : T.border}`,
+                    color: active ? '#FFFFFF' : T.textPrimary,
+                  }}
+                >
+                  <p className="text-[13px] font-bold">{t.label}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: active ? '#8BB7AF' : T.textMuted }}>
+                    {t.desc}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="mb-4 max-h-[240px] overflow-y-auto rounded-xl" style={{ border: `1px solid ${T.border}` }}>
+            {proposals.length === 0 ? (
+              <p className="text-[12px] text-center py-8" style={{ color: T.textDim }}>
+                Você ainda não tem propostas pra duplicar.
+              </p>
+            ) : (
+              proposals.map((p) => {
+                const active = selectedSource === p.id
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedSource(p.id)}
+                    className="w-full text-left px-3 py-2.5 transition-colors flex items-center justify-between"
+                    style={{
+                      background: active ? T.bgSubtle : 'transparent',
+                      borderBottom: `1px solid ${T.borderSubtle}`,
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold truncate" style={{ color: T.textPrimary }}>
+                        {p.client_name}
+                      </p>
+                      <p className="text-[11px] truncate" style={{ color: T.textMuted }}>
+                        {TYPE_LABEL[p.project_type]} · {p.selected_plans.length} plano(s)
+                      </p>
+                    </div>
+                    {active && <Check size={14} style={{ color: T.accent }} />}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        )}
+
+        <label className="block text-[10px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: T.textDim }}>
+          Nome do cliente
+        </label>
+        <input
+          autoFocus
+          type="text"
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+          placeholder="Ex: Dra. Carla Oliveira"
+          className="w-full px-3 py-2.5 rounded-lg text-[14px] outline-none"
+          style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+        />
+
+        <div className="flex gap-2 justify-end mt-5">
+          <button
+            onClick={onClose}
+            className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-colors hover:bg-[#F4F3EF]"
+            style={{ color: T.textMuted }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={submit}
+            disabled={!clientName.trim() || (tab === 'duplicate' && !selectedSource)}
+            className="text-[12px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all disabled:opacity-40"
+            style={{ background: T.accent, color: T.accentBright }}
+          >
+            Criar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -303,6 +475,7 @@ function ProposalCard({
 export default function AdminDashboard() {
   const router = useRouter()
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const [quickOpen, setQuickOpen] = useState(false)
   const { show: showToast, Toast } = useToast()
   const [filter, setFilter] = useState<ProposalStatus | 'all'>('all')
 
@@ -352,6 +525,48 @@ export default function AdminDashboard() {
     syncLinkedChat(id, 'sent')
   }
 
+  /** Cria nova proposta a partir de um template de escopo + nome do cliente. */
+  async function quickFromTemplate(type: ProjectType, clientName: string) {
+    const plans = getPlansForScope(type)
+    const proposal: Proposal = {
+      ...mockProposal,
+      id: '',
+      slug: '',
+      client_name: clientName,
+      client_email: '',
+      client_company: '',
+      client_whatsapp: '',
+      project_type: type,
+      hero_title: `Proposta ${type === 'landing_page' ? 'Landing Page' : type === 'site_completo' ? 'Site Completo' : type === 'mensal' ? 'Gestão Mensal' : type === 'posicionamento' ? 'Posicionamento online' : 'Personalizada'}`,
+      selected_plans: plans,
+      valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'draft',
+    }
+    const saved = await proposalStore.save(proposal)
+    showToast('Proposta criada — abre pra revisar', { kind: 'info' })
+    router.push(`/admin/edit/${saved.id}`)
+  }
+
+  /** Duplica proposta existente — só troca o nome do cliente. */
+  async function quickDuplicate(sourceId: string, clientName: string) {
+    const source = proposals.find((p) => p.id === sourceId)
+    if (!source) return
+    const copy: Proposal = {
+      ...source,
+      id: '',
+      slug: '',
+      client_name: clientName,
+      client_email: '',
+      client_company: '',
+      client_whatsapp: '',
+      valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'draft',
+    }
+    const saved = await proposalStore.save(copy)
+    showToast(`Duplicada de "${source.client_name}"`, { kind: 'info' })
+    router.push(`/admin/edit/${saved.id}`)
+  }
+
   async function handleSetStatus(id: string, status: ProposalStatus) {
     setProposals((ps) => ps.map((p) => (p.id === id ? { ...p, status } : p)))
     await proposalStore.updateStatus(id, status)
@@ -396,7 +611,21 @@ export default function AdminDashboard() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <Toast />
-      <div className="max-w-5xl mx-auto px-8 pt-10 pb-20">
+      {quickOpen && (
+        <QuickProposalModal
+          proposals={proposals}
+          onClose={() => setQuickOpen(false)}
+          onPickTemplate={async (type, clientName) => {
+            setQuickOpen(false)
+            await quickFromTemplate(type, clientName)
+          }}
+          onDuplicate={async (sourceId, clientName) => {
+            setQuickOpen(false)
+            await quickDuplicate(sourceId, clientName)
+          }}
+        />
+      )}
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
@@ -425,14 +654,28 @@ export default function AdminDashboard() {
               Gerencie suas propostas e crie novas em segundos.
             </p>
           </div>
-          <button
-            onClick={() => router.push('/admin/new')}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
-            style={{ background: T.accent, color: T.accentBright }}
-          >
-            <Plus size={14} />
-            Nova proposta
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setQuickOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
+              style={{
+                background: '#FFFFFF',
+                color: T.textPrimary,
+                border: `1px solid ${T.border}`,
+              }}
+              title="Crie uma proposta em 1 clique a partir de um modelo padrão ou de outro cliente"
+            >
+              ⚡ Rápida
+            </button>
+            <button
+              onClick={() => router.push('/admin/new')}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
+              style={{ background: T.accent, color: T.accentBright }}
+            >
+              <Plus size={14} />
+              Nova
+            </button>
+          </div>
         </div>
 
         {/* stats */}

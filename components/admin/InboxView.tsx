@@ -1152,10 +1152,14 @@ export default function InboxView() {
       )}
 
       <div className="flex-1 min-h-0 flex">
-        {/* ── lista de conversas ── */}
-        {listOpen && (
+        {/* ── lista de conversas ──
+            Desktop: sidebar 340px sempre visível (toggle via listOpen).
+            Mobile: ocupa a tela TODA, escondida quando uma conversa abre. */}
+        {(listOpen || !selectedId) && (
         <div
-          className="w-[340px] flex-shrink-0 flex flex-col"
+          className={`flex flex-col flex-shrink-0 w-full md:w-[340px] ${
+            selectedId ? 'hidden md:flex' : 'flex'
+          }`}
           style={{ borderRight: `1px solid ${T.border}`, background: T.card }}
         >
           <div className="p-4 flex-shrink-0">
@@ -1466,9 +1470,13 @@ export default function InboxView() {
         </div>
         )}
 
-        {/* ── conversa ── */}
+        {/* ── conversa ──
+            No mobile: ocupa tela toda quando uma conversa está aberta.
+            Quando nenhuma está aberta, fica escondida e só a lista aparece. */}
         <div
-          className="flex-1 min-w-0 flex flex-col relative"
+          className={`flex-1 min-w-0 flex flex-col relative ${
+            selectedId ? 'flex' : 'hidden md:flex'
+          }`}
           style={{
             background: T.conversationBg,
             backgroundImage: WA_PATTERN,
@@ -1550,10 +1558,22 @@ export default function InboxView() {
                   borderBottom: `1px solid ${T.border}`,
                 }}
               >
+                {/* Voltar (mobile only) — fecha a conversa e volta pra lista */}
+                <button
+                  onClick={() => setSelectedId(null)}
+                  title="Voltar pra lista"
+                  className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors hover:bg-[#F4F3EF]"
+                  style={{ color: T.textMuted }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                {/* Toggle do painel lateral (só desktop) */}
                 <button
                   onClick={() => setListOpen((o) => !o)}
                   title={listOpen ? 'Ocultar conversas' : 'Mostrar conversas'}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors hover:bg-[#F4F3EF]"
+                  className="hidden md:flex w-8 h-8 rounded-lg items-center justify-center flex-shrink-0 transition-colors hover:bg-[#F4F3EF]"
                   style={{ color: T.textMuted }}
                 >
                   {listOpen ? (
