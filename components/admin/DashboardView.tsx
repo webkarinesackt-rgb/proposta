@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { waServer, WaDashboard, WaSeriesPoint } from '@/lib/waServer'
-import { proposalStore } from '@/lib/proposalStore'
-import { Proposal, ProjectType, ProposalStatus } from '@/lib/types'
 import {
   Inbox,
   MessageSquare,
@@ -36,30 +34,6 @@ const PERIODS = [
   { id: 'all', label: 'Tudo' },
 ] as const
 
-/* ── mapas de cor/label pro relatório de propostas ─── */
-
-const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
-  landing_page:   { label: 'Landing Page',          color: '#3B82F6' },
-  site_completo:  { label: 'Site Completo',         color: '#A855F7' },
-  mensal:         { label: 'Mensal',                color: '#EAB308' },
-  posicionamento: { label: 'Posicionamento online', color: '#0EA5E9' },
-  custom:         { label: 'Custom',                color: '#64748B' },
-}
-
-const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }> = {
-  draft:    { label: 'Rascunho',    color: '#94A3B8' },
-  sent:     { label: 'Enviadas',    color: '#3B82F6' },
-  viewed:   { label: 'Visualizadas', color: '#A855F7' },
-  accepted: { label: 'Aceitas',     color: '#22C55E' },
-  rejected: { label: 'Rejeitadas',  color: '#EF4444' },
-  expired:  { label: 'Expiradas',   color: '#94A3B8' },
-}
-
-function fmtBRL(v: number) {
-  if (v >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
-  return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
-}
-
 const PERIOD_SUB: Record<string, string> = {
   today: 'hoje',
   week: 'esta semana',
@@ -81,114 +55,56 @@ function fmtWait(h: number) {
   return `${Math.floor(h / 24)}d`
 }
 
-/* ── pie chart (SVG puro) ────────────────────────────── */
+/* ── card ────────────────────────────────────────────── */
 
-interface Slice { label: string; value: number; color: string }
-
-function PieChart({ slices, size = 180 }: { slices: Slice[]; size?: number }) {
-  const total = slices.reduce((s, x) => s + x.value, 0)
-  if (total === 0) {
-    return (
-      <div
-        className="rounded-full flex items-center justify-center"
+function MetricCard({
+  label,
+  value,
+  icon,
+  sub,
+  accent,
+  onClick,
+}: {
+  label: string
+  value: string | number
+  icon: React.ReactNode
+  sub?: string
+  accent?: string
+  onClick?: () => void
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="rounded-2xl p-5 transition-all"
+      style={{
+        background: T.card,
+        border: `1px solid ${T.border}`,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: T.textDim }}
+        >
+          {label}
+        </span>
+        <span style={{ color: T.textDim }}>{icon}</span>
+      </div>
+      <p
+        className="font-bold leading-none tracking-tight"
         style={{
-          width: size, height: size,
-          border: `2px dashed ${T.border}`,
-          color: T.textDim, fontSize: 11,
+          color: accent ?? T.textPrimary,
+          fontSize: 'clamp(2rem, 4vw, 2.6rem)',
         }}
       >
-        sem dados
-      </div>
-    )
-  }
-  // anel donut: raio externo + interno
-  const r = size / 2
-  const ri = r * 0.55
-  const cx = r, cy = r
-  let start = -Math.PI / 2 // começa no topo
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {slices.map((s) => {
-        if (s.value === 0) return null
-        const angle = (s.value / total) * Math.PI * 2
-        const end = start + angle
-        const large = angle > Math.PI ? 1 : 0
-        // outer arc
-        const x1 = cx + r * Math.cos(start)
-        const y1 = cy + r * Math.sin(start)
-        const x2 = cx + r * Math.cos(end)
-        const y2 = cy + r * Math.sin(end)
-        // inner arc (reverso)
-        const x3 = cx + ri * Math.cos(end)
-        const y3 = cy + ri * Math.sin(end)
-        const x4 = cx + ri * Math.cos(start)
-        const y4 = cy + ri * Math.sin(start)
-        const d = [
-          `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
-          `A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
-          `L ${x3.toFixed(2)} ${y3.toFixed(2)}`,
-          `A ${ri} ${ri} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)}`,
-          'Z',
-        ].join(' ')
-        const path = (
-          <path
-            key={s.label}
-            d={d}
-            fill={s.color}
-            stroke="#FFFFFF"
-            strokeWidth={1.5}
-          >
-            <title>{`${s.label}: ${s.value} (${Math.round((s.value / total) * 100)}%)`}</title>
-          </path>
-        )
-        start = end
-        return path
-      })}
-      {/* total no centro */}
-      <text
-        x={cx} y={cy - 4}
-        textAnchor="middle"
-        fontSize={28}
-        fontWeight={700}
-        fill="#162322"
-      >
-        {total}
-      </text>
-      <text
-        x={cx} y={cy + 18}
-        textAnchor="middle"
-        fontSize={10}
-        fontWeight={600}
-        fill="#8AA09A"
-        style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}
-      >
-        total
-      </text>
-    </svg>
-  )
-}
-
-function PieLegend({ slices }: { slices: Slice[] }) {
-  const total = slices.reduce((s, x) => s + x.value, 0)
-  return (
-    <div className="flex flex-col gap-2">
-      {slices.map((s) => (
-        <div key={s.label} className="flex items-center gap-2 text-[11px]">
-          <span
-            className="inline-block rounded"
-            style={{ width: 10, height: 10, background: s.color }}
-          />
-          <span style={{ color: T.textPrimary }} className="font-semibold">{s.label}</span>
-          <span className="ml-auto tabular-nums" style={{ color: T.textMuted }}>
-            {s.value}
-            {total > 0 && (
-              <span style={{ color: T.textDim }}>
-                {' '}({Math.round((s.value / total) * 100)}%)
-              </span>
-            )}
-          </span>
-        </div>
-      ))}
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[11px] mt-2" style={{ color: T.textDim }}>
+          {sub}
+        </p>
+      )}
     </div>
   )
 }
@@ -249,59 +165,6 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
   )
 }
 
-/* ── card ────────────────────────────────────────────── */
-
-function MetricCard({
-  label,
-  value,
-  icon,
-  sub,
-  accent,
-  onClick,
-}: {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  sub?: string
-  accent?: string
-  onClick?: () => void
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className="rounded-2xl p-5 transition-all"
-      style={{
-        background: T.card,
-        border: `1px solid ${T.border}`,
-        cursor: onClick ? 'pointer' : 'default',
-      }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: T.textDim }}
-        >
-          {label}
-        </span>
-        <span style={{ color: T.textDim }}>{icon}</span>
-      </div>
-      <p
-        className="font-bold leading-none tracking-tight"
-        style={{
-          color: accent ?? T.textPrimary,
-          fontSize: 'clamp(2rem, 4vw, 2.6rem)',
-        }}
-      >
-        {value}
-      </p>
-      {sub && (
-        <p className="text-[11px] mt-2" style={{ color: T.textDim }}>
-          {sub}
-        </p>
-      )}
-    </div>
-  )
-}
 
 /* ── main ────────────────────────────────────────────── */
 
@@ -310,21 +173,7 @@ export default function DashboardView() {
   const [period, setPeriod] = useState<string>('week')
   const [data, setData] = useState<WaDashboard | null>(null)
   const [series, setSeries] = useState<WaSeriesPoint[]>([])
-  const [proposals, setProposals] = useState<Proposal[]>([])
   const [serverOff, setServerOff] = useState(false)
-  const [tab, setTab] = useState<'whatsapp' | 'propostas'>(() =>
-    (typeof window !== 'undefined' &&
-      (localStorage.getItem('fysi.dash.tab') as 'whatsapp' | 'propostas')) ||
-    'whatsapp'
-  )
-  useEffect(() => {
-    if (typeof window !== 'undefined') localStorage.setItem('fysi.dash.tab', tab)
-  }, [tab])
-
-  // carrega propostas uma vez (pra distribuição em pizza)
-  useEffect(() => {
-    proposalStore.getAll().then(setProposals).catch(() => {})
-  }, [])
 
   useEffect(() => {
     let alive = true
@@ -374,57 +223,32 @@ export default function DashboardView() {
         >
           Métricas
         </h1>
-        <p className="text-[13px] mb-6" style={{ color: T.textMuted }}>
-          {tab === 'whatsapp'
-            ? 'Termômetro do seu atendimento no WhatsApp.'
-            : 'Relatório de propostas — distribuição e faturamento.'}
+        <p className="text-[13px] mb-8" style={{ color: T.textMuted }}>
+          Termômetro do seu atendimento no WhatsApp.
         </p>
 
-        {/* tab switcher: WhatsApp × Propostas */}
-        <div className="flex gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: T.bgSubtle, border: `1px solid ${T.border}` }}>
-          {(['whatsapp', 'propostas'] as const).map((t) => {
-            const active = tab === t
+        {/* period tabs */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {PERIODS.map((p) => {
+            const active = period === p.id
             return (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="text-[12px] font-bold px-4 py-1.5 rounded-lg transition-all"
+                key={p.id}
+                onClick={() => setPeriod(p.id)}
+                className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
                 style={{
-                  background: active ? T.accent : 'transparent',
+                  background: active ? T.accent : T.card,
                   color: active ? T.accentBright : T.textMuted,
+                  border: `1px solid ${active ? T.accent : T.border}`,
                 }}
               >
-                {t === 'whatsapp' ? 'WhatsApp' : 'Propostas'}
+                {p.label}
               </button>
             )
           })}
         </div>
 
-        {/* period tabs — só pra WhatsApp */}
-        {tab === 'whatsapp' && (
-          <div className="flex gap-2 mb-6 flex-wrap">
-            {PERIODS.map((p) => {
-              const active = period === p.id
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setPeriod(p.id)}
-                  className="text-[11px] font-bold px-4 py-2 rounded-full transition-all"
-                  style={{
-                    background: active ? T.accent : T.card,
-                    color: active ? T.accentBright : T.textMuted,
-                    border: `1px solid ${active ? T.accent : T.border}`,
-                  }}
-                >
-                  {p.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {tab === 'whatsapp' && (
-          serverOff ? (
+        {serverOff ? (
           <div
             className="rounded-2xl p-12 text-center"
             style={{
@@ -589,118 +413,9 @@ export default function DashboardView() {
               e &quot;maior espera&quot; são o estado atual.
             </p>
           </>
-        ))}
-
-        {/* ── ABA PROPOSTAS ── */}
-        {tab === 'propostas' && <PropostasReport proposals={proposals} />}
+        )}
       </div>
     </div>
   )
 }
 
-/* ── Relatório de Propostas (extraído como componente) ─── */
-
-function PropostasReport({ proposals }: { proposals: Proposal[] }) {
-  if (proposals.length === 0) {
-    return (
-      <div
-        className="rounded-2xl p-12 text-center"
-        style={{ background: T.card, border: `1px solid ${T.border}` }}
-      >
-        <p className="text-[13px]" style={{ color: T.textMuted }}>
-          Você ainda não tem propostas. Crie a primeira em{' '}
-          <a
-            href="/admin"
-            className="font-bold underline"
-            style={{ color: T.accent }}
-          >
-            Propostas
-          </a>
-          .
-        </p>
-      </div>
-    )
-  }
-  const byType = new Map<ProjectType, number>()
-  const byStatus = new Map<ProposalStatus, number>()
-  let totalAccepted = 0
-  let totalSent = 0
-  for (const p of proposals) {
-    byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
-    byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
-    const planValue = p.selected_plans.reduce(
-      (s, pl) => s + (Number(pl.price_cash) || 0),
-      0
-    )
-    if (p.status === 'accepted') totalAccepted += planValue
-    if (p.status === 'sent' || p.status === 'viewed') totalSent += planValue
-  }
-  const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
-    .map((t) => ({
-      label: TYPE_META[t].label,
-      value: byType.get(t) || 0,
-      color: TYPE_META[t].color,
-    }))
-    .filter((s) => s.value > 0)
-  const statusSlices: Slice[] = (Object.keys(STATUS_META_PROP) as ProposalStatus[])
-    .map((s) => ({
-      label: STATUS_META_PROP[s].label,
-      value: byStatus.get(s) || 0,
-      color: STATUS_META_PROP[s].color,
-    }))
-    .filter((s) => s.value > 0)
-  return (
-    <div>
-      <div className="flex items-end justify-between mb-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: T.textDim }}>
-          Histórico completo · {proposals.length} proposta{proposals.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-        <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: T.textDim }}>
-            Por tipo de proposta
-          </p>
-          <div className="flex items-center gap-5 flex-wrap">
-            <PieChart slices={typeSlices} size={170} />
-            <div className="flex-1 min-w-[160px]">
-              <PieLegend slices={typeSlices} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4" style={{ color: T.textDim }}>
-            Por status
-          </p>
-          <div className="flex items-center gap-5 flex-wrap">
-            <PieChart slices={statusSlices} size={170} />
-            <div className="flex-1 min-w-[160px]">
-              <PieLegend slices={statusSlices} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {(totalAccepted > 0 || totalSent > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <MetricCard
-            label="Faturamento aceito"
-            value={fmtBRL(totalAccepted)}
-            icon={<Activity size={15} />}
-            accent="#22C55E"
-            sub="soma das propostas marcadas como aceitas"
-          />
-          <MetricCard
-            label="Pipeline pendente"
-            value={fmtBRL(totalSent)}
-            icon={<Send size={15} />}
-            accent="#3B82F6"
-            sub="enviadas / visualizadas, ainda em aberto"
-          />
-        </div>
-      )}
-    </div>
-  )
-}
