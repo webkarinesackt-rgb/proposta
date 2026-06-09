@@ -150,6 +150,18 @@ function _Avatar({
 
 /* ── linkify ─────────────────────────────────────────── */
 
+/** Detecta texto que é, na verdade, base64 cru de uma mídia (bug legado da
+ *  extensão wppconnect). Evita renderizar um wall of text de 50KB no chat. */
+function looksLikeBase64(text: string): boolean {
+  if (!text || text.length < 500) return false
+  const head = text.slice(0, 200)
+  if (head.startsWith('/9j/') || head.startsWith('iVBOR') || head.startsWith('JVBER') || head.startsWith('UklGR')) {
+    return true
+  }
+  // Heurística genérica: tudo é a-z/A-Z/0-9/+/= e sem espaços nos primeiros 200 chars
+  return /^[A-Za-z0-9+/=]+$/.test(head)
+}
+
 function renderText(text: string, mine: boolean) {
   const re = /(https?:\/\/[^\s]+)/g
   const out: React.ReactNode[] = []
@@ -260,7 +272,7 @@ function _ChatRow({
                 {chat.fromMeLast && (
                   <span style={{ color: T.textDim }}>Você: </span>
                 )}
-                {chat.lastText || '—'}
+                {looksLikeBase64(chat.lastText) ? '🖼️ Imagem' : (chat.lastText || '—')}
               </>
             )}
           </span>
@@ -551,7 +563,11 @@ function _Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           </div>
         ) : (
           <p className="px-3.5 py-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
-            {renderText(msg.text, mine)}
+            {looksLikeBase64(msg.text) ? (
+              <span className="italic opacity-60">📎 Mídia não pôde ser exibida</span>
+            ) : (
+              renderText(msg.text, mine)
+            )}
           </p>
         )}
         <div

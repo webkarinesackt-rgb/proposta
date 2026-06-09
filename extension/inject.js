@@ -89,13 +89,41 @@
     }
   }
 
+  // wppconnect usa nomes em inglês; o wa-server fala português.
+  // Mapeia antes de empurrar, senão o bubble cai no fallback de texto.
+  const TYPE_MAP = {
+    image: 'imagem',
+    video: 'video',
+    audio: 'audio',
+    ptt: 'audio',
+    document: 'documento',
+    sticker: 'sticker',
+    chat: 'texto',
+  }
+
   function msgToIngest(m) {
+    const rawType = m.type || 'chat'
+    const type = TYPE_MAP[rawType] || rawType
+    const isMedia = ['imagem', 'video', 'audio', 'documento'].includes(type)
+    const caption = (m.caption || '').trim()
+    // Pra mídia, m.body do wppconnect é base64 cru do arquivo —
+    // NUNCA usar como texto. Pra texto puro, usa body normalmente.
+    const text = isMedia ? caption : (m.body || m.caption || '')
     return {
       id: m.id?._serialized || m.id,
       chatId: m.from?._serialized || m.from || (m.id?.remote?._serialized) || '',
       fromMe: !!m.fromMe,
-      text: m.body || m.caption || '',
-      type: m.type || 'chat',
+      text,
+      type,
+      hasMedia: isMedia,
+      meta: isMedia
+        ? {
+            caption,
+            fileName: m.filename || m.mediaData?.filename || '',
+            mimetype: m.mimetype || '',
+            fileLength: Number(m.size || 0) || undefined,
+          }
+        : null,
       time: Number(m.t) || Math.floor(Date.now() / 1000),
       pushName: m.notifyName || m.senderObj?.pushname || '',
     }

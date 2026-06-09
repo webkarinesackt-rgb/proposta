@@ -612,8 +612,47 @@ async function loadStore() {
     store.messages = new Map(data.messages || [])
     store.contacts = new Map(data.contacts || [])
     console.log(`📂  Store carregado: ${store.chats.size} conversas`)
+    sanitizeStore()
   } catch {
     /* primeiro boot — store vazio */
+  }
+}
+
+/** Cura dados antigos: extensão legacy mandava base64 cru no campo text
+ *  de mensagens de mídia. Detecta e zera. Roda uma vez no boot. */
+function sanitizeStore() {
+  // Detector: tipo de mídia (em PT ou EN) E texto suspeitamente longo OU
+  // começando com prefixos de base64 conhecidos (JPEG/PNG/PDF).
+  const MEDIA_TYPES_LEGACY = new Set(['imagem', 'image', 'video', 'documento', 'document'])
+  const BASE64_PREFIXES = ['/9j/', 'iVBOR', 'JVBER', 'UklGR']
+  const looksBase64 = (t) =>
+    typeof t === 'string' &&
+    (t.length > 500 || BASE64_PREFIXES.some((p) => t.startsWith(p))) &&
+    /^[A-Za-z0-9+/=\s]+$/.test(t.slice(0, 200))
+  let fixed = 0
+  for (const [, msgs] of store.messages) {
+    for (const m of msgs) {
+      const isMedia = MEDIA_TYPES_LEGACY.has(m.type)
+      if (isMedia && looksBase64(m.text)) {
+        m.text = ''
+        m.hasMedia = true
+        fixed++
+      }
+      // normaliza tipos legacy em inglês pra português
+      if (m.type === 'image') m.type = 'imagem'
+      else if (m.type === 'document') m.type = 'documento'
+    }
+  }
+  // limpa lastText cru dos chats
+  for (const chat of store.chats.values()) {
+    if (looksBase64(chat.lastText)) {
+      chat.lastText = '🖼️ Imagem'
+      fixed++
+    }
+  }
+  if (fixed > 0) {
+    console.log(`🧹  Sanitize: ${fixed} mensagens/chats curados (base64 cru removido)`)
+    storeDirty = true
   }
 }
 
@@ -1238,11 +1277,18 @@ app.post('/ingest/message', (req, res) => {
     return res.status(413).json({ ok: false, error: 'text muito grande' })
   }
   const jid = m.chatId
+  // wppconnect-legacy às vezes manda 'image' no lugar de 'imagem'.
+  // Normaliza aqui pra blindar contra extensões antigas no ar.
+  const TYPE_MAP_LEGACY = { image: 'imagem', document: 'documento', ptt: 'audio', chat: 'texto' }
+  const rawType = typeof m.type === 'string' ? m.type : 'texto'
+  const normalizedType = TYPE_MAP_LEGACY[rawType] || rawType
   const incoming = {
     id: m.id,
     fromMe: !!m.fromMe,
     text: typeof m.text === 'string' ? m.text : '',
-    type: typeof m.type === 'string' ? m.type : 'texto',
+    type: normalizedType,
+    hasMedia: !!m.hasMedia,
+    meta: m.meta && typeof m.meta === 'object' ? m.meta : null,
     time: Number(m.time) || Math.floor(Date.now() / 1000),
     pushName: typeof m.pushName === 'string' ? m.pushName : '',
     participant: '',
