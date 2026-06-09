@@ -215,12 +215,14 @@ export const waServer = {
     chatId: string,
     file: File,
     caption?: string,
-    asDocument?: boolean
+    asDocument?: boolean,
+    quotedId?: string
   ): Promise<{ ok: boolean; id?: string; error?: string }> {
     const fd = new FormData()
     fd.append('file', file)
     if (caption) fd.append('caption', caption)
     if (asDocument) fd.append('kind', 'document')
+    if (quotedId) fd.append('quotedId', quotedId)
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/send-media`, {
       method: 'POST',
       body: fd,
@@ -228,11 +230,15 @@ export const waServer = {
     return r.json()
   },
 
-  async sendText(id: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  async sendText(
+    id: string,
+    text: string,
+    quotedId?: string
+  ): Promise<{ ok: boolean; error?: string }> {
     const r = await waFetch(`/chats/${encodeURIComponent(id)}/send-text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, quotedId }),
     })
     return r.json()
   },

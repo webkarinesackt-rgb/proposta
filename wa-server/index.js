@@ -537,6 +537,10 @@ function recordMessage(m) {
     // guarda o conteúdo bruto de mídias para download sob demanda
     if (['audio', 'imagem', 'video', 'documento'].includes(type)) {
       rec.raw = unwrapMessage(m.message)
+    } else if (m.message) {
+      // pra texto também guardamos um stub do proto pra suportar reply
+      // (Baileys precisa do .message original na opção { quoted }).
+      rec.raw = unwrapMessage(m.message)
     }
     let arr = store.messages.get(jid)
     if (!arr) { arr = []; store.messages.set(jid, arr) }
@@ -1619,9 +1623,29 @@ app.get('/chats/:id/photo', requireValidJid, async (req, res) => {
   }
 })
 
+// Monta o WebMessageInfo mínimo que o Baileys precisa em { quoted: ... }
+// pra criar a reply citada. Retorna null se a mensagem citada não foi
+// encontrada ou não tem o proto salvo.
+function buildQuotedRef(jid, quotedId) {
+  if (!quotedId) return null
+  const arr = store.messages.get(jid)
+  if (!arr) return null
+  const rec = arr.find((x) => x.id === quotedId)
+  if (!rec || !rec.raw) return null
+  return {
+    key: {
+      remoteJid: jid,
+      fromMe: !!rec.fromMe,
+      id: rec.id,
+      ...(rec.participant ? { participant: rec.participant } : {}),
+    },
+    message: rec.raw,
+  }
+}
+
 // enviar texto para uma conversa existente
 // Enviar imagem / vídeo / documento numa conversa existente.
-// O upload é multipart com campo "file" e opcionais: caption, kind.
+// O upload é multipart com campo "file" e opcionais: caption, kind, quotedId.
 // Auto-detecta o tipo via mimetype se kind não for passado.
 app.post(
   '/chats/:id/send-media',
@@ -1632,7 +1656,7 @@ app.post(
     if (!req.file) {
       return res.status(400).json({ ok: false, error: 'Envie um arquivo no campo "file".' })
     }
-    const { caption = '', kind: kindRaw } = req.body || {}
+    const { caption = '', kind: kindRaw, quotedId } = req.body || {}
     if (typeof caption !== 'string' || caption.length > 4096) {
       return res.status(400).json({ ok: false, error: 'caption inválida' })
     }
@@ -1651,7 +1675,12 @@ app.post(
         payload.document = req.file.buffer
         payload.fileName = req.file.originalname || 'arquivo'
       }
-      const sent = await sock.sendMessage(req.params.id, payload)
+      const quoted = buildQuotedRef(req.params.id, quotedId)
+      const sent = await sock.sendMessage(
+        req.params.id,
+        payload,
+        quoted ? { quoted } : undefined
+      )
       if (!sent || !sent.key) {
         return res.status(500).json({ ok: false, error: 'WhatsApp não confirmou o envio' })
       }
@@ -1666,7 +1695,7 @@ app.post(
 
 app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
   if (!ensureConnected(res)) return
-  const { text } = req.body || {}
+  const { text, quotedId } = req.body || {}
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ ok: false, error: 'Informe "text".' })
   }
@@ -1674,7 +1703,12 @@ app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
     return res.status(413).json({ ok: false, error: 'mensagem muito longa' })
   }
   try {
-    const sent = await sock.sendMessage(req.params.id, { text })
+    const quoted = buildQuotedRef(req.params.id, quotedId)
+    const sent = await sock.sendMessage(
+      req.params.id,
+      { text },
+      quoted ? { quoted } : undefined
+    )
     // Baileys WebMessageInfo.Status enum:
     //   0 = ERROR, 1 = PENDING (aguardando ACK), 2 = SERVER_ACK (✓),
     //   3 = DELIVERY_ACK (✓✓), 4 = READ (azul), 5 = PLAYED

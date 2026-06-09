@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, memo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip, CornerUpLeft } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -409,7 +409,7 @@ function _ChatRow({
 /* ── bolha de mensagem ───────────────────────────────── */
 
 const Bubble = memo(_Bubble)
-function _Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
+function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onReply: (m: WaMessage) => void }) {
   const mine = msg.fromMe
   const isAudio = msg.type === 'audio' && msg.hasMedia
   const isImage = msg.type === 'imagem' && msg.hasMedia
@@ -451,21 +451,37 @@ function _Bubble({ msg, chatId }: { msg: WaMessage; chatId: string }) {
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}
       >
-        {canCopy && (
+        {/* botões no canto: responder + copiar */}
+        <div className="absolute top-1 right-1 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={copyText}
-            title={copied ? 'Copiado!' : 'Copiar texto'}
-            className="absolute top-1 right-1 z-10 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => onReply(msg)}
+            title="Responder"
+            className="rounded-full p-1"
             style={{
               background: '#FFFFFF',
               border: `1px solid ${T.border}`,
-              color: copied ? '#22C55E' : T.textDim,
+              color: T.textDim,
               boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
             }}
           >
-            {copied ? <Check size={11} /> : <Copy size={11} />}
+            <CornerUpLeft size={11} />
           </button>
-        )}
+          {canCopy && (
+            <button
+              onClick={copyText}
+              title={copied ? 'Copiado!' : 'Copiar texto'}
+              className="rounded-full p-1"
+              style={{
+                background: '#FFFFFF',
+                border: `1px solid ${T.border}`,
+                color: copied ? '#22C55E' : T.textDim,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              }}
+            >
+              {copied ? <Check size={11} /> : <Copy size={11} />}
+            </button>
+          )}
+        </div>
 
         {/* Mensagem citada (quoted/reply) */}
         {msg.quoted && (
@@ -626,6 +642,7 @@ export default function InboxView() {
   const [mediaCaption, setMediaCaption] = useState('')
   const [mediaSending, setMediaSending] = useState(false)
   const [mediaAsDoc, setMediaAsDoc] = useState(false)
+  const [replyTo, setReplyTo] = useState<WaMessage | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -1055,11 +1072,19 @@ export default function InboxView() {
     setMediaAsDoc(false)
   }
 
+  // useCallback pra não invalidar o memo do Bubble — onReply é uma prop
+  // estável agora; antes uma função inline quebraria memoização da lista.
+  const handleReply = useCallback((m: WaMessage) => {
+    setReplyTo(m)
+    // foca o composer pra digitar a resposta direto
+    composerRef.current?.focus()
+  }, [])
+
   async function handleSendMedia() {
     if (!mediaFile || !selectedId || mediaSending) return
     setMediaSending(true)
     try {
-      const r = await waServer.sendMedia(selectedId, mediaFile, mediaCaption.trim(), mediaAsDoc)
+      const r = await waServer.sendMedia(selectedId, mediaFile, mediaCaption.trim(), mediaAsDoc, replyTo?.id)
       if (!r.ok) {
         alert('Erro ao enviar: ' + (r.error || 'desconhecido'))
         setMediaSending(false)
@@ -1082,6 +1107,7 @@ export default function InboxView() {
         )
       )
       clearMedia()
+      setReplyTo(null)
       const m = await waServer.messages(selectedId)
       setMessages(m.messages || [])
       reloadChats()
@@ -1097,12 +1123,14 @@ export default function InboxView() {
     if (!text || !selectedId || sending) return
     setSending(true)
     setDraft('')
+    const quoted = replyTo
     try {
-      const r = await waServer.sendText(selectedId, text)
+      const r = await waServer.sendText(selectedId, text, quoted?.id)
       if (!r.ok) {
         setDraft(text)
         alert('Erro ao enviar: ' + (r.error || 'desconhecido'))
       } else {
+        setReplyTo(null)
         // update otimista: marca a conversa como "respondida"
         // (fromMeLast=true) IMEDIATAMENTE, sem esperar SSE.
         // Antes ela ficava ainda no filtro "Sem resposta" alguns
@@ -1905,7 +1933,7 @@ export default function InboxView() {
                             }}
                           >
                             {showSep && <DaySeparator timestamp={m.time} />}
-                            <Bubble msg={m} chatId={selectedId} />
+                            <Bubble msg={m} chatId={selectedId} onReply={handleReply} />
                           </div>
                         )
                       })
@@ -2033,6 +2061,39 @@ export default function InboxView() {
                 </div>
               )}
 
+              {/* preview da mensagem sendo respondida (acima do composer) */}
+              {replyTo && !mediaFile && (
+                <div
+                  className="px-4 py-2 flex items-center gap-3 flex-shrink-0"
+                  style={{ background: T.bgSubtle, borderTop: `1px solid ${T.border}` }}
+                >
+                  <CornerUpLeft size={14} style={{ color: T.accent, flexShrink: 0 }} />
+                  <div
+                    className="flex-1 min-w-0 border-l-2 pl-2.5 py-0.5"
+                    style={{ borderColor: T.accent }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.accent }}>
+                      Respondendo a {replyTo.fromMe ? 'você mesma' : (replyTo.pushName || 'mensagem')}
+                    </p>
+                    <p className="text-[12px] truncate" style={{ color: T.textMuted }}>
+                      {replyTo.type === 'imagem' ? '🖼️ ' + (replyTo.meta?.caption || 'Imagem')
+                       : replyTo.type === 'video' ? '🎬 ' + (replyTo.meta?.caption || 'Vídeo')
+                       : replyTo.type === 'audio' ? '🎙️ Áudio'
+                       : replyTo.type === 'documento' ? '📎 ' + (replyTo.meta?.fileName || 'Documento')
+                       : replyTo.text || '[mensagem]'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    title="Cancelar resposta (Esc)"
+                    className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#F4F3EF] transition-colors"
+                    style={{ color: T.textMuted }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {/* composer */}
               <div
                 className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
@@ -2115,6 +2176,9 @@ export default function InboxView() {
                       requestAnimationFrame(() => {
                         e.currentTarget.style.height = 'auto'
                       })
+                    }
+                    if (e.key === 'Escape' && replyTo) {
+                      setReplyTo(null)
                     }
                     // Shift+Enter cai no comportamento default do textarea: nova linha
                   }}
