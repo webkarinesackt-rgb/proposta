@@ -609,6 +609,7 @@ export default function InboxView() {
   const [mediaPreview, setMediaPreview] = useState<string>('')
   const [mediaCaption, setMediaCaption] = useState('')
   const [mediaSending, setMediaSending] = useState(false)
+  const [mediaAsDoc, setMediaAsDoc] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -1014,6 +1015,7 @@ export default function InboxView() {
     if (mediaPreview) URL.revokeObjectURL(mediaPreview)
     setMediaFile(file)
     setMediaCaption('')
+    setMediaAsDoc(false)
     // só faz preview pra imagem/vídeo (documentos ficam só com nome)
     if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
       setMediaPreview(URL.createObjectURL(file))
@@ -1027,13 +1029,14 @@ export default function InboxView() {
     setMediaFile(null)
     setMediaPreview('')
     setMediaCaption('')
+    setMediaAsDoc(false)
   }
 
   async function handleSendMedia() {
     if (!mediaFile || !selectedId || mediaSending) return
     setMediaSending(true)
     try {
-      const r = await waServer.sendMedia(selectedId, mediaFile, mediaCaption.trim())
+      const r = await waServer.sendMedia(selectedId, mediaFile, mediaCaption.trim(), mediaAsDoc)
       if (!r.ok) {
         alert('Erro ao enviar: ' + (r.error || 'desconhecido'))
         setMediaSending(false)
@@ -1912,6 +1915,36 @@ export default function InboxView() {
                     <p className="text-[10px] mb-2" style={{ color: T.textDim }}>
                       {(mediaFile.size / 1024).toFixed(0)} KB · {mediaFile.type || 'arquivo'}
                     </p>
+
+                    {/* toggle Foto/Vídeo × Arquivo (sem compressão) — só pra imagem/vídeo */}
+                    {(mediaFile.type.startsWith('image/') || mediaFile.type.startsWith('video/')) && (
+                      <div className="flex gap-1 mb-2 p-0.5 rounded-md" style={{ background: T.card, border: `1px solid ${T.border}`, width: 'fit-content' }}>
+                        <button
+                          onClick={() => setMediaAsDoc(false)}
+                          disabled={mediaSending}
+                          className="px-2.5 py-1 rounded text-[10px] font-semibold transition-all"
+                          style={{
+                            background: !mediaAsDoc ? T.accent : 'transparent',
+                            color: !mediaAsDoc ? T.accentBright : T.textMuted,
+                          }}
+                        >
+                          {mediaFile.type.startsWith('video/') ? '🎬 Vídeo' : '🖼️ Foto'}
+                        </button>
+                        <button
+                          onClick={() => setMediaAsDoc(true)}
+                          disabled={mediaSending}
+                          title="Envia o arquivo original, sem compressão do WhatsApp"
+                          className="px-2.5 py-1 rounded text-[10px] font-semibold transition-all"
+                          style={{
+                            background: mediaAsDoc ? T.accent : 'transparent',
+                            color: mediaAsDoc ? T.accentBright : T.textMuted,
+                          }}
+                        >
+                          📎 Arquivo (sem compressão)
+                        </button>
+                      </div>
+                    )}
+
                     <input
                       autoFocus
                       type="text"
@@ -1921,7 +1954,7 @@ export default function InboxView() {
                         if (e.key === 'Enter' && !mediaSending) handleSendMedia()
                         if (e.key === 'Escape') clearMedia()
                       }}
-                      placeholder="Legenda (opcional)…"
+                      placeholder={mediaAsDoc ? 'Legenda (opcional, o nome do arquivo é mantido)…' : 'Legenda (opcional)…'}
                       disabled={mediaSending}
                       className="w-full px-2.5 py-1.5 rounded-md text-[12px] outline-none"
                       style={{

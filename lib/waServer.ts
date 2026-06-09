@@ -214,11 +214,13 @@ export const waServer = {
   async sendMedia(
     chatId: string,
     file: File,
-    caption?: string
+    caption?: string,
+    asDocument?: boolean
   ): Promise<{ ok: boolean; id?: string; error?: string }> {
     const fd = new FormData()
     fd.append('file', file)
     if (caption) fd.append('caption', caption)
+    if (asDocument) fd.append('kind', 'document')
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/send-media`, {
       method: 'POST',
       body: fd,
