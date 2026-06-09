@@ -1675,11 +1675,15 @@ app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
   }
   try {
     const sent = await sock.sendMessage(req.params.id, { text })
-    // Baileys: status 1 = ERROR, 0 ou undefined = pendente; sem retorno = falha
+    // Baileys WebMessageInfo.Status enum:
+    //   0 = ERROR, 1 = PENDING (aguardando ACK), 2 = SERVER_ACK (✓),
+    //   3 = DELIVERY_ACK (✓✓), 4 = READ (azul), 5 = PLAYED
+    // PENDING é normal — o ACK do servidor chega depois via update.
+    // Só falha de verdade se NÃO veio key ou se veio status 0.
     if (!sent || !sent.key) {
       return res.status(500).json({ ok: false, error: 'WhatsApp não confirmou o envio' })
     }
-    if (sent.status === 1) {
+    if (sent.status === 0) {
       return res.status(500).json({ ok: false, error: 'WhatsApp rejeitou a mensagem' })
     }
     recordMessage(sent)
