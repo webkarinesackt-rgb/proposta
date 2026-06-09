@@ -177,7 +177,9 @@ export default function DashboardView() {
 
   useEffect(() => {
     let alive = true
+    let iv: ReturnType<typeof setInterval> | null = null
     async function load() {
+      if (document.hidden) return // não puxa em background
       try {
         const [d, s] = await Promise.all([
           waServer.dashboard(period),
@@ -192,11 +194,25 @@ export default function DashboardView() {
         if (alive) setServerOff(true)
       }
     }
-    load()
-    const iv = setInterval(load, 10000)
+    function start() {
+      if (iv != null) return
+      load()
+      iv = setInterval(load, 10000)
+    }
+    function stop() {
+      if (iv == null) return
+      clearInterval(iv); iv = null
+    }
+    function onVis() {
+      if (document.hidden) stop()
+      else start()
+    }
+    start()
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       alive = false
-      clearInterval(iv)
+      stop()
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [period])
 

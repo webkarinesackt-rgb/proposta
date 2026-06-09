@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
 import { waServer, WaChat, LEAD_STATUSES, STATUS_META } from '@/lib/waServer'
@@ -639,9 +639,26 @@ export default function LeadsView() {
   }
 
   useEffect(() => {
-    load()
-    const iv = setInterval(load, 6000)
-    return () => clearInterval(iv)
+    let iv: ReturnType<typeof setInterval> | null = null
+    function start() {
+      if (iv != null) return
+      load()
+      iv = setInterval(load, 10000) // antes 6s; 10s é suficiente pro kanban
+    }
+    function stop() {
+      if (iv == null) return
+      clearInterval(iv); iv = null
+    }
+    function onVis() {
+      if (document.hidden) stop()
+      else start()
+    }
+    start()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [])
 
   async function handleSetStatus(id: string, status: string) {
@@ -682,19 +699,27 @@ export default function LeadsView() {
     router.push(`/admin/inbox?chat=${encodeURIComponent(id)}`)
   }
 
-  const q = search.trim().toLowerCase()
-  const filteredChats = (includeGroups ? chats : chats.filter((c) => !c.isGroup))
-    .filter((c) => !c.archived)
-    .filter((c) => !tagFilter || (c.tags || []).includes(tagFilter))
-    .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q))
-    .sort((a, b) => {
+  // 1500+ chats: filter→filter→filter→sort em todo render do componente
+  // (qualquer keystroke do search, drag, modal abrindo) era visível como jank.
+  const filteredChats = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const out: WaChat[] = []
+    for (const c of chats) {
+      if (c.archived) continue
+      if (!includeGroups && c.isGroup) continue
+      if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
+      if (q && !c.name.toLowerCase().includes(q) && !(c.notes || '').toLowerCase().includes(q)) continue
+      out.push(c)
+    }
+    out.sort((a, b) => {
       if (sortBy === 'value') return (b.value || 0) - (a.value || 0)
       if (sortBy === 'name') return a.name.localeCompare(b.name, 'pt-BR')
-      return (b.lastTime || 0) - (a.lastTime || 0) // recent (default)
+      return (b.lastTime || 0) - (a.lastTime || 0)
     })
+    return out
+  }, [chats, includeGroups, tagFilter, search, sortBy])
 
-  // todas as etiquetas em uso, com contagem
-  const allTags: [string, number][] = (() => {
+  const allTags = useMemo<[string, number][]>(() => {
     const m = new Map<string, number>()
     for (const c of chats) {
       if (c.archived) continue
@@ -702,23 +727,23 @@ export default function LeadsView() {
       for (const t of c.tags || []) m.set(t, (m.get(t) || 0) + 1)
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1])
-  })()
+  }, [chats, includeGroups])
 
-  const byStatus: Record<string, WaChat[]> = {}
-  for (const s of LEAD_STATUSES) byStatus[s.id] = []
-  for (const c of filteredChats) {
-    const key = byStatus[c.status] ? c.status : 'LEAD'
-    byStatus[key].push(c)
-  }
-
-  // total geral: soma de todos os leads, excluindo PERDIDA
-  const totalPipeline = filteredChats
-    .filter((c) => c.status !== 'PERDIDA')
-    .reduce((sum, c) => sum + (Number(c.value) || 0), 0)
-  const totalClosed = (byStatus.FECHADO || []).reduce(
-    (sum, c) => sum + (Number(c.value) || 0),
-    0
-  )
+  // bucketing + totais numa única passada (evita 3 loops separados)
+  const { byStatus, totalPipeline, totalClosed } = useMemo(() => {
+    const buckets: Record<string, WaChat[]> = {}
+    for (const s of LEAD_STATUSES) buckets[s.id] = []
+    let pipeline = 0
+    let closed = 0
+    for (const c of filteredChats) {
+      const key = buckets[c.status] ? c.status : 'LEAD'
+      buckets[key].push(c)
+      const v = Number(c.value) || 0
+      if (c.status !== 'PERDIDA') pipeline += v
+      if (c.status === 'FECHADO') closed += v
+    }
+    return { byStatus: buckets, totalPipeline: pipeline, totalClosed: closed }
+  }, [filteredChats])
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative" style={{ background: '#FAFAF8' }}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Activity, Send } from 'lucide-react'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProjectType, ProposalStatus } from '@/lib/types'
@@ -213,83 +213,86 @@ export default function RelatoriosView() {
       .catch(() => setLoading(false))
   }, [])
 
-  // valor de uma proposta = soma dos price_cash dos planos selecionados
-  function propValue(p: Proposal) {
-    return p.selected_plans.reduce((s, pl) => s + (Number(pl.price_cash) || 0), 0)
-  }
+  // Tudo deriva de `proposals`. Antes: 4 loops + 2 sort + 2 map em todo
+  // render (até em hover de slice de pizza). Agora roda só quando proposals muda.
+  const stats = useMemo(() => {
+    const propValue = (p: Proposal) =>
+      p.selected_plans.reduce((s, pl) => s + (Number(pl.price_cash) || 0), 0)
 
-  const byType = new Map<ProjectType, number>()
-  const byStatus = new Map<ProposalStatus, number>()
-  const byMonth = new Map<string, number>() // 'YYYY-MM' → count
-  let totalAccepted = 0
-  let totalSent = 0
-  let totalLost = 0
-  let acceptedCount = 0
-  let closedCount = 0 // accepted + rejected + expired (todas que fecharam ciclo)
-  for (const p of proposals) {
-    byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
-    byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
-    const v = propValue(p)
-    if (p.status === 'accepted') { totalAccepted += v; acceptedCount++; closedCount++ }
-    if (p.status === 'sent' || p.status === 'viewed') totalSent += v
-    if (p.status === 'rejected' || p.status === 'expired') { totalLost += v; closedCount++ }
-    // distribuição por mês (usa created_at)
-    if (p.created_at) {
-      const d = new Date(p.created_at)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      byMonth.set(key, (byMonth.get(key) || 0) + 1)
+    const byType = new Map<ProjectType, number>()
+    const byStatus = new Map<ProposalStatus, number>()
+    const byMonth = new Map<string, number>()
+    let totalAccepted = 0, totalSent = 0, totalLost = 0
+    let acceptedCount = 0, closedCount = 0
+
+    const dealsWithValue: { p: Proposal; v: number }[] = []
+    const now = Date.now()
+    const in14d = now + 14 * 86400_000
+    const expCandidates: Proposal[] = []
+
+    for (const p of proposals) {
+      byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
+      byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
+      const v = propValue(p)
+      if (v > 0) dealsWithValue.push({ p, v })
+      if (p.status === 'accepted') { totalAccepted += v; acceptedCount++; closedCount++ }
+      else if (p.status === 'sent' || p.status === 'viewed') {
+        totalSent += v
+        if (p.valid_until) {
+          const t = new Date(p.valid_until).getTime()
+          if (t >= now && t <= in14d) expCandidates.push(p)
+        }
+      }
+      else if (p.status === 'rejected' || p.status === 'expired') {
+        totalLost += v; closedCount++
+      }
+      if (p.created_at) {
+        const d = new Date(p.created_at)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        byMonth.set(key, (byMonth.get(key) || 0) + 1)
+      }
     }
-  }
-  const conversionRate = closedCount > 0 ? Math.round((acceptedCount / closedCount) * 100) : 0
-  const avgTicket = acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0
 
-  // Top 5 maiores propostas
-  const topDeals = [...proposals]
-    .map((p) => ({ p, v: propValue(p) }))
-    .filter((x) => x.v > 0)
-    .sort((a, b) => b.v - a.v)
-    .slice(0, 5)
+    const topDeals = dealsWithValue.sort((a, b) => b.v - a.v).slice(0, 5)
 
-  // Vencendo em breve: enviadas/visualizadas com valid_until nos próximos 14 dias
-  const now = Date.now()
-  const in14d = now + 14 * 86400_000
-  const expiringSoon = proposals
-    .filter((p) =>
-      (p.status === 'sent' || p.status === 'viewed') &&
-      p.valid_until &&
-      new Date(p.valid_until).getTime() <= in14d &&
-      new Date(p.valid_until).getTime() >= now
-    )
-    .sort((a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime())
-    .slice(0, 8)
+    const expiringSoon = expCandidates
+      .sort((a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime())
+      .slice(0, 8)
 
-  // Série de meses pra bar chart — últimos 6 meses, mesmo vazios
-  const months: { key: string; label: string; count: number }[] = []
-  const today = new Date()
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    months.push({
-      key,
-      label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
-      count: byMonth.get(key) || 0,
-    })
-  }
-  const maxMonthly = Math.max(1, ...months.map((m) => m.count))
-  const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
-    .map((t) => ({
-      label: TYPE_META[t].label,
-      value: byType.get(t) || 0,
-      color: TYPE_META[t].color,
-    }))
-    .filter((s) => s.value > 0)
-  const statusSlices: Slice[] = (Object.keys(STATUS_META_PROP) as ProposalStatus[])
-    .map((s) => ({
-      label: STATUS_META_PROP[s].label,
-      value: byStatus.get(s) || 0,
-      color: STATUS_META_PROP[s].color,
-    }))
-    .filter((s) => s.value > 0)
+    const months: { key: string; label: string; count: number }[] = []
+    const today = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      months.push({
+        key,
+        label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        count: byMonth.get(key) || 0,
+      })
+    }
+    const maxMonthly = Math.max(1, ...months.map((m) => m.count))
+
+    const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
+      .map((t) => ({ label: TYPE_META[t].label, value: byType.get(t) || 0, color: TYPE_META[t].color }))
+      .filter((s) => s.value > 0)
+    const statusSlices: Slice[] = (Object.keys(STATUS_META_PROP) as ProposalStatus[])
+      .map((s) => ({ label: STATUS_META_PROP[s].label, value: byStatus.get(s) || 0, color: STATUS_META_PROP[s].color }))
+      .filter((s) => s.value > 0)
+
+    return {
+      totalAccepted, totalSent, totalLost,
+      acceptedCount, closedCount,
+      conversionRate: closedCount > 0 ? Math.round((acceptedCount / closedCount) * 100) : 0,
+      avgTicket: acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0,
+      topDeals, expiringSoon, months, maxMonthly, typeSlices, statusSlices,
+    }
+  }, [proposals])
+
+  const {
+    totalAccepted, totalSent, totalLost,
+    acceptedCount, closedCount, conversionRate, avgTicket,
+    topDeals, expiringSoon, months, maxMonthly, typeSlices, statusSlices,
+  } = stats
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
@@ -530,7 +533,7 @@ export default function RelatoriosView() {
                   <div className="flex flex-col">
                     {expiringSoon.map((p, i) => {
                       const daysLeft = Math.ceil(
-                        (new Date(p.valid_until).getTime() - now) / 86400_000
+                        (new Date(p.valid_until).getTime() - Date.now()) / 86400_000
                       )
                       const urgent = daysLeft <= 3
                       return (

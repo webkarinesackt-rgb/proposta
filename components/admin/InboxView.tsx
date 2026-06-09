@@ -751,12 +751,19 @@ export default function InboxView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [shortcutsOpen])
 
+  const scrollRafRef = useRef<number | null>(null)
   function handleMessagesScroll() {
-    const el = msgScrollRef.current
-    if (!el) return
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-    setIsAtBottom(nearBottom)
-    if (nearBottom) setNewCount(0)
+    // scroll dispara dezenas de vezes por segundo; setState a cada pixel
+    // força re-render da lista inteira. rAF coalesce pro próximo paint.
+    if (scrollRafRef.current != null) return
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      const el = msgScrollRef.current
+      if (!el) return
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+      setIsAtBottom((prev) => (prev === nearBottom ? prev : nearBottom))
+      if (nearBottom) setNewCount((c) => (c === 0 ? c : 0))
+    })
   }
 
   function scrollMessagesToBottom() {
@@ -1126,21 +1133,27 @@ export default function InboxView() {
     }
   }
 
-  const unansweredCount = chats.filter(
-    (c) => !c.archived && !c.isGroup && !c.fromMeLast && !c.ignored
-  ).length
-  const archivedCount = chats.filter((c) => c.archived).length
-  const groupsCount = chats.filter((c) => !c.archived && c.isGroup).length
-
-  // todas as tags com contagem (entre conversas não-arquivadas)
-  const allTags: [string, number][] = (() => {
-    const m = new Map<string, number>()
+  // Uma única passada calcula contadores + tags. Antes: 4 filter() + IIFE,
+  // todos rodando em cada render (qualquer keystroke).
+  const { unansweredCount, archivedCount, groupsCount, allTags } = useMemo(() => {
+    let unanswered = 0, archived = 0, groups = 0
+    const tagCount = new Map<string, number>()
     for (const c of chats) {
-      if (c.archived) continue
-      for (const t of c.tags || []) m.set(t, (m.get(t) || 0) + 1)
+      if (c.archived) {
+        archived++
+        continue
+      }
+      if (c.isGroup) groups++
+      else if (!c.fromMeLast && !c.ignored) unanswered++
+      for (const t of c.tags || []) tagCount.set(t, (tagCount.get(t) || 0) + 1)
     }
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
-  })()
+    return {
+      unansweredCount: unanswered,
+      archivedCount: archived,
+      groupsCount: groups,
+      allTags: [...tagCount.entries()].sort((a, b) => b[1] - a[1]) as [string, number][],
+    }
+  }, [chats])
 
   // Filtragem cara (1500+ chats × buscar dentro do nome × ler searchHits).
   // useMemo evita refazer em todo render do componente (que dispara em

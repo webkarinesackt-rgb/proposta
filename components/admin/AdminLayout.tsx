@@ -20,9 +20,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/admin'
   const [conn, setConn] = useState<string>('starting')
 
-  // monitora a conexão com o WhatsApp
+  // monitora a conexão com o WhatsApp.
+  // Pausa quando a aba não está visível (window/tab em background não
+  // precisa fazer request a cada 6s — economiza bateria no celular e
+  // evita request stampede ao voltar pra aba).
   useEffect(() => {
     let alive = true
+    let iv: ReturnType<typeof setInterval> | null = null
     async function tick() {
       try {
         const s = await waServer.status()
@@ -31,11 +35,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         if (alive) setConn('off')
       }
     }
-    tick()
-    const iv = setInterval(tick, 6000)
+    function start() {
+      if (iv != null) return
+      tick()
+      iv = setInterval(tick, 15000) // antes 6s — esse poll é apenas pra
+      // mostrar a bolinha de status; SSE no InboxView já reflete em tempo real.
+    }
+    function stop() {
+      if (iv == null) return
+      clearInterval(iv)
+      iv = null
+    }
+    function onVis() {
+      if (document.hidden) stop()
+      else start()
+    }
+    start()
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       alive = false
-      clearInterval(iv)
+      stop()
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
