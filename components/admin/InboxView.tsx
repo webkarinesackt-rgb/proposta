@@ -1832,7 +1832,26 @@ export default function InboxView() {
               </div>
 
               {/* mensagens */}
-              <div className="flex-1 min-h-0 relative">
+              <div
+                className="flex-1 min-h-0 relative"
+                onDragOver={(e) => {
+                  // Arrastar arquivo do Finder/Explorer pra cima do chat → preview.
+                  if (e.dataTransfer.types.includes('Files')) {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'copy'
+                  }
+                }}
+                onDrop={(e) => {
+                  const f = e.dataTransfer.files?.[0]
+                  if (!f) return
+                  e.preventDefault()
+                  if (f.size > 16 * 1024 * 1024) {
+                    alert('Arquivo grande demais (máx 16MB).')
+                    return
+                  }
+                  pickMedia(f)
+                }}
+              >
                 <div
                   ref={msgScrollRef}
                   onScroll={handleMessagesScroll}
@@ -2059,6 +2078,34 @@ export default function InboxView() {
                     const el = e.currentTarget
                     el.style.height = 'auto'
                     el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+                  }}
+                  onPaste={(e) => {
+                    // Cmd+V / Ctrl+V de imagem (print do macOS, screenshot,
+                    // copy-image do navegador). Captura o blob e abre o preview.
+                    const items = e.clipboardData?.items
+                    if (!items) return
+                    for (const item of items) {
+                      if (item.kind === 'file' && item.type.startsWith('image/')) {
+                        const file = item.getAsFile()
+                        if (!file) continue
+                        e.preventDefault()
+                        if (file.size > 16 * 1024 * 1024) {
+                          alert('Imagem grande demais (máx 16MB).')
+                          return
+                        }
+                        // print do macOS vem como "image.png" — dá um nome
+                        // mais útil pra mostrar no preview/no destinatário.
+                        const ext = file.type.split('/')[1] || 'png'
+                        const renamed = new File(
+                          [file],
+                          `print-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`,
+                          { type: file.type }
+                        )
+                        pickMedia(renamed)
+                        return
+                      }
+                    }
+                    // sem imagem no clipboard → comportamento default (cola texto)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
