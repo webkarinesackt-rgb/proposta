@@ -211,6 +211,21 @@ export const waServer = {
     return r.json()
   },
 
+  async sendMedia(
+    chatId: string,
+    file: File,
+    caption?: string
+  ): Promise<{ ok: boolean; id?: string; error?: string }> {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (caption) fd.append('caption', caption)
+    const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/send-media`, {
+      method: 'POST',
+      body: fd,
+    })
+    return r.json()
+  },
+
   async sendText(id: string, text: string): Promise<{ ok: boolean; error?: string }> {
     const r = await waFetch(`/chats/${encodeURIComponent(id)}/send-text`, {
       method: 'POST',

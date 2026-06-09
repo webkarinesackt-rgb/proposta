@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -605,6 +605,11 @@ export default function InboxView() {
   const [selectedName, setSelectedName] = useState('')
   const [messages, setMessages] = useState<WaMessage[]>([])
   const [messagesLoading, setMessagesLoading] = useState(false)
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string>('')
+  const [mediaCaption, setMediaCaption] = useState('')
+  const [mediaSending, setMediaSending] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [search, setSearch] = useState('')
@@ -1003,6 +1008,62 @@ export default function InboxView() {
     } catch {}
     reloadChats()
     if (archived && id === selectedId) setSelectedId(null)
+  }
+
+  function pickMedia(file: File) {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview)
+    setMediaFile(file)
+    setMediaCaption('')
+    // só faz preview pra imagem/vídeo (documentos ficam só com nome)
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setMediaPreview(URL.createObjectURL(file))
+    } else {
+      setMediaPreview('')
+    }
+  }
+
+  function clearMedia() {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview)
+    setMediaFile(null)
+    setMediaPreview('')
+    setMediaCaption('')
+  }
+
+  async function handleSendMedia() {
+    if (!mediaFile || !selectedId || mediaSending) return
+    setMediaSending(true)
+    try {
+      const r = await waServer.sendMedia(selectedId, mediaFile, mediaCaption.trim())
+      if (!r.ok) {
+        alert('Erro ao enviar: ' + (r.error || 'desconhecido'))
+        setMediaSending(false)
+        return
+      }
+      // optimistic: marca conversa como respondida
+      setChats((cs) =>
+        cs.map((c) =>
+          c.id === selectedId
+            ? {
+                ...c,
+                fromMeLast: true,
+                lastText: mediaCaption.trim() ||
+                  (mediaFile.type.startsWith('image/') ? '🖼️ Imagem' :
+                   mediaFile.type.startsWith('video/') ? '🎬 Vídeo' :
+                   '📎 ' + mediaFile.name),
+                lastTime: Math.floor(Date.now() / 1000),
+              }
+            : c
+        )
+      )
+      clearMedia()
+      const m = await waServer.messages(selectedId)
+      setMessages(m.messages || [])
+      reloadChats()
+    } catch {
+      alert('Não foi possível enviar a mídia.')
+    } finally {
+      setMediaSending(false)
+    }
   }
 
   async function handleSend() {
@@ -1818,6 +1879,79 @@ export default function InboxView() {
                 )}
               </div>
 
+              {/* preview de mídia anexada (acima do composer) */}
+              {mediaFile && (
+                <div
+                  className="px-4 py-3 flex items-start gap-3 flex-shrink-0"
+                  style={{ background: T.bgSubtle, borderTop: `1px solid ${T.border}` }}
+                >
+                  {mediaPreview && mediaFile.type.startsWith('image/') ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mediaPreview}
+                      alt=""
+                      style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }}
+                    />
+                  ) : mediaPreview && mediaFile.type.startsWith('video/') ? (
+                    <video
+                      src={mediaPreview}
+                      style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }}
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center rounded-lg"
+                      style={{ width: 64, height: 64, background: T.card, border: `1px solid ${T.border}` }}
+                    >
+                      <FileText size={22} style={{ color: T.textDim }} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold truncate" style={{ color: T.textPrimary }}>
+                      {mediaFile.name}
+                    </p>
+                    <p className="text-[10px] mb-2" style={{ color: T.textDim }}>
+                      {(mediaFile.size / 1024).toFixed(0)} KB · {mediaFile.type || 'arquivo'}
+                    </p>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={mediaCaption}
+                      onChange={(e) => setMediaCaption(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !mediaSending) handleSendMedia()
+                        if (e.key === 'Escape') clearMedia()
+                      }}
+                      placeholder="Legenda (opcional)…"
+                      disabled={mediaSending}
+                      className="w-full px-2.5 py-1.5 rounded-md text-[12px] outline-none"
+                      style={{
+                        background: T.card,
+                        border: `1px solid ${T.border}`,
+                        color: T.textPrimary,
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={handleSendMedia}
+                      disabled={mediaSending}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all disabled:opacity-50"
+                      style={{ background: T.accent, color: T.accentBright }}
+                    >
+                      {mediaSending ? 'Enviando…' : 'Enviar'}
+                    </button>
+                    <button
+                      onClick={clearMedia}
+                      disabled={mediaSending}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors hover:bg-[#F4F3EF]"
+                      style={{ color: T.textMuted }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* composer */}
               <div
                 className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
@@ -1826,6 +1960,33 @@ export default function InboxView() {
                   borderTop: `1px solid ${T.border}`,
                 }}
               >
+                {/* botão anexar + input file escondido */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/octet-stream,text/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) {
+                      if (f.size > 16 * 1024 * 1024) {
+                        alert('Arquivo grande demais (máx 16MB).')
+                        return
+                      }
+                      pickMedia(f)
+                    }
+                    e.target.value = '' // permite re-anexar o mesmo arquivo
+                  }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={conn !== 'open' || !!mediaFile}
+                  title="Anexar imagem, vídeo ou documento"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:bg-[#F4F3EF] disabled:opacity-30"
+                  style={{ color: T.textMuted }}
+                >
+                  <Paperclip size={18} />
+                </button>
                 <textarea
                   ref={composerRef}
                   value={draft}

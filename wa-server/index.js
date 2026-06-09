@@ -1574,6 +1574,50 @@ app.get('/chats/:id/photo', requireValidJid, async (req, res) => {
 })
 
 // enviar texto para uma conversa existente
+// Enviar imagem / vídeo / documento numa conversa existente.
+// O upload é multipart com campo "file" e opcionais: caption, kind.
+// Auto-detecta o tipo via mimetype se kind não for passado.
+app.post(
+  '/chats/:id/send-media',
+  requireValidJid,
+  upload.single('file'),
+  async (req, res) => {
+    if (!ensureConnected(res)) return
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Envie um arquivo no campo "file".' })
+    }
+    const { caption = '', kind: kindRaw } = req.body || {}
+    if (typeof caption !== 'string' || caption.length > 4096) {
+      return res.status(400).json({ ok: false, error: 'caption inválida' })
+    }
+    const mime = req.file.mimetype || 'application/octet-stream'
+    let kind = kindRaw
+    if (!kind || !['image', 'video', 'document'].includes(kind)) {
+      if (mime.startsWith('image/')) kind = 'image'
+      else if (mime.startsWith('video/')) kind = 'video'
+      else kind = 'document'
+    }
+    try {
+      const payload = { mimetype: mime, caption }
+      if (kind === 'image') payload.image = req.file.buffer
+      else if (kind === 'video') payload.video = req.file.buffer
+      else {
+        payload.document = req.file.buffer
+        payload.fileName = req.file.originalname || 'arquivo'
+      }
+      const sent = await sock.sendMessage(req.params.id, payload)
+      if (!sent || !sent.key) {
+        return res.status(500).json({ ok: false, error: 'WhatsApp não confirmou o envio' })
+      }
+      recordMessage(sent)
+      res.json({ ok: true, id: sent.key.id, kind })
+    } catch (err) {
+      console.error('[chats/send-media]', err.message)
+      res.status(500).json({ ok: false, error: err.message })
+    }
+  }
+)
+
 app.post('/chats/:id/send-text', requireValidJid, async (req, res) => {
   if (!ensureConnected(res)) return
   const { text } = req.body || {}
