@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Archive, ArchiveRestore } from 'lucide-react'
+import { X, Archive, ArchiveRestore, Users, Crown, ChevronDown } from 'lucide-react'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal } from '@/lib/types'
 import {
@@ -44,6 +44,112 @@ const INPUT_STYLE = {
   background: '#F4F3EF',
   border: '1px solid #E6E6E1',
   color: '#162322',
+}
+
+/* Detalhes de grupo: subject, descrição, lista de participantes com admin badge.
+   Lazy-load no mount; só pra chats @g.us. */
+function GroupInfo({ chatId }: { chatId: string }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof waServer.groupInfo>> | null>(null)
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    waServer
+      .groupInfo(chatId)
+      .then((r) => {
+        if (alive) {
+          setData(r)
+          setLoading(false)
+        }
+      })
+      .catch(() => alive && setLoading(false))
+    return () => {
+      alive = false
+    }
+  }, [chatId])
+
+  if (loading) {
+    return (
+      <p className="text-[12px] text-[#8AA09A] italic">Carregando dados do grupo…</p>
+    )
+  }
+  if (!data?.ok) {
+    return (
+      <p className="text-[12px] text-[#EF4444]">
+        {data?.error || 'Não foi possível carregar.'}
+      </p>
+    )
+  }
+
+  const sorted = [...(data.participants || [])].sort((a, b) => {
+    if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1
+    return (a.name || a.number).localeCompare(b.name || b.number, 'pt-BR')
+  })
+
+  return (
+    <div className="flex flex-col gap-2">
+      {data.description && (
+        <p
+          className="text-[12px] text-[#162322] whitespace-pre-wrap rounded-lg px-3 py-2"
+          style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
+        >
+          {data.description}
+        </p>
+      )}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors hover:bg-[#F4F3EF]"
+        style={{ background: '#FAFAF8', border: '1px solid #E6E6E1', color: '#162322' }}
+      >
+        <span className="flex items-center gap-2">
+          <Users size={13} />
+          {data.participantCount} participante{(data.participantCount || 0) > 1 ? 's' : ''}
+        </span>
+        <ChevronDown
+          size={14}
+          style={{
+            transition: 'transform 0.15s',
+            transform: open ? 'rotate(180deg)' : 'none',
+          }}
+        />
+      </button>
+      {open && (
+        <div
+          className="flex flex-col rounded-lg overflow-hidden"
+          style={{ border: '1px solid #E6E6E1', maxHeight: 280, overflowY: 'auto' }}
+        >
+          {sorted.map((p, i) => (
+            <div
+              key={p.jid}
+              className="flex items-center justify-between px-3 py-2 text-[12px]"
+              style={{
+                borderTop: i > 0 ? '1px solid #F0EFEA' : 'none',
+                background: '#FFFFFF',
+              }}
+            >
+              <span className="truncate flex items-center gap-1.5 min-w-0">
+                {p.isOwner && (
+                  <Crown size={11} style={{ color: '#EAB308', flexShrink: 0 }} />
+                )}
+                <span className="truncate" style={{ color: '#162322' }}>
+                  {p.name || '+' + p.number}
+                </span>
+              </span>
+              {p.isAdmin && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0 px-1.5 py-0.5 rounded"
+                  style={{ background: '#FEF3C7', color: '#92400E' }}
+                >
+                  Admin
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function LeadDetailsPanel({
@@ -156,13 +262,22 @@ export default function LeadDetailsPanel({
         {/* contato */}
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8AA09A] mb-1">
-            Contato
+            {chat.isGroup ? 'Grupo' : 'Contato'}
           </p>
           <p className="text-[14px] font-bold text-[#162322] truncate">
             {chat.name}
           </p>
-          <p className="text-[12px] text-[#6B8585]">+{phone}</p>
+          {!chat.isGroup && (
+            <p className="text-[12px] text-[#6B8585]">+{phone}</p>
+          )}
         </div>
+
+        {/* info do grupo: descrição + lista de participantes */}
+        {chat.isGroup && (
+          <Field label="Membros e descrição">
+            <GroupInfo chatId={chat.id} />
+          </Field>
+        )}
 
         {/* status */}
         <Field label="Etapa do funil">

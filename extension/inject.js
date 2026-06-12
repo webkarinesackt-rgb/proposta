@@ -78,6 +78,9 @@
   function chatToIngest(c) {
     const id = c.id?._serialized || c.id
     if (!id || typeof id !== 'string') return null
+    // wppconnect expõe pinned como timestamp (quando fixado) ou 0/undefined.
+    // No store guardamos só boolean pra simplicidade.
+    const pinned = !!(c.pin || c.pinned)
     return {
       id,
       name: bestName(c),
@@ -86,6 +89,7 @@
       lastText: extractLastText(c.lastMessage),
       fromMeLast: !!c.lastReceivedKey?.fromMe,
       unread: c.unreadCount || 0,
+      pinned,
     }
   }
 

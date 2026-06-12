@@ -240,9 +240,12 @@ function _ChatRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span
-            className="text-[13px] font-bold truncate"
+            className="text-[13px] font-bold truncate flex items-center gap-1"
             style={{ color: T.textPrimary }}
           >
+            {chat.pinned && (
+              <span title="Fixada" style={{ fontSize: 10, opacity: 0.7 }}>📌</span>
+            )}
             {chat.name}
           </span>
           <span className="text-[10px] flex-shrink-0" style={{ color: T.textDim }}>
@@ -585,6 +588,27 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
               renderText(msg.text, mine)
             )}
           </p>
+        )}
+        {/* reações: chip discreto embaixo da bolha (estilo WhatsApp) */}
+        {msg.reactions && msg.reactions.length > 0 && (
+          <div className="px-2 -mb-1.5 -mt-1 flex justify-end">
+            <span
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px]"
+              style={{
+                background: mine ? 'rgba(255,255,255,0.18)' : '#FFFFFF',
+                border: `1px solid ${mine ? 'rgba(255,255,255,0.25)' : T.border}`,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+              }}
+              title={msg.reactions.map((r) => r.emoji).join('')}
+            >
+              {[...new Set(msg.reactions.map((r) => r.emoji))].slice(0, 3).join('')}
+              {msg.reactions.length > 1 && (
+                <span style={{ color: mine ? 'rgba(255,255,255,0.8)' : T.textMuted, fontSize: 10, marginLeft: 2 }}>
+                  {msg.reactions.length}
+                </span>
+              )}
+            </span>
+          </div>
         )}
         <div
           className="px-3 pb-1.5 text-[10px] mt-1 flex items-center justify-end gap-1 cursor-help"

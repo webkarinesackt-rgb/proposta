@@ -40,6 +40,7 @@ export interface WaChat {
   linkedProposalId: string
   nextAction?: string
   nextActionDate?: number // unix timestamp em segundos
+  pinned?: boolean
 }
 
 export interface WaChatPatch {
@@ -111,6 +112,7 @@ export interface WaMessage {
   status?: number
   meta?: WaMessageMeta | null
   quoted?: WaQuoted | null
+  reactions?: { by: string; emoji: string }[]
 }
 
 export interface WaSeriesPoint {
@@ -307,6 +309,20 @@ export const waServer = {
     const r = await waFetch(`/search?q=${encodeURIComponent(q)}`)
     const j = await r.json()
     return j.results || []
+  },
+
+  async groupInfo(chatId: string): Promise<{
+    ok: boolean
+    subject?: string
+    description?: string
+    owner?: string
+    createdAt?: number
+    participantCount?: number
+    participants?: { jid: string; number: string; name: string; isAdmin: boolean; isOwner: boolean }[]
+    error?: string
+  }> {
+    const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/group-info`)
+    return r.json()
   },
 
   async presence(chatId: string): Promise<{ state: string; ts: number } | null> {

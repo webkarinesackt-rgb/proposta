@@ -519,6 +519,39 @@ function recordMessage(m) {
     const jid = m?.key?.remoteJid
     if (!isRealChat(jid)) return
     const { text, type, meta } = msgContent(m.message)
+    // Reações, eventos de sistema e atualizações de criptografia NÃO viram
+    // bolhas no chat — eles entupiam a conversa com "Reagiu com ❤️" e
+    // "🔐 Atualização de criptografia". Tenta anexar a reação na mensagem
+    // original e ignora o resto.
+    if (type === 'reacao') {
+      const targetId = m.message?.reactionMessage?.key?.id
+      if (targetId) {
+        const arr = store.messages.get(jid)
+        const original = arr?.find((x) => x.id === targetId)
+        if (original) {
+          const emoji = m.message.reactionMessage.text || ''
+          if (emoji) {
+            original.reactions = original.reactions || []
+            // dedup por participant
+            const who = m.key.fromMe ? '__me__' : (m.key.participant || jid)
+            original.reactions = original.reactions.filter((r) => r.by !== who)
+            original.reactions.push({ by: who, emoji })
+            storeDirty = true
+            sseSend('changed', { kind: 'messages', chats: [jid] })
+          } else {
+            // emoji vazio = remoção da reação
+            if (original.reactions) {
+              const who = m.key.fromMe ? '__me__' : (m.key.participant || jid)
+              original.reactions = original.reactions.filter((r) => r.by !== who)
+              storeDirty = true
+              sseSend('changed', { kind: 'messages', chats: [jid] })
+            }
+          }
+        }
+      }
+      return
+    }
+    if (type === 'sistema') return // edições/apagadas/etc. não viram bolha
     const quoted = extractQuoted(m.message)
     const time = tsToNum(m.messageTimestamp)
     const isGroup = jid.endsWith('@g.us')
@@ -570,6 +603,9 @@ function recordMessage(m) {
       chat.lastTime = time
       chat.fromMeLast = rec.fromMe
     }
+    // Quando EU envio, automaticamente zera o badge de não-lidas —
+    // ninguém envia uma resposta sem ter lido a conversa.
+    if (rec.fromMe) chat.unread = 0
     // usa o pushName como nome de contatos individuais ainda sem nome
     if (
       !jid.endsWith('@g.us') &&
@@ -1168,6 +1204,7 @@ function mergeChatFromExtension(incoming) {
   if (typeof incoming.lastTime === 'number' && incoming.lastTime > 0) ex.lastTime = incoming.lastTime
   if (typeof incoming.fromMeLast === 'boolean') ex.fromMeLast = incoming.fromMeLast
   if (typeof incoming.unread === 'number') ex.unread = incoming.unread
+  if (typeof incoming.pinned === 'boolean') ex.pinned = incoming.pinned
   ex.id = incoming.id
   store.chats.set(incoming.id, ex)
   storeDirty = true
@@ -1376,6 +1413,47 @@ app.post('/chats/add', async (req, res) => {
   }
 })
 
+// Detalhes de um grupo: subject, descrição, dono, lista de participantes
+// com nome. Usado pelo painel de info do chat. Cache curto (60s).
+const groupInfoCache = new Map() // jid → { ts, data }
+app.get('/chats/:id/group-info', requireValidJid, async (req, res) => {
+  const jid = req.params.id
+  if (!jid.endsWith('@g.us')) {
+    return res.status(400).json({ ok: false, error: 'não é um grupo' })
+  }
+  const cached = groupInfoCache.get(jid)
+  if (cached && Date.now() - cached.ts < 60_000) {
+    return res.json(cached.data)
+  }
+  if (!sock || connState !== 'open') {
+    return res.status(503).json({ ok: false, error: 'WhatsApp não conectado' })
+  }
+  try {
+    const meta = await sock.groupMetadata(jid)
+    const participants = (meta.participants || []).map((p) => ({
+      jid: p.id,
+      number: numberFromJid(p.id),
+      name: chatDisplayName(p.id) || (store.contacts.get(p.id) || ''),
+      isAdmin: p.admin === 'admin' || p.admin === 'superadmin',
+      isOwner: p.admin === 'superadmin',
+    }))
+    const data = {
+      ok: true,
+      subject: meta.subject || '',
+      description: meta.desc || '',
+      owner: meta.owner || '',
+      createdAt: meta.creation || 0,
+      participantCount: participants.length,
+      participants,
+    }
+    groupInfoCache.set(jid, { ts: Date.now(), data })
+    res.json(data)
+  } catch (err) {
+    console.error('[group-info]', err.message)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 // Tenta buscar o nome (subject) de grupos que estão sem nome no store,
 // chamando sock.groupMetadata. Roda em background, atualiza o store.
 const groupFetchAttempted = new Set()
@@ -1434,10 +1512,15 @@ app.get('/chats', (_req, res) => {
       linkedProposalId: c.linkedProposalId || '',
       nextAction: c.nextAction || '',
       nextActionDate: c.nextActionDate || 0,
+      pinned: !!c.pinned,
     }))
     // exclui só conversas que ainda nem nome têm (lixo do sync)
     .filter((c) => c.lastTime || c.name)
-    .sort((a, b) => b.lastTime - a.lastTime)
+    // fixados sempre em cima (como WhatsApp); depois ordena por recência
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+      return b.lastTime - a.lastTime
+    })
   res.json({ chats })
 })
 
@@ -1464,6 +1547,7 @@ app.get('/chats/:id/messages', requireValidJid, (req, res) => {
             : '',
         }
       : null,
+    reactions: m.reactions || [],
   }))
   res.json({
     id: req.params.id,
