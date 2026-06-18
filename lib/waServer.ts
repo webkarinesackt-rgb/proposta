@@ -343,6 +343,12 @@ export const waServer = {
     return withTokenQS(`${WA}/events`)
   },
 
+  /** URL da página HTML do QR (servida pelo wa-server). Token via ?t=
+   *  porque a página é renderizada sem headers. */
+  qrUrl() {
+    return withTokenQS(`${WA}/`)
+  },
+
   async setStatus(chatId: string, status: string) {
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/status`, {
       method: 'POST',

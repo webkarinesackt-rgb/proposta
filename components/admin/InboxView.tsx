@@ -1284,16 +1284,41 @@ export default function InboxView() {
         </div>
       )}
       {conn !== 'open' && !serverOff && (
-        <div
-          className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
-          style={{
-            background: '#FEF9E7',
-            borderBottom: '1px solid #FDE68A',
-            color: '#92400E',
-          }}
-        >
-          WhatsApp: {conn === 'qr' ? 'aguardando QR' : 'reconectando…'}
-        </div>
+        conn === 'qr' ? (
+          <a
+            href={waServer.qrUrl()}
+            target="_blank"
+            rel="noopener"
+            className="px-6 py-2 text-[12px] font-semibold flex-shrink-0 flex items-center justify-between gap-3 transition-colors hover:bg-[#FDF3C2]"
+            style={{
+              background: '#FEF9E7',
+              borderBottom: '1px solid #FDE68A',
+              color: '#92400E',
+            }}
+          >
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#F4D55D' }} />
+              WhatsApp aguardando QR — <u>clique aqui pra escanear</u>
+            </span>
+            <span
+              className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider"
+              style={{ background: '#92400E', color: '#FEF9E7' }}
+            >
+              📷 Abrir QR
+            </span>
+          </a>
+        ) : (
+          <div
+            className="px-6 py-2 text-[12px] font-semibold flex-shrink-0"
+            style={{
+              background: '#FEF9E7',
+              borderBottom: '1px solid #FDE68A',
+              color: '#92400E',
+            }}
+          >
+            WhatsApp: reconectando…
+          </div>
+        )
       )}
 
       <div className="flex-1 min-h-0 flex">

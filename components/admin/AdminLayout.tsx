@@ -80,8 +80,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           borderRight: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        {/* mark — logo Fysi sem fundo, direto no verde da sidebar */}
-        <div className="relative mb-10">
+        {/* mark — logo Fysi sem fundo, direto no verde da sidebar.
+            Quando precisa escanear QR, vira link clicável (pulsando). */}
+        <a
+          href={conn === 'qr' ? waServer.qrUrl() : undefined}
+          target={conn === 'qr' ? '_blank' : undefined}
+          rel="noopener"
+          title={
+            conn === 'qr'
+              ? 'WhatsApp aguardando QR — clique pra escanear'
+              : `WhatsApp: ${conn}`
+          }
+          className={`relative mb-10 block ${conn === 'qr' ? 'cursor-pointer' : 'cursor-default'}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-fysi-mark.png"
@@ -90,21 +101,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               width: 52,
               height: 52,
               objectFit: 'contain',
-              // pequeno glow pra dar destaque sem precisar de fundo
               filter: 'drop-shadow(0 2px 8px rgba(244,249,157,0.15))',
             }}
           />
-          {/* status do whatsapp como bolinha no canto */}
+          {/* status do whatsapp como bolinha no canto — pulsa em QR */}
           <span
-            title={`WhatsApp: ${conn}`}
-            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${conn === 'qr' ? 'animate-pulse' : ''}`}
             style={{
               background: connDot,
               borderColor: '#051A1A',
               boxShadow: `0 0 8px ${connDot}88`,
             }}
           />
-        </div>
+        </a>
 
         {/* tabs */}
         <nav className="flex flex-col gap-1 w-full">
