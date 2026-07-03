@@ -314,17 +314,21 @@ function PlanCard({
           </span>
         </div>
 
-        <p style={{
-          fontSize: '0.6rem',
-          fontWeight: 600,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: isRec ? 'rgba(139,183,175,0.5)' : 'var(--text-muted)',
-          marginBottom: '1.25rem',
-        }}>
-          ou {plan.price_installments_count}× de {symbol}{' '}
-          {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
-        </p>
+        {plan.price_installments_count > 0 && plan.price_installment_value > 0 ? (
+          <p style={{
+            fontSize: '0.6rem',
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: isRec ? 'rgba(139,183,175,0.5)' : 'var(--text-muted)',
+            marginBottom: '1.25rem',
+          }}>
+            ou {plan.price_installments_count}× de {symbol}{' '}
+            {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
+          </p>
+        ) : (
+          <div style={{ marginBottom: '1.25rem' }} />
+        )}
 
         {/* CTA */}
         <button
