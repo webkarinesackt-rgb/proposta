@@ -27,7 +27,7 @@ import express from 'express'
 import multer from 'multer'
 import cors from 'cors'
 import { rmSync, readdirSync } from 'node:fs'
-import { writeFile, readFile, unlink, mkdir } from 'node:fs/promises'
+import { writeFile, readFile, unlink, mkdir, rename } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
@@ -622,14 +622,21 @@ function recordMessage(m) {
   }
 }
 
-/** Grava o store em disco (apenas se houve mudança). */
+/** Grava o store em disco (apenas se houve mudança).
+ *  Escreve num arquivo temporário e faz rename atômico — assim um crash no
+ *  meio da gravação nunca deixa o store.json pela metade (corrompido). E o
+ *  saveInFlight evita duas gravações ao mesmo tempo se o ciclo de 12s disparar
+ *  antes da anterior terminar. */
+let saveInFlight = false
 async function saveStore() {
-  if (!storeDirty) return
+  if (!storeDirty || saveInFlight) return
+  saveInFlight = true
   storeDirty = false
   try {
     await mkdir(DATA_DIR, { recursive: true })
+    const tmp = STORE_FILE + '.tmp'
     await writeFile(
-      STORE_FILE,
+      tmp,
       JSON.stringify(
         {
           chats: [...store.chats.entries()],
@@ -639,8 +646,12 @@ async function saveStore() {
         BufferJSON.replacer
       )
     )
+    await rename(tmp, STORE_FILE)
   } catch (e) {
+    storeDirty = true // falhou: remarca pra tentar de novo no próximo ciclo
     console.error('[saveStore]', e.message)
+  } finally {
+    saveInFlight = false
   }
 }
 
@@ -653,8 +664,20 @@ async function loadStore() {
     store.contacts = new Map(data.contacts || [])
     console.log(`📂  Store carregado: ${store.chats.size} conversas`)
     sanitizeStore()
-  } catch {
-    /* primeiro boot — store vazio */
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      console.log('📂  Primeiro boot — nenhum store ainda, começando vazio.')
+    } else {
+      // store.json existe mas está corrompido. NÃO começa vazio por cima:
+      // guarda o arquivo ruim num backup pra permitir recuperação depois.
+      try {
+        const bad = `${STORE_FILE}.corrupt-${Date.now()}`
+        await rename(STORE_FILE, bad)
+        console.error(`[loadStore] store.json corrompido — backup em ${bad}. Começando vazio.`)
+      } catch (e2) {
+        console.error('[loadStore] store.json corrompido; falha ao salvar backup:', e2.message)
+      }
+    }
   }
 }
 

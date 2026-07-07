@@ -106,10 +106,16 @@ function _Avatar({
 }) {
   const [error, setError] = useState(false)
   const [bust, setBust] = useState(0)
-  // se a foto falhou, tenta de novo em 60s (pode ter chegado depois)
+  const triesRef = useRef(0)
+  // Se a foto falhou, tenta de novo algumas vezes (pode ter chegado depois),
+  // MAS com limite. Antes tentava a cada 60s pra sempre — com milhares de
+  // avatares isso virava um loop de requisições que estourava o limite do
+  // servidor (erro 429) e derrubava as fotos de todo mundo. Agora para
+  // depois de 3 tentativas.
   useEffect(() => {
-    if (!error) return
+    if (!error || triesRef.current >= 3) return
     const t = setTimeout(() => {
+      triesRef.current += 1
       setError(false)
       setBust((b) => b + 1)
     }, 60_000)
@@ -818,27 +824,36 @@ export default function InboxView() {
   //  - poll de 30s como fallback (se SSE cair sem onerror disparar)
   useEffect(() => {
     let alive = true
+    // Não marca "servidor offline" no primeiro tropeço. Um 429 (limite de
+    // requisições) ou uma lentidão momentânea fazia o banner vermelho piscar
+    // mesmo com o servidor no ar. Agora só mostra offline após 3 falhas
+    // seguidas, e zera a contagem a cada sucesso.
+    let failStreak = 0
     async function loadAll() {
       try {
         const [st, cs] = await Promise.all([waServer.status(), waServer.chats()])
         if (!alive) return
+        failStreak = 0
         setConn(st.state)
         setIngest(st.ingest ? { ageS: st.ingest.ageS } : null)
         setChats(cs)
         setServerOff(false)
       } catch {
-        if (alive) setServerOff(true)
+        failStreak++
+        if (alive && failStreak >= 3) setServerOff(true)
       }
     }
     async function loadChats() {
       try {
         const cs = await waServer.chats()
         if (alive) {
+          failStreak = 0
           setChats(cs)
           setServerOff(false)
         }
       } catch {
-        if (alive) setServerOff(true)
+        failStreak++
+        if (alive && failStreak >= 3) setServerOff(true)
       }
     }
     loadAll()
