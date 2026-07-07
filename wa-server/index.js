@@ -100,12 +100,52 @@ function sseSend(event, data) {
 }
 
 // ─── Conexão WhatsApp ────────────────────────────────────────────
+let starting = false        // evita dois startSock() ao mesmo tempo (double-socket)
+let reconnectAttempts = 0   // conta falhas pra backoff exponencial
+let cachedWaVersion = null  // versão do Baileys em cache (evita fetch a cada reconexão)
+let reconnectTimer = null   // handle do timer de reconexão pendente (pra cancelar)
+
+/** Reagenda a reconexão com backoff exponencial + jitter (teto 60s).
+ *  Cancela qualquer reconexão pendente antes de agendar (garante 1 só) e não
+ *  agenda se já estamos conectados ou conectando — sem isso, um timer velho
+ *  podia disparar por cima de uma conexão saudável e criar um socket duplicado
+ *  (conflito de aparelho no WhatsApp). */
+function scheduleReconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  reconnectTimer = null
+  if (connState === 'open' || starting) return
+  reconnectAttempts++
+  const base = Math.min(60_000, 2000 * 2 ** Math.min(reconnectAttempts, 5))
+  const delay = base + Math.floor(base * 0.3 * Math.random())
+  console.log(`🔁  Reconectando em ${Math.round(delay / 1000)}s (tentativa ${reconnectAttempts})`)
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    startSock().catch((e) => {
+      console.error('[startSock]', e?.message)
+      scheduleReconnect()
+    })
+  }, delay)
+}
+
 async function startSock() {
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR)
-  const { version } = await fetchLatestBaileysVersion()
+  if (starting) return // já tem uma inicialização em andamento
+  starting = true
+  let state, saveCreds
+  try {
+    ;({ state, saveCreds } = await useMultiFileAuthState(AUTH_DIR))
+    if (!cachedWaVersion) {
+      try {
+        cachedWaVersion = (await fetchLatestBaileysVersion()).version
+      } catch (e) {
+        console.error('[baileys version] usando default:', e?.message)
+      }
+    }
+  } finally {
+    starting = false
+  }
 
   sock = makeWASocket({
-    version,
+    ...(cachedWaVersion ? { version: cachedWaVersion } : {}),
     logger,
     auth: {
       creds: state.creds,
@@ -134,6 +174,8 @@ async function startSock() {
     if (connection === 'open') {
       currentQR = null
       connState = 'open'
+      reconnectAttempts = 0 // conectou: zera o backoff
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null } // cancela reconexão pendente
       meNumber = sock?.user?.id?.split(':')[0] ?? null
       console.log(`✅  Conectado ao WhatsApp como ${meNumber}`)
       sseSend('status', { state: 'open', me: meNumber })
@@ -159,8 +201,8 @@ async function startSock() {
           }
         } catch {}
       }
-      // reconecta automaticamente (gera novo QR se necessário)
-      setTimeout(startSock, 2000)
+      // reconecta automaticamente com backoff (gera novo QR se necessário)
+      scheduleReconnect()
     }
   })
 
@@ -869,6 +911,18 @@ const RATE_REFILL_PER_S = RATE_MAX / 60 // refill no minuto
 app.use((req, res, next) => {
   // skip SSE — conexão long-lived legítima
   if (req.path === '/events') return next()
+  // skip leituras baratas e frequentes (foto de avatar, mídia, status, QR).
+  // Uma foto por conversa × milhares de conversas estourava o balde e
+  // derrubava as fotos de todos com 429. Só writes/ações contam pro limite.
+  if (
+    req.method === 'GET' &&
+    (req.path === '/status' ||
+      req.path === '/' ||
+      req.path.endsWith('/photo') ||
+      req.path.includes('/media/'))
+  ) {
+    return next()
+  }
   const ip = req.ip || req.socket?.remoteAddress || 'unknown'
   const now = Date.now() / 1000
   const ex = rateBuckets.get(ip) || { tokens: RATE_MAX, last: now }
@@ -1981,10 +2035,43 @@ app.get('/dashboard/series', (req, res) => {
   res.json({ period, step: stepS, series })
 })
 
+// Rede/WhatsApp instável não deve derrubar o processo inteiro. Loga e segue —
+// sem isto, uma promise rejeitada sem tratamento matava o servidor (crash loop).
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason?.message || reason)
+})
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err?.message || err)
+})
+
+// Salva o store antes de sair (deploy/restart manda SIGTERM). Sem isto, até
+// 12s de dados novos (desde o último autosave) eram perdidos a cada deploy.
+let shuttingDown = false
+async function gracefulShutdown(sig) {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`\n${sig} recebido — salvando store antes de sair...`)
+  try {
+    while (saveInFlight) await new Promise((r) => setTimeout(r, 50))
+    storeDirty = true
+    await saveStore()
+    console.log('💾  Store salvo. Encerrando.')
+  } catch (e) {
+    console.error('[shutdown]', e?.message)
+  } finally {
+    process.exit(0)
+  }
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
 app.listen(PORT, () => {
   console.log(`\n🚀  Fysi WA Server na porta ${PORT} — http://localhost:${PORT}`)
 })
 
 await loadStore()
 setInterval(saveStore, 12000)
-startSock()
+startSock().catch((e) => {
+  console.error('[startSock boot]', e?.message)
+  scheduleReconnect()
+})
