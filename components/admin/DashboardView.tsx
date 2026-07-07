@@ -220,7 +220,7 @@ export default function DashboardView() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
-      <div className="max-w-6xl mx-auto px-8 pt-10 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-10 pb-20">
         <p
           className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
           style={{ color: T.textDim }}

@@ -125,7 +125,7 @@ export default function ModelsPanel({
 
   return (
     <div
-      className="w-[320px] flex-shrink-0 flex flex-col"
+      className="fixed inset-0 z-50 w-full md:static md:w-[320px] md:flex-shrink-0 flex flex-col"
       style={{ background: '#FFFFFF', borderLeft: '1px solid #E6E6E1' }}
     >
       {/* header */}

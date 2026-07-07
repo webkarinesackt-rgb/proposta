@@ -749,11 +749,11 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
       {/* ── sticky bar ── */}
       <div className="fixed bottom-0 left-0 right-0 px-6 pb-6 pt-2 pointer-events-none">
         <div
-          className="max-w-5xl mx-auto rounded-2xl px-5 py-4 flex items-center justify-between gap-4 pointer-events-auto"
+          className="max-w-5xl mx-auto rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3 pointer-events-auto"
           style={{ background: '#162322', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
         >
-          <div>
-            <p className="text-[13px] font-bold text-white leading-snug">
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-white leading-snug truncate">
               {form.client_name || 'Sem cliente'}
             </p>
             <p className="text-[11px] mt-0.5" style={{ color: '#6BA89E' }}>
@@ -763,18 +763,18 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
                 : '—'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <button onClick={handleCopy}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-semibold transition-all"
               style={{ background: 'rgba(255,255,255,0.07)', color: '#8BB7AF', border: '1px solid rgba(255,255,255,0.07)' }}>
               {copied ? <Check size={12} /> : <Copy size={12} />}
-              {copied ? 'Copiado!' : 'Copiar link'}
+              <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar link'}</span>
             </button>
             <button onClick={handlePreview}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-semibold transition-all"
               style={{ background: 'rgba(255,255,255,0.07)', color: '#8BB7AF', border: '1px solid rgba(255,255,255,0.07)' }}>
               <Eye size={12} />
-              Prévia
+              <span className="hidden sm:inline">Prévia</span>
             </button>
             <button onClick={handleSave}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all hover:opacity-90 active:scale-95"

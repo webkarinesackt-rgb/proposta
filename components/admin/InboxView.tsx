@@ -461,7 +461,7 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
         }}
       >
         {/* botões no canto: responder + copiar */}
-        <div className="absolute top-1 right-1 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-1 right-1 z-10 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onReply(msg)}
             title="Responder"
@@ -1882,7 +1882,7 @@ export default function InboxView() {
                     }}
                   >
                     <FileText size={12} />
-                    Proposta
+                    <span className="hidden sm:inline">Proposta</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1900,7 +1900,7 @@ export default function InboxView() {
                     }}
                   >
                     <Zap size={12} />
-                    Modelos
+                    <span className="hidden sm:inline">Modelos</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1918,7 +1918,7 @@ export default function InboxView() {
                     }}
                   >
                     <Info size={12} />
-                    Detalhes
+                    <span className="hidden sm:inline">Detalhes</span>
                   </button>
                 </div>
               </div>

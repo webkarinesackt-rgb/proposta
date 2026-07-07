@@ -111,7 +111,7 @@ function StatusBadge({
             }}
           />
           <div
-            className="absolute z-40 top-full mt-1.5 left-0 w-56 rounded-xl py-1"
+            className="absolute z-40 top-full mt-1.5 right-0 w-56 max-w-[80vw] rounded-xl py-1"
             style={{
               background: '#FFFFFF',
               border: '1px solid #E6E6E1',
