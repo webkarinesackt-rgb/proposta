@@ -14,7 +14,7 @@ import { InfraSection } from './proposta/InfraSection'
 import { CTASection } from './proposta/CTASection'
 import { FasesSection } from './proposta/FasesSection'
 import { CasesCarousel } from './cliente/CasesCarousel'
-import { JackMarqueeSection } from './jack/JackMarqueeSection'
+import { JackMarqueeSection } from './proposta/JackMarqueeSection'
 import { HeroGeometric } from './ui/shape-landing-hero'
 import { ImageCarouselHero } from './ui/ai-image-generator-hero'
 
