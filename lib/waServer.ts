@@ -18,7 +18,17 @@ function withTokenQS(url: string): string {
 }
 
 function waFetch(path: string, init: RequestInit = {}) {
-  return fetch(`${WA}${path}`, { ...init, headers: authHeaders(init.headers) })
+  const method = (init.method || 'GET').toUpperCase()
+  // Timeout SÓ em GET (leituras idempotentes: status/chats/messages) — evita
+  // que um poll travado fique pendurado e vá acumulando. NÃO se aplica a envios
+  // (POST/PATCH): abortar o cliente não cancela o envio no servidor, então a
+  // mensagem poderia ir mesmo assim e o operador reenviaria (duplicada).
+  const signal = init.signal ?? (method === 'GET' ? AbortSignal.timeout(30000) : undefined)
+  return fetch(`${WA}${path}`, {
+    ...init,
+    headers: authHeaders(init.headers),
+    signal,
+  })
 }
 
 export interface WaChat {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
 import { waServer, WaChat, LEAD_STATUSES, STATUS_META } from '@/lib/waServer'
@@ -84,13 +84,33 @@ function StatusBadge({
   onChange: (s: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const meta = STATUS_META[status] || STATUS_META.LEAD
   return (
     <div className="relative">
       <button
+        ref={btnRef}
         onClick={(e) => {
           e.stopPropagation()
-          setOpen((o) => !o)
+          if (open) {
+            setOpen(false)
+            return
+          }
+          // menu com position: fixed ancorado ao botão — escapa do overflow da
+          // coluna do Kanban (que cortava o menu nos cards de baixo). Abre pra
+          // cima se não couber embaixo.
+          const r = btnRef.current?.getBoundingClientRect()
+          if (r) {
+            const menuH = 320
+            const up = r.bottom + menuH > window.innerHeight && r.top > menuH
+            setPos({
+              top: up ? undefined : r.bottom + 6,
+              bottom: up ? window.innerHeight - r.top + 6 : undefined,
+              right: window.innerWidth - r.right,
+            })
+          }
+          setOpen(true)
         }}
         className="text-[10px] font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full transition-all"
         style={{
@@ -101,18 +121,21 @@ function StatusBadge({
       >
         {meta.label}
       </button>
-      {open && (
+      {open && pos && (
         <>
           <div
-            className="fixed inset-0 z-30"
+            className="fixed inset-0 z-40"
             onClick={(e) => {
               e.stopPropagation()
               setOpen(false)
             }}
           />
           <div
-            className="absolute z-40 top-full mt-1.5 right-0 w-56 max-w-[80vw] rounded-xl py-1"
+            className="fixed z-50 w-56 max-w-[80vw] max-h-[70vh] overflow-y-auto rounded-xl py-1"
             style={{
+              top: pos.top,
+              bottom: pos.bottom,
+              right: pos.right,
               background: '#FFFFFF',
               border: '1px solid #E6E6E1',
               boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
@@ -446,6 +469,7 @@ function KanbanColumn({
               key={c.id}
               chat={c}
               onOpen={() => onOpenChat(c.id)}
+              onSetStatus={onSetStatus}
               onSetValue={onSetValue}
             />
           ))
@@ -484,10 +508,12 @@ function nextActionBadge(action: string, ts: number) {
 function KanbanCard({
   chat,
   onOpen,
+  onSetStatus,
   onSetValue,
 }: {
   chat: WaChat
   onOpen: () => void
+  onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
 }) {
   const [editingValue, setEditingValue] = useState(false)
@@ -553,6 +579,11 @@ function KanbanCard({
         </p>
       )}
       <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 flex-wrap">
+        {/* toque pra mudar de etapa — no celular não dá pra arrastar */}
+        <StatusBadge
+          status={chat.status}
+          onChange={(s) => onSetStatus(chat.id, s)}
+        />
         {editingValue ? (
           <input
             autoFocus
