@@ -309,6 +309,7 @@ function PlanEditor({
 interface ProposalFormProps {
   initial?: Proposal
   mode: 'new' | 'edit'
+  prefill?: { nome?: string; whatsapp?: string }
 }
 
 const defaultForm = {
@@ -325,7 +326,7 @@ const defaultForm = {
   exchange_rate: 1,
 }
 
-export default function ProposalForm({ initial, mode }: ProposalFormProps) {
+export default function ProposalForm({ initial, mode, prefill }: ProposalFormProps) {
   const router = useRouter()
 
   const [form, setForm] = useState(
@@ -343,7 +344,11 @@ export default function ProposalForm({ initial, mode }: ProposalFormProps) {
           currency:        initial.currency ?? ('BRL' as Currency),
           exchange_rate:   initial.exchange_rate ?? 1,
         }
-      : defaultForm
+      : {
+          ...defaultForm,
+          client_name: prefill?.nome ?? '',
+          client_whatsapp: prefill?.whatsapp ?? '',
+        }
   )
 
   const [lpConfig, setLpConfig] = useState<LpConfig>('sem_copy_com_copy')

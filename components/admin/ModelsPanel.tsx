@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { waServer, WaSnippet, WaAudio } from '@/lib/waServer'
-import { X, Plus, Trash2, MessageSquare, Mic, Send, Upload } from 'lucide-react'
+import { X, Plus, Trash2, MessageSquare, Mic, Send, Upload, PenLine } from 'lucide-react'
 
 /* agrupa itens por categoria */
 function groupByCategory<T extends { category: string }>(items: T[]) {
@@ -24,10 +24,12 @@ export default function ModelsPanel({
   chatId,
   onClose,
   onSent,
+  onInsert,
 }: {
   chatId: string
   onClose: () => void
   onSent: () => void
+  onInsert: (text: string) => void
 }) {
   const [tab, setTab] = useState<'snippets' | 'audios'>('snippets')
   const [snippets, setSnippets] = useState<WaSnippet[]>([])
@@ -60,18 +62,9 @@ export default function ModelsPanel({
     setTimeout(() => setStatus(''), 2600)
   }
 
-  async function sendSnippet(s: WaSnippet) {
-    setBusy(true)
-    flash('Enviando…')
-    try {
-      const r = await waServer.sendText(chatId, s.content)
-      flash(r.ok ? 'Mensagem enviada!' : 'Erro: ' + (r.error || ''))
-      if (r.ok) onSent()
-    } catch {
-      flash('Erro ao enviar.')
-    } finally {
-      setBusy(false)
-    }
+  function insertSnippet(s: WaSnippet) {
+    // insere o texto no campo de digitação pra editar antes de enviar
+    onInsert(s.content)
   }
 
   async function sendAudio(a: WaAudio) {
@@ -204,13 +197,14 @@ export default function ModelsPanel({
                       disabled={busy}
                       onClick={() =>
                         tab === 'snippets'
-                          ? sendSnippet(it as WaSnippet)
+                          ? insertSnippet(it as WaSnippet)
                           : sendAudio(it as WaAudio)
                       }
+                      title={tab === 'snippets' ? 'Inserir no campo pra editar e enviar' : 'Enviar áudio'}
                       className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md flex-shrink-0 disabled:opacity-40"
                       style={{ background: '#0D7A4A', color: '#FFFFFF' }}
                     >
-                      <Send size={11} />
+                      {tab === 'snippets' ? <PenLine size={11} /> : <Send size={11} />}
                     </button>
                     <button
                       onClick={() =>

@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal } from '@/lib/types'
-import { waServer } from '@/lib/waServer'
-import { X, Send, FileText } from 'lucide-react'
+import { X, PenLine, FileText, Plus } from 'lucide-react'
 
 function proposalLink(slug: string) {
   const base =
@@ -15,16 +15,18 @@ function proposalLink(slug: string) {
 
 export default function ProposalPicker({
   chatId,
+  clientName,
   onClose,
-  onSent,
+  onInsert,
 }: {
   chatId: string
+  clientName?: string
   onClose: () => void
-  onSent: () => void
+  onInsert: (text: string) => void
 }) {
+  const router = useRouter()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
-  const [sendingId, setSendingId] = useState<string | null>(null)
   const [status, setStatus] = useState('')
 
   useEffect(() => {
@@ -35,26 +37,19 @@ export default function ProposalPicker({
       .finally(() => setLoading(false))
   }, [])
 
-  async function send(p: Proposal) {
-    if (!confirm(`Enviar a proposta de ${p.client_name} para esta conversa?`)) return
-    setSendingId(p.id)
-    setStatus('')
+  // Insere a mensagem da proposta no campo de digitação pra editar antes de enviar.
+  function insertProposal(p: Proposal) {
     const link = proposalLink(p.slug)
-    const msg = `Olá! 👋 Preparei a sua proposta — é só acessar:\n\n${link}`
-    try {
-      const r = await waServer.sendText(chatId, msg)
-      if (r.ok) {
-        setStatus('Proposta enviada!')
-        onSent()
-        setTimeout(onClose, 900)
-      } else {
-        setStatus('Erro: ' + (r.error || ''))
-      }
-    } catch {
-      setStatus('Erro ao enviar.')
-    } finally {
-      setSendingId(null)
-    }
+    onInsert(`Olá! 👋 Preparei a sua proposta — é só acessar:\n\n${link}`)
+  }
+
+  // Atalho: cria uma proposta nova já com o nome/telefone do cliente preenchidos.
+  function novaProposta() {
+    const phone = (chatId.split('@')[0] || '').replace(/\D/g, '')
+    const qs = new URLSearchParams()
+    if (clientName) qs.set('nome', clientName)
+    if (phone) qs.set('whatsapp', phone)
+    router.push(`/admin/new?${qs.toString()}`)
   }
 
   return (
@@ -63,7 +58,7 @@ export default function ProposalPicker({
       <div className="fixed inset-0 z-20" onClick={onClose} />
 
       <div
-        className="absolute z-30 top-[58px] right-4 w-[330px] rounded-2xl flex flex-col"
+        className="absolute z-30 top-[58px] right-4 w-[330px] max-w-[calc(100vw-2rem)] rounded-2xl flex flex-col"
         style={{
           background: '#FFFFFF',
           border: '1px solid #E6E6E1',
@@ -76,19 +71,28 @@ export default function ProposalPicker({
           className="px-4 py-3 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: '1px solid #E6E6E1' }}
         >
-          <span className="text-[13px] font-bold text-[#162322]">Enviar proposta</span>
+          <span className="text-[13px] font-bold text-[#162322]">Proposta</span>
           <button onClick={onClose} className="text-[#A8B5B0] hover:text-[#162322]">
             <X size={16} />
           </button>
         </div>
 
+        {/* atalho: criar nova proposta já com o cliente preenchido */}
+        <button
+          onClick={novaProposta}
+          className="mx-2 mt-2 flex-shrink-0 flex items-center justify-center gap-1.5 text-[12px] font-bold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
+          style={{ background: '#0D3839', color: '#F4F99D' }}
+        >
+          <Plus size={14} /> Criar nova proposta
+        </button>
+
         {status && (
-          <div className="px-4 py-1.5 text-[11px] font-semibold text-[#0D7A4A] flex-shrink-0">
+          <div className="px-4 py-1.5 text-[11px] font-semibold text-[#B91C1C] flex-shrink-0">
             {status}
           </div>
         )}
 
-        {/* lista */}
+        {/* lista de propostas existentes */}
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
           {loading ? (
             <p className="text-[12px] text-[#A8B5B0] text-center py-8">Carregando…</p>
@@ -119,12 +123,12 @@ export default function ProposalPicker({
                     </p>
                   </div>
                   <button
-                    disabled={sendingId === p.id}
-                    onClick={() => send(p)}
-                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md flex-shrink-0 disabled:opacity-40"
+                    onClick={() => insertProposal(p)}
+                    title="Inserir a mensagem no campo pra editar e enviar"
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md flex-shrink-0"
                     style={{ background: '#0D7A4A', color: '#FFFFFF' }}
                   >
-                    <Send size={11} />
+                    <PenLine size={11} />
                   </button>
                 </div>
               ))}

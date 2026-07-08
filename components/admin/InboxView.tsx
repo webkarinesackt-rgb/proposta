@@ -1157,6 +1157,14 @@ export default function InboxView() {
     }
   }
 
+  function insertIntoDraft(text: string) {
+    // usado pelos modelos e propostas: joga o texto no campo pra editar e enviar
+    setDraft((d) => (d.trim() ? d.replace(/\s+$/, '') + '\n' + text : text))
+    setShowModels(false)
+    setShowProposals(false)
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
   async function handleSend() {
     const text = draft.trim()
     if (!text || !selectedId || sending) return
@@ -2270,8 +2278,9 @@ export default function InboxView() {
               {showProposals && (
                 <ProposalPicker
                   chatId={selectedId}
+                  clientName={currentChat?.name}
                   onClose={() => setShowProposals(false)}
-                  onSent={refreshMessages}
+                  onInsert={insertIntoDraft}
                 />
               )}
             </>
@@ -2283,6 +2292,7 @@ export default function InboxView() {
             chatId={selectedId}
             onClose={() => setShowModels(false)}
             onSent={refreshMessages}
+            onInsert={insertIntoDraft}
           />
         )}
         {showDetails && selectedId && currentChat && (
