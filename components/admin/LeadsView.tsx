@@ -505,6 +505,16 @@ function nextActionBadge(action: string, ts: number) {
   return { bg, color, label: prefix + action }
 }
 
+/** true se o lead tem uma próxima ação marcada pra hoje ou atrasada. */
+function isFollowupDue(chat: WaChat) {
+  if (!chat.nextAction) return false
+  const ts = chat.nextActionDate || 0
+  if (!ts) return false
+  const endOfToday = new Date()
+  endOfToday.setHours(23, 59, 59, 999)
+  return ts <= endOfToday.getTime() / 1000
+}
+
 function KanbanCard({
   chat,
   onOpen,
@@ -649,6 +659,7 @@ export default function LeadsView() {
   const [serverOff, setServerOff] = useState(false)
   const [includeGroups, setIncludeGroups] = useState(false)
   const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [onlyFollowups, setOnlyFollowups] = useState(false)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>(
@@ -739,7 +750,14 @@ export default function LeadsView() {
       if (c.archived) continue
       if (!includeGroups && c.isGroup) continue
       if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
-      if (q && !c.name.toLowerCase().includes(q) && !(c.notes || '').toLowerCase().includes(q)) continue
+      if (onlyFollowups && !isFollowupDue(c)) continue
+      if (q) {
+        const phone = c.id.split('@')[0]
+        const hay = [c.name, c.notes || '', c.email || '', phone, (c.tags || []).join(' ')]
+          .join(' ')
+          .toLowerCase()
+        if (!hay.includes(q)) continue
+      }
       out.push(c)
     }
     out.sort((a, b) => {
@@ -748,7 +766,15 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, tagFilter, search, sortBy])
+  }, [chats, includeGroups, tagFilter, onlyFollowups, search, sortBy])
+
+  const followupCount = useMemo(
+    () =>
+      chats.filter(
+        (c) => !c.archived && (includeGroups || !c.isGroup) && isFollowupDue(c)
+      ).length,
+    [chats, includeGroups]
+  )
 
   const allTags = useMemo<[string, number][]>(() => {
     const m = new Map<string, number>()
@@ -837,23 +863,50 @@ export default function LeadsView() {
               </div>
             )}
           </div>
-          <label
-            className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #E6E6E1',
-              padding: '8px 14px',
-              borderRadius: 999,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={includeGroups}
-              onChange={(e) => setIncludeGroups(e.target.checked)}
-              className="accent-[#0D3839]"
-            />
-            Incluir grupos
-          </label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setOnlyFollowups((v) => !v)}
+              title="Mostrar só leads com follow-up pra hoje ou atrasado"
+              className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
+              style={{
+                background: onlyFollowups ? '#0D3839' : '#FFFFFF',
+                color: onlyFollowups ? '#F4F99D' : '#6B8585',
+                border: '1px solid ' + (onlyFollowups ? '#0D3839' : '#E6E6E1'),
+                padding: '8px 14px',
+                borderRadius: 999,
+              }}
+            >
+              ⏰ Follow-ups
+              {followupCount > 0 && (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: onlyFollowups ? '#F4F99D' : '#FEF2F2',
+                    color: onlyFollowups ? '#0D3839' : '#B91C1C',
+                  }}
+                >
+                  {followupCount}
+                </span>
+              )}
+            </button>
+            <label
+              className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #E6E6E1',
+                padding: '8px 14px',
+                borderRadius: 999,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={includeGroups}
+                onChange={(e) => setIncludeGroups(e.target.checked)}
+                className="accent-[#0D3839]"
+              />
+              Incluir grupos
+            </label>
+          </div>
         </div>
 
         {/* filtro por etiqueta — só aparece se existirem tags em uso */}
@@ -907,7 +960,7 @@ export default function LeadsView() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar lead por nome ou nota…"
+              placeholder="Buscar por nome, telefone, email, tag ou nota…"
               className="flex-1 bg-transparent text-[13px] outline-none"
               style={{ color: '#162322' }}
             />

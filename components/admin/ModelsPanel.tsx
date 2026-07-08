@@ -280,6 +280,11 @@ export default function ModelsPanel({
                   className="w-full px-3 py-2 rounded-lg text-[12px] outline-none resize-none"
                   style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
                 />
+                <p className="text-[10px] text-[#A8B5B0] mt-1">
+                  Dica: use <span className="font-bold">{'{{nome}}'}</span> ou{' '}
+                  <span className="font-bold">{'{{primeiro_nome}}'}</span> — vira o
+                  nome do cliente ao inserir na conversa.
+                </p>
               </div>
             ) : (
               <div>

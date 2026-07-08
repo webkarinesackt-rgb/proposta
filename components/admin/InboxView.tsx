@@ -1158,8 +1158,14 @@ export default function InboxView() {
   }
 
   function insertIntoDraft(text: string) {
-    // usado pelos modelos e propostas: joga o texto no campo pra editar e enviar
-    setDraft((d) => (d.trim() ? d.replace(/\s+$/, '') + '\n' + text : text))
+    // variáveis nos modelos: {{nome}} / {{primeiro_nome}} viram o nome do cliente
+    const nome = currentChat?.name || ''
+    const primeiro = nome.split(' ')[0] || nome
+    const filled = text
+      .replace(/\{\{\s*primeiro[_ ]?nome\s*\}\}/gi, primeiro)
+      .replace(/\{\{\s*nome\s*\}\}/gi, nome)
+    // joga o texto no campo pra editar e enviar
+    setDraft((d) => (d.trim() ? d.replace(/\s+$/, '') + '\n' + filled : filled))
     setShowModels(false)
     setShowProposals(false)
     requestAnimationFrame(() => composerRef.current?.focus())
