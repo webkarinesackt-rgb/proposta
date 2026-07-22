@@ -76,41 +76,42 @@ function isExpired(iso: string) {
 
 /* ── stat card ───────────────────────────────────────── */
 
+/** Célula do painel-razão (fundo petróleo). O numeral usa a serifa do
+ *  cabeçalho ("Olá, Karine.") pra amarrar o indicador à assinatura da
+ *  página — em vez dos três cards brancos iguais de antes. */
 function Stat({
   value,
   label,
-  accent,
+  highlight,
+  divider,
 }: {
   value: number
   label: string
-  accent?: string
+  highlight?: boolean
+  divider?: boolean
 }) {
   return (
     <div
-      className="rounded-2xl p-5"
+      className="px-5 sm:px-7 py-5 sm:py-6"
       style={{
-        background: T.card,
-        border: `1px solid ${T.border}`,
+        borderLeft: divider ? '1px solid rgba(255,255,255,0.09)' : undefined,
       }}
     >
-      {/* numeral na serifa do cabeçalho ("Olá, Karine.") — amarra o indicador
-          à assinatura da página em vez do sans bold genérico */}
       <p
         className="leading-none"
         style={{
-          color: accent ?? T.textPrimary,
           fontFamily: '"ivypresto-display", Georgia, serif',
           fontStyle: 'italic',
           fontWeight: 300,
-          fontSize: 'clamp(1.9rem, 3.2vw, 2.4rem)',
-          letterSpacing: '-0.01em',
+          fontSize: 'clamp(2.1rem, 4.4vw, 3rem)',
+          color: highlight ? T.accentBright : '#FFFFFF',
         }}
       >
         {value}
       </p>
       <p
-        className="text-[10px] mt-2 font-bold uppercase tracking-[0.14em]"
-        style={{ color: T.textDim }}
+        className="text-[10px] font-semibold uppercase tracking-[0.16em] mt-2.5"
+        style={{ color: 'rgba(200,216,212,0.62)' }}
       >
         {label}
       </p>
@@ -310,33 +311,41 @@ function ProposalCard({
 
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-3 transition-all"
+      className="rounded-[22px] p-5 flex flex-col gap-3.5 transition-all"
       style={{
         background: T.card,
-        border: `1px solid ${T.border}`,
+        border: '1px solid #EDEDE8',
+        boxShadow:
+          '0 1px 2px rgba(22,35,34,0.04), 0 10px 28px -16px rgba(22,35,34,0.16)',
       }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p
-            className="text-[14px] font-bold truncate leading-tight"
-            style={{ color: T.textPrimary }}
+            className="truncate leading-tight"
+            style={{
+              fontFamily: '"ivypresto-display", Georgia, serif',
+              fontWeight: 400,
+              fontSize: '1.15rem',
+              color: T.textPrimary,
+            }}
           >
             {proposal.client_name}
           </p>
-          {proposal.client_company && (
-            <p
-              className="text-[12px] truncate mt-0.5"
-              style={{ color: T.textMuted }}
-            >
-              {proposal.client_company}
-            </p>
-          )}
+          <p className="text-[12px] mt-1" style={{ color: T.textMuted }}>
+            {proposal.client_company ? proposal.client_company + ' · ' : ''}
+            {TYPE_LABEL[proposal.project_type] ?? proposal.project_type} · válida
+            até {fmt(proposal.valid_until)}
+          </p>
         </div>
         {isDraft ? (
           <span
             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
-            style={{ color: meta.color, background: meta.bg }}
+            style={{
+              color: meta.color,
+              background: meta.bg,
+              border: `1px solid ${meta.color}22`,
+            }}
           >
             {meta.icon}
             {meta.label}
@@ -346,7 +355,11 @@ function ProposalCard({
             <button
               onClick={() => setStatusMenuOpen((o) => !o)}
               className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-all hover:opacity-80"
-              style={{ color: meta.color, background: meta.bg }}
+              style={{
+              color: meta.color,
+              background: meta.bg,
+              border: `1px solid ${meta.color}22`,
+            }}
               title="Clique pra mudar o status"
             >
               {meta.icon}
@@ -398,18 +411,6 @@ function ProposalCard({
             )}
           </div>
         )}
-      </div>
-
-      <div className="flex items-center gap-4">
-        <span
-          className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded"
-          style={{ background: T.bgSubtle, color: T.textMuted }}
-        >
-          {TYPE_LABEL[proposal.project_type] ?? proposal.project_type}
-        </span>
-        <span className="text-[11px]" style={{ color: T.textDim }}>
-          Válida até {fmt(proposal.valid_until)}
-        </span>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -656,36 +657,22 @@ export default function AdminDashboard() {
       <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-20">
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
-              style={{ color: T.textDim }}
-            >
-              PAINEL · PROPOSTAS
-            </p>
-            <h1
-              className="leading-none tracking-tight"
-              style={{
-                fontFamily: '"ivypresto-display", Georgia, serif',
-                fontStyle: 'italic',
-                fontWeight: 300,
-                fontSize: 'clamp(2rem, 4.5vw, 2.8rem)',
-                color: T.textPrimary,
-              }}
-            >
-              Olá, Karine.
-            </h1>
-            <p
-              className="text-[13px] mt-2"
-              style={{ color: T.textMuted }}
-            >
-              Gerencie suas propostas e crie novas em segundos.
-            </p>
-          </div>
+          <h1
+            className="leading-[0.95] tracking-tight"
+            style={{
+              fontFamily: '"ivypresto-display", Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 'clamp(2.2rem, 5vw, 3.1rem)',
+              color: T.textPrimary,
+            }}
+          >
+            Olá, Karine.
+          </h1>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setQuickOpen(true)}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-[12px] font-semibold transition-all active:scale-95"
               style={{
                 background: '#FFFFFF',
                 color: T.textPrimary,
@@ -697,25 +684,33 @@ export default function AdminDashboard() {
             </button>
             <button
               onClick={() => router.push('/admin/new')}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.1em] transition-all active:scale-95"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[12px] font-bold transition-all active:scale-95"
               style={{ background: T.accent, color: T.accentBright }}
             >
               <Plus size={14} />
-              Nova
+              Nova proposta
             </button>
           </div>
         </div>
 
         {/* stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <Stat value={stats.total} label="Total" />
-          <Stat value={stats.draft} label="Rascunhos" />
-          <Stat value={stats.sent} label="Enviadas" accent={T.accent} />
+        <div
+          className="rounded-[26px] overflow-hidden mb-5"
+          style={{
+            background: T.accent,
+            boxShadow: '0 20px 40px -24px rgba(13,56,57,0.55)',
+          }}
+        >
+          <div className="grid grid-cols-3">
+            <Stat value={stats.total} label="Total" />
+            <Stat value={stats.draft} label="Rascunhos" divider />
+            <Stat value={stats.sent} label="Enviadas" highlight divider />
+          </div>
         </div>
 
         {/* busca */}
         <div
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4 transition-shadow focus-within:ring-2 focus-within:ring-[#C8D8D4]"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full mb-4 transition-shadow focus-within:ring-2 focus-within:ring-[#C8D8D4]"
           style={{ background: T.card, border: `1px solid ${T.border}` }}
         >
           <Search size={14} style={{ color: T.textDim }} className="flex-shrink-0" />

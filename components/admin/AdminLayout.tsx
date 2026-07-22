@@ -71,17 +71,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         color: '#162322',
       }}
     >
-      {/* sidebar (desktop) — escondida no mobile, vira tab-bar abaixo */}
+      {/* trilho flutuante (desktop) — pílula destacada da borda.
+          No mobile some e vira a tab-bar de baixo. */}
       <aside
-        className="hidden md:flex w-[84px] flex-shrink-0 flex-col items-center py-5 h-screen"
+        className="hidden md:flex w-[68px] flex-shrink-0 flex-col items-center py-5 my-4 ml-4 rounded-[34px] self-stretch"
         style={{
-          background:
-            'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
-          borderRight: '1px solid rgba(0,0,0,0.08)',
+          background: 'linear-gradient(180deg, #10413F 0%, #072121 100%)',
+          boxShadow: '0 22px 44px -20px rgba(7,33,33,0.65)',
         }}
       >
-        {/* mark — logo Fysi sem fundo, direto no verde da sidebar.
-            Quando precisa escanear QR, vira link clicável (pulsando). */}
+        {/* marca — vira link do QR quando o WhatsApp pede leitura */}
         <a
           href={conn === 'qr' ? waServer.qrUrl() : undefined}
           target={conn === 'qr' ? '_blank' : undefined}
@@ -91,32 +90,28 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               ? 'WhatsApp aguardando QR — clique pra escanear'
               : `WhatsApp: ${conn}`
           }
-          className={`relative mb-10 block ${conn === 'qr' ? 'cursor-pointer' : 'cursor-default'}`}
+          className={`relative w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${conn === 'qr' ? 'cursor-pointer' : 'cursor-default'}`}
+          style={{ background: 'rgba(244,249,157,0.10)' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-fysi-mark.png"
             alt="Fysi"
-            style={{
-              width: 52,
-              height: 52,
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 8px rgba(244,249,157,0.15))',
-            }}
+            style={{ width: 26, height: 26, objectFit: 'contain' }}
           />
           {/* status do whatsapp como bolinha no canto — pulsa em QR */}
           <span
             className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${conn === 'qr' ? 'animate-pulse' : ''}`}
             style={{
               background: connDot,
-              borderColor: '#051A1A',
+              borderColor: '#082828',
               boxShadow: `0 0 8px ${connDot}88`,
             }}
           />
         </a>
 
-        {/* tabs */}
-        <nav className="flex flex-col gap-1 w-full">
+        {/* navegação centralizada — equilibra o trilho */}
+        <nav className="flex-1 flex flex-col items-center justify-center gap-1.5">
           {TABS.map((tab) => {
             const active =
               pathname === tab.path ||
@@ -126,37 +121,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <button
                 key={tab.path}
                 onClick={() => router.push(tab.path)}
-                className="relative w-full flex flex-col items-center justify-center py-3.5 transition-all group"
-                style={{
-                  background: active
-                    ? 'linear-gradient(90deg, rgba(244,249,157,0.06) 0%, transparent 70%)'
-                    : 'transparent',
-                }}
+                title={tab.label}
+                className="group relative w-11 h-11 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+                style={{ background: active ? '#F4F99D' : 'transparent' }}
               >
-                {active && (
-                  <span
-                    className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
-                    style={{
-                      background: '#F4F99D',
-                      boxShadow: '0 0 12px rgba(244,249,157,0.65)',
-                    }}
-                  />
-                )}
                 <Icon
-                  size={20}
-                  className="transition-transform group-hover:scale-110"
+                  size={18}
                   style={{
-                    color: active ? '#F4F99D' : 'rgba(139,183,175,0.65)',
-                    filter: active
-                      ? 'drop-shadow(0 0 8px rgba(244,249,157,0.4))'
-                      : 'none',
+                    color: active ? '#0D3839' : 'rgba(160,196,188,0.75)',
                   }}
                 />
+                {/* rótulo no hover — bonito e ainda descobrível */}
                 <span
-                  className="text-[9px] font-bold uppercase tracking-[0.12em] mt-1.5 transition-colors"
-                  style={{
-                    color: active ? '#E6F1EE' : 'rgba(139,183,175,0.55)',
-                  }}
+                  className="absolute left-full ml-3 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50"
+                  style={{ background: '#0D3839', color: '#F4F99D' }}
                 >
                   {tab.label}
                 </span>
@@ -165,37 +143,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto flex flex-col items-center gap-3">
-          <button
-            onClick={async () => {
-              const supabase = createClient()
-              await supabase.auth.signOut()
-              router.push('/login')
-              router.refresh()
-            }}
-            title="Sair"
-            className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-            style={{ color: 'rgba(139,183,175,0.6)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#F4F99D'
-              e.currentTarget.style.background = 'rgba(244,249,157,0.06)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'rgba(139,183,175,0.6)'
-              e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            <LogOut size={16} />
-          </button>
-          <p
-            className="text-[8px] font-bold uppercase tracking-[0.18em] text-center leading-tight"
-            style={{ color: 'rgba(139,183,175,0.35)' }}
-          >
-            Fysi
-            <br />
-            Lab
-          </p>
-        </div>
+        <button
+          onClick={async () => {
+            const supabase = createClient()
+            await supabase.auth.signOut()
+            router.push('/login')
+            router.refresh()
+          }}
+          title="Sair"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors hover:bg-white/5"
+          style={{ color: 'rgba(160,196,188,0.55)' }}
+        >
+          <LogOut size={16} />
+        </button>
       </aside>
 
       {/* main — overflow-y-auto pra páginas sem scroll próprio (form).
