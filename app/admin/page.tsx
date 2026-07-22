@@ -520,7 +520,6 @@ export default function AdminDashboard() {
     sent: proposals.filter(
       (p) => p.status === 'sent' || p.status === 'viewed'
     ).length,
-    accepted: proposals.filter((p) => p.status === 'accepted').length,
   }
 
   async function handleDelete(id: string) {
@@ -697,11 +696,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           <Stat value={stats.total} label="Total" />
           <Stat value={stats.draft} label="Rascunhos" />
           <Stat value={stats.sent} label="Enviadas" accent="#3B82F6" />
-          <Stat value={stats.accepted} label="Aceitas" accent="#22C55E" />
         </div>
 
         {/* busca */}
