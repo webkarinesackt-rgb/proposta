@@ -21,6 +21,7 @@ import {
   Send,
   ChevronDown,
   Check,
+  Search,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -478,6 +479,7 @@ export default function AdminDashboard() {
   const [quickOpen, setQuickOpen] = useState(false)
   const { show: showToast, Toast } = useToast()
   const [filter, setFilter] = useState<ProposalStatus | 'all'>('all')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     proposalStore.getAll().then(setProposals)
@@ -487,14 +489,30 @@ export default function AdminDashboard() {
     setProposals(await proposalStore.getAll())
   }
 
-  const filtered =
-    filter === 'all'
-      ? proposals
-      : proposals.filter((p) =>
-          filter === 'expired'
-            ? isExpired(p.valid_until) && p.status !== 'accepted'
-            : p.status === filter
-        )
+  const q = search.trim().toLowerCase()
+  const filtered = proposals.filter((p) => {
+    // filtro por status (chips)
+    if (filter !== 'all') {
+      const okStatus =
+        filter === 'expired'
+          ? isExpired(p.valid_until) && p.status !== 'accepted'
+          : p.status === filter
+      if (!okStatus) return false
+    }
+    // busca livre: cliente, empresa, email, telefone, link e tipo
+    if (!q) return true
+    const hay = [
+      p.client_name,
+      p.client_company || '',
+      p.client_email || '',
+      p.client_whatsapp || '',
+      p.slug || '',
+      TYPE_LABEL[p.project_type] || p.project_type,
+    ]
+      .join(' ')
+      .toLowerCase()
+    return hay.includes(q)
+  })
 
   const stats = {
     total: proposals.length,
@@ -686,6 +704,31 @@ export default function AdminDashboard() {
           <Stat value={stats.accepted} label="Aceitas" accent="#22C55E" />
         </div>
 
+        {/* busca */}
+        <div
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4"
+          style={{ background: T.card, border: `1px solid ${T.border}` }}
+        >
+          <Search size={14} style={{ color: T.textDim }} className="flex-shrink-0" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por cliente, empresa, email, telefone ou tipo…"
+            className="flex-1 min-w-0 bg-transparent text-[13px] outline-none"
+            style={{ color: T.textPrimary }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              title="Limpar busca"
+              className="text-[11px] opacity-60 hover:opacity-100 flex-shrink-0"
+              style={{ color: T.textMuted }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         {/* filters */}
         <div className="flex items-center gap-2 mb-5 flex-wrap">
           {FILTERS.map((f) => {
@@ -722,6 +765,8 @@ export default function AdminDashboard() {
             <p className="text-[13px] mb-4" style={{ color: T.textMuted }}>
               {proposals.length === 0
                 ? 'Nenhuma proposta ainda.'
+                : q
+                ? `Nenhuma proposta encontrada para “${search.trim()}”.`
                 : 'Nenhuma proposta neste filtro.'}
             </p>
             {proposals.length === 0 && (
