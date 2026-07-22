@@ -20,21 +20,23 @@ const T = {
 
 /* ── helpers / mapas ─────────────────────────────────── */
 
+// Rampa categórica da marca: distinguível no gráfico, sem tom saturado.
 const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
-  landing_page:   { label: 'Landing Page',          color: '#3B82F6' },
-  site_completo:  { label: 'Site Completo',         color: '#A855F7' },
-  mensal:         { label: 'Mensal',                color: '#EAB308' },
-  posicionamento: { label: 'Posicionamento online', color: '#0EA5E9' },
-  custom:         { label: 'Custom',                color: '#64748B' },
+  landing_page:   { label: 'Landing Page',          color: '#0D3839' },
+  site_completo:  { label: 'Site Completo',         color: '#6E7A2E' },
+  mensal:         { label: 'Mensal',                color: '#B08A3E' },
+  posicionamento: { label: 'Posicionamento online', color: '#4E7F7A' },
+  custom:         { label: 'Custom',                color: '#9AA8A2' },
 }
 
+// Mesma paleta de status da tela de Propostas (derivada da marca).
 const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }> = {
-  draft:    { label: 'Rascunho',    color: '#94A3B8' },
-  sent:     { label: 'Enviadas',    color: '#3B82F6' },
-  viewed:   { label: 'Visualizadas', color: '#A855F7' },
-  accepted: { label: 'Aceitas',     color: '#22C55E' },
-  rejected: { label: 'Rejeitadas',  color: '#EF4444' },
-  expired:  { label: 'Expiradas',   color: '#94A3B8' },
+  draft:    { label: 'Rascunho',     color: '#7A8985' },
+  sent:     { label: 'Enviadas',     color: '#0D3839' },
+  viewed:   { label: 'Visualizadas', color: '#6E7A2E' },
+  accepted: { label: 'Aceitas',      color: '#2F6B4F' },
+  rejected: { label: 'Rejeitadas',   color: '#9C5A48' },
+  expired:  { label: 'Expiradas',    color: '#9AA8A2' },
 }
 
 function fmtBRL(v: number) {
@@ -394,35 +396,35 @@ export default function RelatoriosView() {
                 label="Taxa de conversão"
                 value={closedCount > 0 ? `${conversionRate}%` : '—'}
                 icon={<Activity size={15} />}
-                accent={conversionRate >= 30 ? '#22C55E' : conversionRate >= 15 ? '#EAB308' : '#EF4444'}
+                accent={conversionRate >= 30 ? '#2F6B4F' : conversionRate >= 15 ? '#B08A3E' : '#9C5A48'}
                 sub={closedCount > 0 ? `${acceptedCount} de ${closedCount} fechadas` : 'sem ciclo fechado ainda'}
               />
               <MetricCard
                 label="Ticket médio aceito"
                 value={acceptedCount > 0 ? fmtBRL(avgTicket) : '—'}
                 icon={<Send size={15} />}
-                accent="#0EA5E9"
+                accent="#4E7F7A"
                 sub={acceptedCount > 0 ? `${acceptedCount} aceita${acceptedCount > 1 ? 's' : ''}` : 'nenhuma aceita'}
               />
               <MetricCard
                 label="Faturamento aceito"
                 value={fmtBRL(totalAccepted)}
                 icon={<Activity size={15} />}
-                accent="#22C55E"
+                accent="#2F6B4F"
                 sub="soma das aceitas"
               />
               <MetricCard
                 label="Pipeline pendente"
                 value={fmtBRL(totalSent)}
                 icon={<Send size={15} />}
-                accent="#3B82F6"
+                accent="#0D3839"
                 sub="enviadas / visualizadas"
               />
               <MetricCard
                 label="Valor perdido"
                 value={fmtBRL(totalLost)}
                 icon={<Activity size={15} />}
-                accent="#EF4444"
+                accent="#9C5A48"
                 sub="rejeitadas + expiradas"
               />
             </div>

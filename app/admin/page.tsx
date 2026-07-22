@@ -44,12 +44,14 @@ const STATUS_META: Record<
   ProposalStatus,
   { label: string; color: string; bg: string; icon: React.ReactNode }
 > = {
-  draft:    { label: 'Rascunho',    color: '#64748B', bg: '#F1F5F9', icon: <FileText size={10} /> },
-  sent:     { label: 'Enviada',     color: '#3B82F6', bg: '#EFF6FF', icon: <Mail size={10} /> },
-  viewed:   { label: 'Visualizada', color: '#8B5CF6', bg: '#F5F3FF', icon: <Eye size={10} /> },
-  accepted: { label: 'Aceita',      color: '#22C55E', bg: '#F0FDF4', icon: <CheckCircle2 size={10} /> },
-  rejected: { label: 'Recusada',    color: '#EF4444', bg: '#FEF2F2', icon: <XCircle size={10} /> },
-  expired:  { label: 'Expirada',    color: '#A8B5B0', bg: '#F4F3EF', icon: <Clock size={10} /> },
+  // Paleta derivada da marca (petróleo → sálvia → lima → oliva). Barro é o
+  // único tom "de fora", reservado ao estado negativo. Nada saturado.
+  draft:    { label: 'Rascunho',    color: '#7A8985', bg: '#F1F2EE', icon: <FileText size={10} /> },
+  sent:     { label: 'Enviada',     color: '#0D3839', bg: '#E7EEEB', icon: <Mail size={10} /> },
+  viewed:   { label: 'Visualizada', color: '#6E7A2E', bg: '#F3F6DF', icon: <Eye size={10} /> },
+  accepted: { label: 'Aceita',      color: '#2F6B4F', bg: '#E9F2EC', icon: <CheckCircle2 size={10} /> },
+  rejected: { label: 'Recusada',    color: '#9C5A48', bg: '#F7EDE9', icon: <XCircle size={10} /> },
+  expired:  { label: 'Expirada',    color: '#9AA8A2', bg: '#F1F2EE', icon: <Clock size={10} /> },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -91,9 +93,18 @@ function Stat({
         border: `1px solid ${T.border}`,
       }}
     >
+      {/* numeral na serifa do cabeçalho ("Olá, Karine.") — amarra o indicador
+          à assinatura da página em vez do sans bold genérico */}
       <p
-        className="text-3xl font-bold tracking-tight leading-none"
-        style={{ color: accent ?? T.textPrimary }}
+        className="leading-none"
+        style={{
+          color: accent ?? T.textPrimary,
+          fontFamily: '"ivypresto-display", Georgia, serif',
+          fontStyle: 'italic',
+          fontWeight: 300,
+          fontSize: 'clamp(1.9rem, 3.2vw, 2.4rem)',
+          letterSpacing: '-0.01em',
+        }}
       >
         {value}
       </p>
@@ -461,8 +472,8 @@ function ProposalCard({
         )}
         <button
           onClick={() => onDelete(proposal.id)}
-          className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors hover:bg-[#FEF2F2]"
-          style={{ color: '#EF4444' }}
+          className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors hover:bg-[#F7EDE9]"
+          style={{ color: '#9C5A48' }}
         >
           <Trash2 size={11} />
         </button>
@@ -699,12 +710,12 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-3 gap-3 mb-6">
           <Stat value={stats.total} label="Total" />
           <Stat value={stats.draft} label="Rascunhos" />
-          <Stat value={stats.sent} label="Enviadas" accent="#3B82F6" />
+          <Stat value={stats.sent} label="Enviadas" accent={T.accent} />
         </div>
 
         {/* busca */}
         <div
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4 transition-shadow focus-within:ring-2 focus-within:ring-[#C8D8D4]"
           style={{ background: T.card, border: `1px solid ${T.border}` }}
         >
           <Search size={14} style={{ color: T.textDim }} className="flex-shrink-0" />
