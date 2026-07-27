@@ -6,7 +6,7 @@ function setStatus(msg, cls) {
 }
 
 const DEFAULT_URL = 'https://wa-fysi.177-73-235-85.nip.io'
-const DEFAULT_TOKEN = 'cbdfc4cdb6aa39ccd397bc562d1731d6fdf74639319b00efce16acb8a3a715ce'
+const DEFAULT_TOKEN = '' // NUNCA hardcode o token — configure no popup
 
 // carrega config salva, ou usa default (zero-config inicial)
 chrome.storage.local.get(['waUrl', 'waToken'], (cfg) => {

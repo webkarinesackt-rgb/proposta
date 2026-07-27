@@ -6,7 +6,7 @@
 // Defaults embutidos pra "instalação zero-config" da Fysi.
 // O popup ainda permite override se precisar mudar depois.
 const DEFAULT_URL = 'https://wa-fysi.177-73-235-85.nip.io'
-const DEFAULT_TOKEN = 'cbdfc4cdb6aa39ccd397bc562d1731d6fdf74639319b00efce16acb8a3a715ce'
+const DEFAULT_TOKEN = '' /* NUNCA hardcode o token — configure no popup da extensão */
 
 function inject(src) {
   const s = document.createElement('script')
@@ -47,7 +47,7 @@ let currentUrl = ''
 let currentToken = ''
 chrome.storage.local.get(['waUrl', 'waToken'], (cfg) => {
   currentUrl = cfg.waUrl || 'https://wa-fysi.177-73-235-85.nip.io'
-  currentToken = cfg.waToken || 'cbdfc4cdb6aa39ccd397bc562d1731d6fdf74639319b00efce16acb8a3a715ce'
+  currentToken = cfg.waToken || '' /* NUNCA hardcode o token — configure no popup da extensão */
 })
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.waUrl) currentUrl = changes.waUrl.newValue || currentUrl
