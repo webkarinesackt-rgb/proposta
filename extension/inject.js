@@ -30,29 +30,17 @@
     )
   }
 
-  // Extrai o melhor nome possível pra um chat.
-  // Prioriza nome salvo e o pushName (o "~Nome" que a própria pessoa colocou
-  // pra si), deixando o formattedTitle — que pra contato NÃO salvo costuma ser
-  // o número — por último. Grupos usam o assunto do grupo.
+  // tenta extrair o melhor nome possível pra um chat
   function bestName(c) {
-    if (c.isGroup) {
-      return c.name || c.groupMetadata?.subject || c.formattedTitle || ''
-    }
-    const lm = c.lastMessage
-    // pushName da última mensagem RECEBIDA (não minha) — é o "~Nome" da pessoa
-    const lmPush =
-      lm && !lm.fromMe
-        ? lm.notifyName || lm.senderObj?.pushname || lm.sender?.pushname || ''
-        : ''
     return (
       c.name ||
+      c.formattedTitle ||
       c.contact?.name ||
-      c.contact?.pushname ||
-      lmPush ||
       c.contact?.formattedName ||
+      c.contact?.pushname ||
       c.contact?.verifiedName ||
       c.contact?.shortName ||
-      c.formattedTitle ||
+      c.groupMetadata?.subject ||
       ''
     )
   }
