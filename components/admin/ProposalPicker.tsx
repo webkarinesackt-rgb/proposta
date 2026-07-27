@@ -45,9 +45,20 @@ export default function ProposalPicker({
 
   // Atalho: cria uma proposta nova já com o nome/telefone do cliente preenchidos.
   function novaProposta() {
-    const phone = (chatId.split('@')[0] || '').replace(/\D/g, '')
+    const name = (clientName || '').trim()
+    // Contato não salvo: o "nome" da conversa costuma ser o próprio número.
+    // Nesse caso NÃO preenche o campo Nome (deixa ela digitar o nome real).
+    const nameIsPhone = /^[+(]?\d[\d\s()+-]{6,}$/.test(name)
+    // Telefone: só usa o do ID se for um JID de telefone real. IDs "@lid" são
+    // um código interno do WhatsApp — NÃO são o número, então nunca usar.
+    let phone = ''
+    if (chatId.includes('@s.whatsapp.net') || chatId.includes('@c.us')) {
+      phone = (chatId.split('@')[0] || '').replace(/\D/g, '')
+    } else if (nameIsPhone) {
+      phone = name.replace(/\D/g, '')
+    }
     const qs = new URLSearchParams()
-    if (clientName) qs.set('nome', clientName)
+    if (name && !nameIsPhone) qs.set('nome', name)
     if (phone) qs.set('whatsapp', phone)
     router.push(`/admin/new?${qs.toString()}`)
   }
