@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, BarChart3, Tag, LogOut, PieChart } from 'lucide-react'
+import { FileText, MessageSquare, BarChart3, Tag, LogOut, PieChart, Settings } from 'lucide-react'
 import { waServer } from '@/lib/waServer'
 import { createClient } from '@/lib/supabase/client'
 import type { ReactNode } from 'react'
@@ -143,6 +143,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
+        <button
+          onClick={() => router.push('/admin/conta')}
+          title="Minha conta"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors hover:bg-white/5 mb-1"
+          style={{
+            color: pathname.startsWith('/admin/conta')
+              ? '#F4F99D'
+              : 'rgba(160,196,188,0.55)',
+          }}
+        >
+          <Settings size={16} />
+        </button>
         <button
           onClick={async () => {
             const supabase = createClient()
