@@ -306,9 +306,24 @@ function _ChatRow({
             )}
             {chat.unread > 0 ? (
               <button
+                ref={statusBtnRef}
                 onClick={(e) => {
                   e.stopPropagation()
-                  setMenuOpen((o) => !o)
+                  if (menuOpen) {
+                    setMenuOpen(false)
+                    return
+                  }
+                  const r = statusBtnRef.current?.getBoundingClientRect()
+                  if (r) {
+                    const menuH = 340
+                    const up = r.bottom + menuH > window.innerHeight && r.top > menuH
+                    setMenuPos({
+                      top: up ? undefined : r.bottom + 6,
+                      bottom: up ? window.innerHeight - r.top + 6 : undefined,
+                      right: window.innerWidth - r.right,
+                    })
+                  }
+                  setMenuOpen(true)
                 }}
                 title="Ações da conversa"
                 className="rounded p-0.5 transition-colors hover:bg-black/5"
