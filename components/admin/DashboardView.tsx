@@ -172,6 +172,7 @@ export default function DashboardView() {
   const router = useRouter()
   const [period, setPeriod] = useState<string>('week')
   const [data, setData] = useState<WaDashboard | null>(null)
+  const [unansweredFixed, setUnansweredFixed] = useState<number | null>(null)
   const [series, setSeries] = useState<WaSeriesPoint[]>([])
   const [serverOff, setServerOff] = useState(false)
 
@@ -181,13 +182,35 @@ export default function DashboardView() {
     async function load() {
       if (document.hidden) return // não puxa em background
       try {
-        const [d, s] = await Promise.all([
+        const [d, s, cs] = await Promise.all([
           waServer.dashboard(period),
           waServer.dashboardSeries(period),
+          waServer.chats(),
         ])
         if (alive) {
           setData(d)
           setSeries(s.series || [])
+          // 'sem resposta' correto: mesma regra do inbox (fora grupos,
+          // arquivadas e ignoradas; última mensagem não é minha) no período.
+          const now = Date.now() / 1000
+          const since =
+            period === 'today'
+              ? new Date().setHours(0, 0, 0, 0) / 1000
+              : period === 'week'
+              ? now - 7 * 86400
+              : period === 'month'
+              ? now - 30 * 86400
+              : 0
+          setUnansweredFixed(
+            cs.filter(
+              (c) =>
+                !c.isGroup &&
+                !c.archived &&
+                !c.ignored &&
+                !c.fromMeLast &&
+                c.lastTime >= since
+            ).length
+          )
           setServerOff(false)
         }
       } catch {
@@ -310,13 +333,13 @@ export default function DashboardView() {
                       fontSize: 'clamp(3rem, 7vw, 4.5rem)',
                     }}
                   >
-                    {data.unanswered}
+                    {unansweredFixed ?? data.unanswered}
                   </p>
                   <p
                     className="text-[12px] mt-3"
                     style={{ color: T.textMuted }}
                   >
-                    {data.unanswered === 1
+                    {(unansweredFixed ?? data.unanswered) === 1
                       ? 'conversa esperando sua resposta'
                       : 'conversas esperando sua resposta'}
                   </p>
