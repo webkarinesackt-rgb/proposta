@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { createPortal } from 'react-dom'
-import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
+import { waServer, WaChat, WaMessage, WaSnippet, STATUS_META } from '@/lib/waServer'
 import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip, CornerUpLeft } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
@@ -1220,17 +1220,47 @@ export default function InboxView() {
     }
   }
 
-  function insertIntoDraft(text: string) {
-    // variáveis nos modelos: {{nome}} / {{primeiro_nome}} viram o nome do cliente
+  // modelos pro menu "/" no campo de digitação
+  const [snippets, setSnippets] = useState<WaSnippet[]>([])
+  useEffect(() => {
+    waServer
+      .library()
+      .then((lib) => setSnippets(lib.snippets || []))
+      .catch(() => {})
+  }, [])
+
+  // "/" abre os modelos (filtra pelo texto após a barra)
+  const slashSnippets = useMemo(() => {
+    if (!draft.startsWith('/')) return []
+    const q = draft.slice(1).toLowerCase().trim()
+    return snippets.filter(
+      (s) =>
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.content.toLowerCase().includes(q)
+    )
+  }, [draft, snippets])
+
+  function fillVars(text: string): string {
     const nome = currentChat?.name || ''
     const primeiro = nome.split(' ')[0] || nome
-    const filled = text
+    return text
       .replace(/\{\{\s*primeiro[_ ]?nome\s*\}\}/gi, primeiro)
       .replace(/\{\{\s*nome\s*\}\}/gi, nome)
+  }
+
+  function insertIntoDraft(text: string) {
+    const filled = fillVars(text)
     // joga o texto no campo pra editar e enviar
     setDraft((d) => (d.trim() ? d.replace(/\s+$/, '') + '\n' + filled : filled))
     setShowModels(false)
     setShowProposals(false)
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
+  // seleciona um modelo pelo menu "/": troca o "/..." pelo conteúdo preenchido
+  function pickSlashSnippet(s: WaSnippet) {
+    setDraft(fillVars(s.content))
     requestAnimationFrame(() => composerRef.current?.focus())
   }
 
@@ -2253,12 +2283,47 @@ export default function InboxView() {
 
               {/* composer */}
               <div
-                className="px-4 py-3 flex items-center gap-2 flex-shrink-0"
+                className="relative px-4 py-3 flex items-center gap-2 flex-shrink-0"
                 style={{
                   background: T.card,
                   borderTop: `1px solid ${T.border}`,
                 }}
               >
+                {/* menu "/" — modelos rápidos (digite / no campo) */}
+                {slashSnippets.length > 0 && (
+                  <div
+                    className="absolute left-4 right-4 bottom-full mb-2 max-h-64 overflow-y-auto rounded-xl py-1 z-30"
+                    style={{
+                      background: T.card,
+                      border: `1px solid ${T.border}`,
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.14)',
+                    }}
+                  >
+                    <p
+                      className="text-[10px] font-bold uppercase tracking-wider px-3 py-1"
+                      style={{ color: T.textDim }}
+                    >
+                      Modelos — Enter no 1º ou clique
+                    </p>
+                    {slashSnippets.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => pickSlashSnippet(s)}
+                        className="w-full text-left px-3 py-2 hover:bg-[#FAFAF8] transition-colors"
+                      >
+                        <p
+                          className="text-[12px] font-bold truncate"
+                          style={{ color: T.textPrimary }}
+                        >
+                          {s.name}
+                        </p>
+                        <p className="text-[11px] truncate" style={{ color: T.textDim }}>
+                          {s.content}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* botão anexar + input file escondido */}
                 <input
                   ref={fileInputRef}
@@ -2328,14 +2393,20 @@ export default function InboxView() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
+                      // menu "/" aberto: Enter escolhe o 1º modelo em vez de enviar
+                      if (slashSnippets.length > 0) {
+                        pickSlashSnippet(slashSnippets[0])
+                        return
+                      }
                       handleSend()
                       // reseta altura após envio
                       requestAnimationFrame(() => {
                         e.currentTarget.style.height = 'auto'
                       })
                     }
-                    if (e.key === 'Escape' && replyTo) {
-                      setReplyTo(null)
+                    if (e.key === 'Escape') {
+                      if (draft.startsWith('/')) setDraft('')
+                      else if (replyTo) setReplyTo(null)
                     }
                     // Shift+Enter cai no comportamento default do textarea: nova linha
                   }}
