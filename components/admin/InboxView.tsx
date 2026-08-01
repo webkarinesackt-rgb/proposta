@@ -1072,10 +1072,38 @@ export default function InboxView() {
     if (initialScrollDoneRef.current === selectedId) return
     if (messages.length === 0) return
     initialScrollDoneRef.current = selectedId
-    requestAnimationFrame(() => {
+    // Rola pro fim VÁRIAS vezes: o layout ainda cresce enquanto imagens/áudios
+    // carregam, então um scroll único caía no meio. Reforça até assentar.
+    const jump = () =>
       msgEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
-    })
+    requestAnimationFrame(jump)
+    const timers = [120, 350, 700, 1200].map((ms) => setTimeout(jump, ms))
+    return () => timers.forEach(clearTimeout)
   }, [selectedId, messages.length])
+
+  // Esconde duplicadas: extensão + Baileys gravam a mesma msg com ids
+  // diferentes. Dedup por id e, pra texto, por (fromMe + hora + texto).
+  // Mídia não entra na dedup "suave" (2 fotos no mesmo segundo são legítimas).
+  const dedupedMessages = useMemo(() => {
+    const seenId = new Set<string>()
+    const seenSoft = new Set<string>()
+    const out: WaMessage[] = []
+    for (const m of messages) {
+      if (m.id) {
+        if (seenId.has(m.id)) continue
+        seenId.add(m.id)
+      }
+      const txt = (m.text || '').trim()
+      const isMedia = ['imagem', 'video', 'audio', 'documento'].includes(m.type)
+      if (txt && !isMedia) {
+        const soft = `${m.fromMe ? 1 : 0}|${m.time}|${txt}`
+        if (seenSoft.has(soft)) continue
+        seenSoft.add(soft)
+      }
+      out.push(m)
+    }
+    return out
+  }, [messages])
 
   // ?filter=unanswered → ativa o filtro / ?chat=jid → abre a conversa
   const sp = useSearchParams()
@@ -2030,7 +2058,7 @@ export default function InboxView() {
                   ) : (
                     (() => {
                       let lastDay = ''
-                      return messages.map((m) => {
+                      return dedupedMessages.map((m) => {
                         const day = dayKey(m.time)
                         const showSep = day !== lastDay
                         lastDay = day
