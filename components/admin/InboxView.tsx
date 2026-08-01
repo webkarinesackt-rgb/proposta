@@ -214,6 +214,8 @@ function _ChatRow({
   matchSnippet?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const statusBtnRef = useRef<HTMLButtonElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
   return (
     <div
@@ -316,9 +318,26 @@ function _ChatRow({
               </button>
             ) : (
               <button
+                ref={statusBtnRef}
                 onClick={(e) => {
                   e.stopPropagation()
-                  setMenuOpen((o) => !o)
+                  if (menuOpen) {
+                    setMenuOpen(false)
+                    return
+                  }
+                  // posição fixa ancorada no botão — o menu escapa da lista que
+                  // rola (antes ficava cortado/por trás). Vira pra cima se não couber.
+                  const r = statusBtnRef.current?.getBoundingClientRect()
+                  if (r) {
+                    const menuH = 340
+                    const up = r.bottom + menuH > window.innerHeight && r.top > menuH
+                    setMenuPos({
+                      top: up ? undefined : r.bottom + 6,
+                      bottom: up ? window.innerHeight - r.top + 6 : undefined,
+                      right: window.innerWidth - r.right,
+                    })
+                  }
+                  setMenuOpen(true)
                 }}
                 title="Mudar etapa"
                 className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all"
@@ -334,18 +353,21 @@ function _ChatRow({
                 <ChevronDown size={9} />
               </button>
             )}
-              {menuOpen && (
+              {menuOpen && menuPos && (
                 <>
                   <div
-                    className="fixed inset-0 z-30"
+                    className="fixed inset-0 z-40"
                     onClick={(e) => {
                       e.stopPropagation()
                       setMenuOpen(false)
                     }}
                   />
                   <div
-                    className="absolute z-40 top-full mt-1.5 right-0 w-56 rounded-xl py-1"
+                    className="fixed z-50 w-56 max-h-[70vh] overflow-y-auto rounded-xl py-1"
                     style={{
+                      top: menuPos.top,
+                      bottom: menuPos.bottom,
+                      right: menuPos.right,
                       background: '#FFFFFF',
                       border: `1px solid ${T.border}`,
                       boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
