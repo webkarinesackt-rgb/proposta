@@ -410,10 +410,25 @@ export default function LeadDetailsPanel({
                 addTag(newTag)
               }
             }}
-            placeholder="+ adicionar tag (Enter)"
+            placeholder="+ nova etiqueta (digite e Enter)"
             className="w-full px-3 py-1.5 rounded-lg text-[12px] outline-none"
             style={INPUT_STYLE}
           />
+          {/* etiquetas rápidas — 1 clique pra aplicar */}
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {['alunos', 'pessoal', 'cliente']
+              .filter((t) => !tags.includes(t))
+              .map((t) => (
+                <button
+                  key={t}
+                  onClick={() => addTag(t)}
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-dashed transition-colors hover:bg-[#F4F3EF]"
+                  style={{ color: '#6B8585', borderColor: '#C8D8D4' }}
+                >
+                  + {t}
+                </button>
+              ))}
+          </div>
         </Field>
 
         {/* email */}
