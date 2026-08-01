@@ -664,6 +664,7 @@ export default function LeadsView() {
   const [chats, setChats] = useState<WaChat[]>([])
   const [serverOff, setServerOff] = useState(false)
   const [includeGroups, setIncludeGroups] = useState(false)
+  const [includePessoal, setIncludePessoal] = useState(false) // etiqueta "pessoal" oculta por padrão
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [onlyFollowups, setOnlyFollowups] = useState(false)
   const [search, setSearch] = useState('')
@@ -754,6 +755,7 @@ export default function LeadsView() {
     const out: WaChat[] = []
     for (const c of chats) {
       if (c.archived) continue
+      if (!includePessoal && (c.tags || []).includes('pessoal')) continue
       if (!includeGroups && c.isGroup) continue
       if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
       if (onlyFollowups && !isFollowupDue(c)) continue
@@ -772,7 +774,7 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, tagFilter, onlyFollowups, search, sortBy])
+  }, [chats, includeGroups, includePessoal, tagFilter, onlyFollowups, search, sortBy])
 
   const followupCount = useMemo(
     () =>
@@ -911,6 +913,24 @@ export default function LeadsView() {
                 className="accent-[#0D3839]"
               />
               Incluir grupos
+            </label>
+            <label
+              className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #E6E6E1',
+                padding: '8px 14px',
+                borderRadius: 999,
+              }}
+              title="Conversas com a etiqueta 'pessoal' ficam ocultas dos Leads. Marque pra vê-las."
+            >
+              <input
+                type="checkbox"
+                checked={includePessoal}
+                onChange={(e) => setIncludePessoal(e.target.checked)}
+                className="accent-[#0D3839]"
+              />
+              Incluir pessoais
             </label>
           </div>
         </div>
