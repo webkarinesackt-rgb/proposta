@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { waServer, WaSnippet, WaAudio } from '@/lib/waServer'
-import { X, Plus, Trash2, MessageSquare, Mic, Send, Upload, PenLine } from 'lucide-react'
+import { X, Plus, Trash2, MessageSquare, Mic, Upload, Pencil } from 'lucide-react'
 
 /* agrupa itens por categoria */
 function groupByCategory<T extends { category: string }>(items: T[]) {
@@ -43,6 +43,7 @@ export default function ModelsPanel({
   const [fCat, setFCat] = useState('')
   const [fContent, setFContent] = useState('')
   const [fFile, setFFile] = useState<File | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null) // modelo em edição
 
   async function load() {
     try {
@@ -84,6 +85,8 @@ export default function ModelsPanel({
   async function handleAdd() {
     if (tab === 'snippets') {
       if (!fName.trim() || !fContent.trim()) return flash('Preencha nome e conteúdo.')
+      // edição: apaga o antigo e recria com o conteúdo novo
+      if (editingId) await waServer.delSnippet(editingId)
       const r = await waServer.addSnippet(fName.trim(), fCat.trim(), fContent.trim())
       if (!r.ok) return flash('Erro: ' + (r.error || ''))
     } else {
@@ -97,8 +100,19 @@ export default function ModelsPanel({
     setFContent('')
     setFFile(null)
     setAdding(false)
+    const wasEditing = editingId
+    setEditingId(null)
     await load()
-    flash('Salvo!')
+    flash(wasEditing ? 'Modelo editado!' : 'Salvo!')
+  }
+
+  function startEdit(s: WaSnippet) {
+    setTab('snippets')
+    setFName(s.name)
+    setFCat(s.category || '')
+    setFContent(s.content)
+    setEditingId(s.id)
+    setAdding(true)
   }
 
   async function handleDelete(kind: 'snippet' | 'audio', id: string) {
@@ -145,6 +159,7 @@ export default function ModelsPanel({
             onClick={() => {
               setTab(t.id)
               setAdding(false)
+              setEditingId(null)
             }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors"
             style={{
@@ -183,7 +198,17 @@ export default function ModelsPanel({
                     className="group flex items-center gap-2 px-2.5 py-2 rounded-lg"
                     style={{ background: '#F4F3EF' }}
                   >
-                    <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        tab === 'snippets'
+                          ? insertSnippet(it as WaSnippet)
+                          : sendAudio(it as WaAudio)
+                      }
+                      title={tab === 'snippets' ? 'Usar (joga no campo pra editar e enviar)' : 'Enviar áudio'}
+                      className="flex-1 min-w-0 text-left disabled:opacity-40"
+                    >
                       <p className="text-[12px] font-bold text-[#162322] truncate">
                         {it.name}
                       </p>
@@ -192,24 +217,21 @@ export default function ModelsPanel({
                           ? (it as WaSnippet).content
                           : '🎙️ ' + fmtDur((it as WaAudio).seconds)}
                       </p>
-                    </div>
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        tab === 'snippets'
-                          ? insertSnippet(it as WaSnippet)
-                          : sendAudio(it as WaAudio)
-                      }
-                      title={tab === 'snippets' ? 'Inserir no campo pra editar e enviar' : 'Enviar áudio'}
-                      className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md flex-shrink-0 disabled:opacity-40"
-                      style={{ background: '#0D7A4A', color: '#FFFFFF' }}
-                    >
-                      {tab === 'snippets' ? <PenLine size={11} /> : <Send size={11} />}
                     </button>
+                    {tab === 'snippets' && (
+                      <button
+                        onClick={() => startEdit(it as WaSnippet)}
+                        title="Editar este modelo"
+                        className="text-[#8AA09A] hover:text-[#0D3839] flex-shrink-0"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         handleDelete(tab === 'snippets' ? 'snippet' : 'audio', it.id)
                       }
+                      title="Apagar"
                       className="text-[#C9CCC6] hover:text-[#A33] flex-shrink-0"
                     >
                       <Trash2 size={13} />
@@ -226,7 +248,13 @@ export default function ModelsPanel({
       <div className="flex-shrink-0 p-2" style={{ borderTop: '1px solid #E6E6E1' }}>
         {!adding ? (
           <button
-            onClick={() => setAdding(true)}
+            onClick={() => {
+              setEditingId(null)
+              setFName('')
+              setFCat('')
+              setFContent('')
+              setAdding(true)
+            }}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border border-dashed"
             style={{ borderColor: '#0D3839', color: '#0D3839' }}
           >
@@ -235,6 +263,9 @@ export default function ModelsPanel({
           </button>
         ) : (
           <div className="flex flex-col gap-2.5">
+            {editingId && (
+              <p className="text-[11px] font-bold text-[#0D3839]">✏️ Editando modelo</p>
+            )}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
                 Nome
@@ -320,10 +351,13 @@ export default function ModelsPanel({
                 className="flex-1 py-2 rounded-lg text-[11px] font-bold"
                 style={{ background: '#0D3839', color: '#F4F99D' }}
               >
-                Salvar
+                {editingId ? 'Salvar alterações' : 'Salvar'}
               </button>
               <button
-                onClick={() => setAdding(false)}
+                onClick={() => {
+                  setAdding(false)
+                  setEditingId(null)
+                }}
                 className="px-3 py-2 rounded-lg text-[11px] font-bold"
                 style={{ background: '#F4F3EF', color: '#8AA09A' }}
               >
