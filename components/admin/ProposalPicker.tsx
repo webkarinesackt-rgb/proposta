@@ -40,7 +40,7 @@ export default function ProposalPicker({
   // Insere a mensagem da proposta no campo de digitação pra editar antes de enviar.
   function insertProposal(p: Proposal) {
     const link = proposalLink(p.slug)
-    onInsert(`Olá! 👋 Preparei a sua proposta — é só acessar:\n\n${link}`)
+    onInsert(`Preparei a sua proposta, é só acessar:\n\n${link}`)
   }
 
   // Atalho: cria uma proposta nova já com o nome/telefone do cliente preenchidos.
