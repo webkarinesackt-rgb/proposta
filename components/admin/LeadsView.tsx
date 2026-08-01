@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
 import { waServer, WaChat, LEAD_STATUSES, STATUS_META } from '@/lib/waServer'
@@ -85,7 +86,7 @@ function StatusBadge({
 }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
   const meta = STATUS_META[status] || STATUS_META.LEAD
   return (
     <div className="relative">
@@ -103,11 +104,15 @@ function StatusBadge({
           const r = btnRef.current?.getBoundingClientRect()
           if (r) {
             const menuH = 320
+            const menuW = 224
             const up = r.bottom + menuH > window.innerHeight && r.top > menuH
+            // left preso ao botão, mas clampado na tela (não sai pela esquerda
+            // nos cards da coluna da esquerda, nem pela direita).
+            const left = Math.min(Math.max(8, r.left), window.innerWidth - menuW - 8)
             setPos({
               top: up ? undefined : r.bottom + 6,
               bottom: up ? window.innerHeight - r.top + 6 : undefined,
-              right: window.innerWidth - r.right,
+              left,
             })
           }
           setOpen(true)
@@ -121,7 +126,7 @@ function StatusBadge({
       >
         {meta.label}
       </button>
-      {open && pos && (
+      {open && pos && createPortal(
         <>
           <div
             className="fixed inset-0 z-40"
@@ -131,11 +136,11 @@ function StatusBadge({
             }}
           />
           <div
-            className="fixed z-50 w-56 max-w-[80vw] max-h-[70vh] overflow-y-auto rounded-xl py-1"
+            className="fixed z-50 w-56 max-h-[70vh] overflow-y-auto rounded-xl py-1"
             style={{
               top: pos.top,
               bottom: pos.bottom,
-              right: pos.right,
+              left: pos.left,
               background: '#FFFFFF',
               border: '1px solid #E6E6E1',
               boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
@@ -167,7 +172,8 @@ function StatusBadge({
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   )
