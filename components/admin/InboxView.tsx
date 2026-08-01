@@ -1319,6 +1319,14 @@ export default function InboxView() {
     })
   }, [chats, search, searchHits, tagFilter, chatFilter])
 
+  // paginação da lista: renderiza aos poucos. Sem isso, 5000+ conversas viram
+  // 5000+ componentes React e trocar de aba/conversa engasga. Carrega mais ao
+  // rolar; volta ao topo quando muda a busca/filtro.
+  const [visibleCount, setVisibleCount] = useState(80)
+  useEffect(() => {
+    setVisibleCount(80)
+  }, [search, tagFilter, chatFilter])
+
   const currentChat = useMemo(
     () => chats.find((c) => c.id === selectedId),
     [chats, selectedId]
@@ -1640,7 +1648,15 @@ export default function InboxView() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto thin-scroll"
+            onScroll={(e) => {
+              const el = e.currentTarget
+              if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
+                setVisibleCount((c) => (c < filtered.length ? c + 80 : c))
+              }
+            }}
+          >
             {filtered.length === 0 ? (
               chats.length === 0 && !serverOff ? (
                 // skeleton loader enquanto sincroniza
@@ -1679,7 +1695,7 @@ export default function InboxView() {
                 </p>
               )
             ) : (
-              filtered.map((c) => {
+              filtered.slice(0, visibleCount).map((c) => {
                 const q = search.trim().toLowerCase()
                 const nameHits = q && c.name.toLowerCase().includes(q)
                 const snippet =
