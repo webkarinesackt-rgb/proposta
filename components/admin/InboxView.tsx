@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { waServer, WaChat, WaMessage, STATUS_META } from '@/lib/waServer'
 import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip, CornerUpLeft } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
@@ -314,15 +315,13 @@ function _ChatRow({
                     return
                   }
                   const r = statusBtnRef.current?.getBoundingClientRect()
-                  if (r) {
-                    const menuH = 340
-                    const up = r.bottom + menuH > window.innerHeight && r.top > menuH
-                    setMenuPos({
-                      top: up ? undefined : r.bottom + 6,
-                      bottom: up ? window.innerHeight - r.top + 6 : undefined,
-                      right: window.innerWidth - r.right,
-                    })
-                  }
+                  const menuH = 340
+                  const up = !!r && r.bottom + menuH > window.innerHeight && r.top > menuH
+                  setMenuPos({
+                    top: up ? undefined : r ? r.bottom + 6 : 120,
+                    bottom: up && r ? window.innerHeight - r.top + 6 : undefined,
+                    right: r ? window.innerWidth - r.right : 16,
+                  })
                   setMenuOpen(true)
                 }}
                 title="Ações da conversa"
@@ -343,15 +342,13 @@ function _ChatRow({
                   // posição fixa ancorada no botão — o menu escapa da lista que
                   // rola (antes ficava cortado/por trás). Vira pra cima se não couber.
                   const r = statusBtnRef.current?.getBoundingClientRect()
-                  if (r) {
-                    const menuH = 340
-                    const up = r.bottom + menuH > window.innerHeight && r.top > menuH
-                    setMenuPos({
-                      top: up ? undefined : r.bottom + 6,
-                      bottom: up ? window.innerHeight - r.top + 6 : undefined,
-                      right: window.innerWidth - r.right,
-                    })
-                  }
+                  const menuH = 340
+                  const up = !!r && r.bottom + menuH > window.innerHeight && r.top > menuH
+                  setMenuPos({
+                    top: up ? undefined : r ? r.bottom + 6 : 120,
+                    bottom: up && r ? window.innerHeight - r.top + 6 : undefined,
+                    right: r ? window.innerWidth - r.right : 16,
+                  })
                   setMenuOpen(true)
                 }}
                 title="Mudar etapa"
@@ -368,7 +365,7 @@ function _ChatRow({
                 <ChevronDown size={9} />
               </button>
             )}
-              {menuOpen && menuPos && (
+              {menuOpen && menuPos && createPortal(
                 <>
                   <div
                     className="fixed inset-0 z-40"
@@ -443,7 +440,8 @@ function _ChatRow({
                       {chat.archived ? 'Desarquivar' : 'Arquivar conversa'}
                     </button>
                   </div>
-                </>
+                </>,
+                document.body,
               )}
           </div>
         </div>
