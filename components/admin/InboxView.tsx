@@ -89,6 +89,37 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
+/* ── responsável (multi-atendimento) ─────────────────── */
+// Quem é responsável pela conversa é guardado como uma etiqueta especial
+// "resp:<nome>" — assim sincroniza entre a Karine e a Tainá sem precisar
+// mexer no servidor. Essas etiquetas ficam ESCONDIDAS da lista de etiquetas
+// normais (são tratadas só como "responsável").
+const RESP_PREFIX = 'resp:'
+const RESPONSAVEIS = ['Karine', 'Tainá']
+const RESP_COLORS: Record<string, { bg: string; color: string }> = {
+  Karine: { bg: '#E7EEF9', color: '#2456A6' },
+  Tainá: { bg: '#F3E7F7', color: '#7A2FA0' },
+}
+function respMeta(nome: string) {
+  return RESP_COLORS[nome] || { bg: '#EEF3E0', color: '#4A5A2A' }
+}
+function isRespTag(t: string) {
+  return t.startsWith(RESP_PREFIX)
+}
+/** Nome do responsável de uma conversa (ou null se ninguém). */
+function getResponsavel(chat: WaChat): string | null {
+  const t = (chat.tags || []).find(isRespTag)
+  return t ? t.slice(RESP_PREFIX.length) : null
+}
+/** Reconstrói o array de tags trocando/removendo o responsável. */
+function tagsWithResponsavel(
+  tags: string[] | undefined,
+  nome: string | null,
+): string[] {
+  const base = (tags || []).filter((t) => !isRespTag(t))
+  return nome ? [...base, RESP_PREFIX + nome] : base
+}
+
 /* ── avatar ──────────────────────────────────────────── */
 
 const Avatar = memo(_Avatar)
@@ -218,6 +249,7 @@ function _ChatRow({
   const statusBtnRef = useRef<HTMLButtonElement>(null)
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
+  const resp = getResponsavel(chat)
   return (
     <div
       onClick={onClick}
@@ -254,6 +286,20 @@ function _ChatRow({
           >
             {chat.pinned && (
               <span title="Fixada" style={{ fontSize: 10, opacity: 0.7 }}>📌</span>
+            )}
+            {resp && (
+              <span
+                title={`Responsável: ${resp}`}
+                className="flex-shrink-0 text-[8px] font-bold rounded-full flex items-center justify-center"
+                style={{
+                  width: 15,
+                  height: 15,
+                  background: respMeta(resp).bg,
+                  color: respMeta(resp).color,
+                }}
+              >
+                {resp[0]?.toUpperCase()}
+              </span>
             )}
             {chat.name}
           </span>
@@ -718,6 +764,10 @@ export default function InboxView() {
   const [chatFilter, setChatFilter] = useState<'all' | 'unanswered' | 'archived' | 'groups'>('all')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
+  // Multi-atendimento: filtro por responsável na lista + menu no cabeçalho.
+  const [respFilter, setRespFilter] = useState<string | null>(null)
+  const [respMenuOpen, setRespMenuOpen] = useState(false)
+  const [respFilterMenuOpen, setRespFilterMenuOpen] = useState(false)
   const [listOpen, setListOpen] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -1136,6 +1186,19 @@ export default function InboxView() {
     reloadChats()
   }
 
+  // Multi-atendimento: define/troca quem é responsável pela conversa.
+  // Guarda como etiqueta "resp:<nome>" (null = ninguém), preservando as
+  // outras etiquetas.
+  async function handleSetResponsavel(id: string, nome: string | null) {
+    const chat = chats.find((c) => c.id === id)
+    const nextTags = tagsWithResponsavel(chat?.tags, nome)
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, tags: nextTags } : c)))
+    try {
+      await waServer.updateChat(id, { tags: nextTags })
+    } catch {}
+    reloadChats()
+  }
+
   async function handleToggleIgnore(id: string, ignored: boolean) {
     setChats((cs) => cs.map((c) => (c.id === id ? { ...c, ignored } : c)))
     try {
@@ -1319,7 +1382,9 @@ export default function InboxView() {
       }
       if (c.isGroup) groups++
       else if (!c.fromMeLast && !c.ignored) unanswered++
-      for (const t of c.tags || []) tagCount.set(t, (tagCount.get(t) || 0) + 1)
+      // "resp:*" é responsável, não etiqueta — não entra na lista de etiquetas.
+      for (const t of c.tags || [])
+        if (!isRespTag(t)) tagCount.set(t, (tagCount.get(t) || 0) + 1)
     }
     return {
       unansweredCount: unanswered,
@@ -1341,13 +1406,17 @@ export default function InboxView() {
         if (!nameMatch && !msgMatch) return false
       }
       if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
+      if (respFilter) {
+        const r = getResponsavel(c)
+        if (respFilter === '__none__' ? r !== null : r !== respFilter) return false
+      }
       if (chatFilter === 'archived') return !!c.archived
       if (c.archived) return false
       if (chatFilter === 'groups') return c.isGroup
       if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored)) return false
       return true
     })
-  }, [chats, search, searchHits, tagFilter, chatFilter])
+  }, [chats, search, searchHits, tagFilter, chatFilter, respFilter])
 
   // paginação da lista: renderiza aos poucos. Sem isso, 5000+ conversas viram
   // 5000+ componentes React e trocar de aba/conversa engasga. Carrega mais ao
@@ -1355,7 +1424,7 @@ export default function InboxView() {
   const [visibleCount, setVisibleCount] = useState(80)
   useEffect(() => {
     setVisibleCount(80)
-  }, [search, tagFilter, chatFilter])
+  }, [search, tagFilter, chatFilter, respFilter])
 
   const currentChat = useMemo(
     () => chats.find((c) => c.id === selectedId),
@@ -1675,6 +1744,96 @@ export default function InboxView() {
                   </>
                 )}
               </div>
+
+              {/* Dropdown de Responsável (multi-atendimento) */}
+              <div className="relative">
+                <button
+                  onClick={() => setRespFilterMenuOpen((o) => !o)}
+                  className="py-1.5 px-3 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1"
+                  style={{
+                    background: respFilter ? T.accent : T.bgSubtle,
+                    color: respFilter ? T.accentBright : T.textMuted,
+                    border: `1px solid ${respFilter ? T.accent : T.border}`,
+                  }}
+                >
+                  <Users size={10} />
+                  {respFilter === '__none__'
+                    ? 'Sem responsável'
+                    : respFilter || 'Responsável'}
+                </button>
+                {respFilterMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setRespFilterMenuOpen(false)}
+                    />
+                    <div
+                      className="absolute z-40 top-full mt-1.5 left-0 w-52 rounded-xl py-1"
+                      style={{
+                        background: '#FFFFFF',
+                        border: `1px solid ${T.border}`,
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      {respFilter && (
+                        <button
+                          onClick={() => {
+                            setRespFilter(null)
+                            setRespFilterMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] font-bold flex items-center gap-2"
+                          style={{
+                            color: T.accent,
+                            borderBottom: `1px solid ${T.borderSubtle}`,
+                          }}
+                        >
+                          <X size={11} />
+                          Todas as conversas
+                        </button>
+                      )}
+                      {RESPONSAVEIS.map((nome) => (
+                        <button
+                          key={nome}
+                          onClick={() => {
+                            setRespFilter(nome)
+                            setRespFilterMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                          style={{
+                            background: respFilter === nome ? '#FAFAF8' : 'transparent',
+                          }}
+                        >
+                          <span
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold"
+                            style={{
+                              background: respMeta(nome).bg,
+                              color: respMeta(nome).color,
+                            }}
+                          >
+                            {nome[0]}
+                          </span>
+                          <span className="text-[12px]" style={{ color: T.textPrimary }}>
+                            {nome}
+                          </span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setRespFilter('__none__')
+                          setRespFilterMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px]"
+                        style={{
+                          color: T.textMuted,
+                          borderTop: `1px solid ${T.borderSubtle}`,
+                        }}
+                      >
+                        Sem responsável
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1972,6 +2131,89 @@ export default function InboxView() {
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
+                  {currentChat && (() => {
+                    const currentResp = getResponsavel(currentChat)
+                    return (
+                      <div className="relative">
+                        <button
+                          onClick={() => setRespMenuOpen((v) => !v)}
+                          title="Responsável pela conversa"
+                          className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors"
+                          style={{
+                            background: currentResp ? respMeta(currentResp).bg : T.bgSubtle,
+                            color: currentResp ? respMeta(currentResp).color : T.textMuted,
+                            border: `1px solid ${currentResp ? respMeta(currentResp).color + '40' : T.border}`,
+                          }}
+                        >
+                          <Users size={12} />
+                          <span className="hidden sm:inline">
+                            {currentResp || 'Responsável'}
+                          </span>
+                          <ChevronDown size={11} />
+                        </button>
+                        {respMenuOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-40"
+                              onClick={() => setRespMenuOpen(false)}
+                            />
+                            <div
+                              className="absolute z-50 right-0 top-full mt-1 w-44 rounded-xl py-1"
+                              style={{
+                                background: '#FFFFFF',
+                                border: `1px solid ${T.border}`,
+                                boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                              }}
+                            >
+                              <p className="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+                                Atender esta conversa
+                              </p>
+                              {RESPONSAVEIS.map((nome) => (
+                                <button
+                                  key={nome}
+                                  onClick={() => {
+                                    handleSetResponsavel(selectedId, nome)
+                                    setRespMenuOpen(false)
+                                  }}
+                                  className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                                >
+                                  <span
+                                    className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold"
+                                    style={{
+                                      background: respMeta(nome).bg,
+                                      color: respMeta(nome).color,
+                                    }}
+                                  >
+                                    {nome[0]}
+                                  </span>
+                                  <span className="text-[12px]" style={{ color: T.textPrimary }}>
+                                    {nome}
+                                  </span>
+                                  {currentResp === nome && (
+                                    <span className="ml-auto text-[10px] text-[#8AA09A]">atual</span>
+                                  )}
+                                </button>
+                              ))}
+                              <div className="my-1" style={{ borderTop: `1px solid ${T.borderSubtle}` }} />
+                              <button
+                                onClick={() => {
+                                  handleSetResponsavel(selectedId, null)
+                                  setRespMenuOpen(false)
+                                }}
+                                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px]"
+                                style={{ color: T.textMuted }}
+                              >
+                                Ninguém
+                                {!currentResp && (
+                                  <span className="ml-auto text-[10px] text-[#8AA09A]">atual</span>
+                                )}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {currentChat && (
                     <button
                       onClick={async () => {

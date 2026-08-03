@@ -29,6 +29,12 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
+// "resp:<nome>" é o responsável (multi-atendimento), não uma etiqueta comum —
+// não deve aparecer entre as etiquetas da lista/kanban.
+function visibleTags(chat: WaChat): string[] {
+  return (chat.tags || []).filter((t) => !t.startsWith('resp:'))
+}
+
 function Avatar({
   chatId,
   name,
@@ -231,6 +237,24 @@ function LeadRow({
           )}
           {chat.lastText || '—'}
         </p>
+        {visibleTags(chat).length > 0 && (
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            {visibleTags(chat).slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+                style={{ background: '#EEF3E0', color: '#4A5A2A' }}
+              >
+                {t}
+              </span>
+            ))}
+            {visibleTags(chat).length > 3 && (
+              <span className="text-[9px] font-bold text-[#A8B5B0]">
+                +{visibleTags(chat).length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div
         className="flex-shrink-0 flex items-center gap-2"
@@ -638,7 +662,7 @@ function KanbanCard({
             {chat.value ? fmtBRL(chat.value) : '+ R$'}
           </button>
         )}
-        {(chat.tags || []).slice(0, 2).map((t) => (
+        {visibleTags(chat).slice(0, 2).map((t) => (
           <span
             key={t}
             className="text-[9px] px-1.5 py-0.5 rounded"
@@ -647,9 +671,9 @@ function KanbanCard({
             {t}
           </span>
         ))}
-        {(chat.tags || []).length > 2 && (
+        {visibleTags(chat).length > 2 && (
           <span className="text-[9px]" style={{ color: '#A8B5B0' }}>
-            +{(chat.tags || []).length - 2}
+            +{visibleTags(chat).length - 2}
           </span>
         )}
       </div>
@@ -789,7 +813,7 @@ export default function LeadsView() {
     for (const c of chats) {
       if (c.archived) continue
       if (!includeGroups && c.isGroup) continue
-      for (const t of c.tags || []) m.set(t, (m.get(t) || 0) + 1)
+      for (const t of visibleTags(c)) m.set(t, (m.get(t) || 0) + 1)
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [chats, includeGroups])

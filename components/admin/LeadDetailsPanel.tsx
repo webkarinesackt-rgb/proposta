@@ -378,9 +378,9 @@ export default function LeadDetailsPanel({
 
         {/* tags */}
         <Field label="Tags">
-          {tags.length > 0 && (
+          {tags.filter((t) => !t.startsWith('resp:')).length > 0 && (
             <div className="flex flex-wrap gap-1 mb-1.5">
-              {tags.map((t) => (
+              {tags.filter((t) => !t.startsWith('resp:')).map((t) => (
                 <span
                   key={t}
                   className="text-[10px] font-bold uppercase tracking-[0.05em] px-2 py-0.5 rounded-full flex items-center gap-1"
