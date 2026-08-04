@@ -120,6 +120,28 @@ function tagsWithResponsavel(
   return nome ? [...base, RESP_PREFIX + nome] : base
 }
 
+/* ── segmentos (separar conversas) ───────────────────── */
+// Além do funil (LEAD → FECHADO), a Karine separa as conversas em grupos:
+// cliente ativo, alunos/curso e pessoal. Como o servidor só aceita as 8
+// etapas fixas, isso é feito por etiqueta (uma só por conversa — mutuamente
+// exclusivas entre si, sem mexer nas outras etiquetas).
+const SEGMENTS = [
+  { tag: 'cliente', label: 'Cliente ativo', short: 'Cliente', bg: '#DDF3E6', color: '#1B7A46' },
+  { tag: 'alunos', label: 'Alunos / Curso', short: 'Curso', bg: '#FDECD3', color: '#B45309' },
+  { tag: 'pessoal', label: 'Pessoal', short: 'Pessoal', bg: '#F1E6F8', color: '#7A2FA0' },
+] as const
+const SEGMENT_TAGS = SEGMENTS.map((s) => s.tag) as string[]
+/** Categoria da conversa (ou null). */
+function getSegment(chat: WaChat): (typeof SEGMENTS)[number] | null {
+  const t = (chat.tags || []).find((x) => SEGMENT_TAGS.includes(x))
+  return t ? SEGMENTS.find((s) => s.tag === t) || null : null
+}
+/** Troca/remove o segmento preservando as demais etiquetas. */
+function tagsWithSegment(tags: string[] | undefined, tag: string | null): string[] {
+  const base = (tags || []).filter((t) => !SEGMENT_TAGS.includes(t))
+  return tag ? [...base, tag] : base
+}
+
 /* ── avatar ──────────────────────────────────────────── */
 
 const Avatar = memo(_Avatar)
@@ -235,6 +257,7 @@ function _ChatRow({
   onSetStatus,
   onArchive,
   onIgnore,
+  onSetSegment,
   matchSnippet,
 }: {
   chat: WaChat
@@ -243,6 +266,7 @@ function _ChatRow({
   onSetStatus: (status: string) => void
   onArchive: () => void
   onIgnore: () => void
+  onSetSegment: (tag: string | null) => void
   matchSnippet?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -250,6 +274,7 @@ function _ChatRow({
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const statusMeta = STATUS_META[chat.status] || STATUS_META.LEAD
   const resp = getResponsavel(chat)
+  const segment = getSegment(chat)
   return (
     <div
       onClick={onClick}
@@ -299,6 +324,15 @@ function _ChatRow({
                 }}
               >
                 {resp[0]?.toUpperCase()}
+              </span>
+            )}
+            {segment && (
+              <span
+                title={segment.label}
+                className="flex-shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full leading-none"
+                style={{ background: segment.bg, color: segment.color }}
+              >
+                {segment.short}
               </span>
             )}
             {chat.name}
@@ -458,6 +492,42 @@ function _ChatRow({
                         )}
                       </button>
                     ))}
+                    <div
+                      className="my-1"
+                      style={{ borderTop: `1px solid ${T.borderSubtle}` }}
+                    />
+                    <p className="px-3 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+                      Separar em
+                    </p>
+                    {SEGMENTS.map((s) => {
+                      const on = (chat.tags || []).includes(s.tag)
+                      return (
+                        <button
+                          key={s.tag}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // clicar no atual desmarca; senão troca pra ele
+                            onSetSegment(on ? null : s.tag)
+                            setMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                        >
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full"
+                            style={{
+                              background: s.bg,
+                              color: s.color,
+                              border: `1px solid ${s.color}30`,
+                            }}
+                          >
+                            {s.label}
+                          </span>
+                          {on && (
+                            <Check size={13} className="ml-auto" style={{ color: s.color }} />
+                          )}
+                        </button>
+                      )
+                    })}
                     <div
                       className="my-1"
                       style={{ borderTop: `1px solid ${T.borderSubtle}` }}
@@ -1199,6 +1269,18 @@ export default function InboxView() {
     reloadChats()
   }
 
+  // Separa a conversa num segmento (cliente/alunos/pessoal). Clicar no
+  // segmento atual remove (null). Guarda como etiqueta, uma por vez.
+  async function handleSetSegment(id: string, tag: string | null) {
+    const chat = chats.find((c) => c.id === id)
+    const nextTags = tagsWithSegment(chat?.tags, tag)
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, tags: nextTags } : c)))
+    try {
+      await waServer.updateChat(id, { tags: nextTags })
+    } catch {}
+    reloadChats()
+  }
+
   async function handleToggleIgnore(id: string, ignored: boolean) {
     setChats((cs) => cs.map((c) => (c.id === id ? { ...c, ignored } : c)))
     try {
@@ -1909,6 +1991,7 @@ export default function InboxView() {
                       onSetStatus={(s) => handleSetChatStatus(c.id, s)}
                       onArchive={() => handleArchiveChat(c.id, !c.archived)}
                       onIgnore={() => handleToggleIgnore(c.id, !c.ignored)}
+                      onSetSegment={(t) => handleSetSegment(c.id, t)}
                       matchSnippet={snippet}
                     />
                   </div>
