@@ -222,6 +222,20 @@ function looksLikeBase64(text: string): boolean {
   return /^[A-Za-z0-9+/=]+$/.test(head)
 }
 
+// Mensagens de "protocolo" do WhatsApp (messageContextInfo, template,
+// senderKeyDistribution, etc.) chegam sem conteúdo pra mostrar e viravam
+// balões vazios no meio da conversa. Detecta pra esconder.
+// Regra: sem mídia E (texto vazio OU um placeholder "[algumTipo]").
+function isNoiseMessage(msg: { text?: string; type?: string; hasMedia?: boolean }): boolean {
+  if (msg.hasMedia) return false
+  const t = (msg.text || '').trim()
+  if (!t) return true
+  if (msg.type === 'outro') return true
+  // placeholder gerado pelo servidor: "[messageContextInfo]", "[template]"…
+  if (/^\[[A-Za-z]+\]$/.test(t)) return true
+  return false
+}
+
 function renderText(text: string, mine: boolean) {
   const re = /(https?:\/\/[^\s]+)/g
   const out: React.ReactNode[] = []
@@ -364,7 +378,11 @@ function _ChatRow({
                 {chat.fromMeLast && (
                   <span style={{ color: T.textDim }}>Você: </span>
                 )}
-                {looksLikeBase64(chat.lastText) ? '🖼️ Imagem' : (chat.lastText || '—')}
+                {looksLikeBase64(chat.lastText)
+                  ? '🖼️ Imagem'
+                  : /^\[[A-Za-z]+\]$/.test((chat.lastText || '').trim())
+                    ? '💬 Mensagem'
+                    : (chat.lastText || '—')}
               </>
             )}
           </span>
@@ -579,6 +597,7 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
   const caption = msg.meta?.caption || ''
   const [copied, setCopied] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const [mediaError, setMediaError] = useState(false)
   // copiável: texto puro OU caption de mídia
   const copyable = msg.text || caption
   const canCopy = !isAudio && !!copyable && copyable !== '[mensagem]'
@@ -668,23 +687,37 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
         {/* Conteúdo principal */}
         {isImage ? (
           <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={waServer.mediaUrl(chatId, msg.id)}
-              alt={caption || 'imagem'}
-              loading="lazy"
-              decoding="async"
-              onLoad={() => setImgLoaded(true)}
-              className="block w-full max-w-[320px] cursor-zoom-in transition-opacity"
-              style={{
-                maxHeight: 320,
-                objectFit: 'cover',
-                background: '#F4F3EF',
-                minHeight: imgLoaded ? undefined : 160,
-                opacity: imgLoaded ? 1 : 0.4,
-              }}
-              onClick={() => window.open(waServer.mediaUrl(chatId, msg.id), '_blank')}
-            />
+            {mediaError ? (
+              <div
+                className="flex items-center gap-2 px-3 py-3 text-[12px]"
+                style={{
+                  minWidth: 200,
+                  color: mine ? 'rgba(255,255,255,0.8)' : T.textMuted,
+                }}
+              >
+                <span className="text-[16px]">🖼️</span>
+                <span>Imagem indisponível</span>
+              </div>
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={waServer.mediaUrl(chatId, msg.id)}
+                alt={caption || 'imagem'}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setImgLoaded(true)}
+                onError={() => setMediaError(true)}
+                className="block w-full max-w-[320px] cursor-zoom-in transition-opacity"
+                style={{
+                  maxHeight: 320,
+                  objectFit: 'cover',
+                  background: '#F4F3EF',
+                  minHeight: imgLoaded ? undefined : 160,
+                  opacity: imgLoaded ? 1 : 0.4,
+                }}
+                onClick={() => window.open(waServer.mediaUrl(chatId, msg.id), '_blank')}
+              />
+            )}
             {caption && (
               <p className="px-3 pt-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
                 {renderText(caption, mine)}
@@ -693,13 +726,27 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
           </div>
         ) : isVideo ? (
           <div>
-            <video
-              controls
-              preload="metadata"
-              src={waServer.mediaUrl(chatId, msg.id)}
-              className="block w-full max-w-[320px]"
-              style={{ maxHeight: 320, background: '#000' }}
-            />
+            {mediaError ? (
+              <div
+                className="flex items-center gap-2 px-3 py-3 text-[12px]"
+                style={{
+                  minWidth: 200,
+                  color: mine ? 'rgba(255,255,255,0.8)' : T.textMuted,
+                }}
+              >
+                <span className="text-[16px]">🎬</span>
+                <span>Vídeo indisponível</span>
+              </div>
+            ) : (
+              <video
+                controls
+                preload="metadata"
+                src={waServer.mediaUrl(chatId, msg.id)}
+                onError={() => setMediaError(true)}
+                className="block w-full max-w-[320px]"
+                style={{ maxHeight: 320, background: '#000' }}
+              />
+            )}
             {caption && (
               <p className="px-3 pt-2 text-[13px] leading-snug whitespace-pre-wrap break-words">
                 {renderText(caption, mine)}
@@ -1209,6 +1256,8 @@ export default function InboxView() {
     const seenSoft = new Set<string>()
     const out: WaMessage[] = []
     for (const m of messages) {
+      // esconde mensagens de protocolo/vazias (viravam balões em branco)
+      if (isNoiseMessage(m)) continue
       if (m.id) {
         if (seenId.has(m.id)) continue
         seenId.add(m.id)
