@@ -30,7 +30,18 @@ function initials(name: string) {
 }
 
 // "resp:<nome>" é o responsável (multi-atendimento), não uma etiqueta comum —
-// não deve aparecer entre as etiquetas da lista/kanban.
+// tem selo próprio e não deve aparecer entre as etiquetas da lista/kanban.
+const RESP_COLORS: Record<string, { bg: string; color: string }> = {
+  Karine: { bg: '#E7EEF9', color: '#2456A6' },
+  Tainá: { bg: '#F3E7F7', color: '#7A2FA0' },
+}
+function respMeta(nome: string) {
+  return RESP_COLORS[nome] || { bg: '#EEF3E0', color: '#4A5A2A' }
+}
+function getResponsavel(chat: WaChat): string | null {
+  const t = (chat.tags || []).find((x) => x.startsWith('resp:'))
+  return t ? t.slice('resp:'.length) : null
+}
 function visibleTags(chat: WaChat): string[] {
   return (chat.tags || []).filter((t) => !t.startsWith('resp:'))
 }
@@ -224,8 +235,25 @@ function LeadRow({
       <Avatar chatId={chat.id} name={chat.name} isGroup={chat.isGroup} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold text-[#162322] truncate">
-            {chat.name}
+          <span className="text-[13px] font-semibold text-[#162322] truncate flex items-center gap-1.5">
+            {(() => {
+              const resp = getResponsavel(chat)
+              return resp ? (
+                <span
+                  title={`Responsável: ${resp}`}
+                  className="flex-shrink-0 text-[8px] font-bold rounded-full flex items-center justify-center"
+                  style={{
+                    width: 15,
+                    height: 15,
+                    background: respMeta(resp).bg,
+                    color: respMeta(resp).color,
+                  }}
+                >
+                  {resp[0]?.toUpperCase()}
+                </span>
+              ) : null
+            })()}
+            <span className="truncate">{chat.name}</span>
           </span>
           <span className="text-[10px] text-[#A8B5B0] flex-shrink-0">
             {fmtTime(chat.lastTime)}
@@ -583,8 +611,25 @@ function KanbanCard({
       <div className="flex items-start gap-2 mb-2">
         <Avatar chatId={chat.id} name={chat.name} isGroup={chat.isGroup} />
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-bold truncate" style={{ color: '#162322' }}>
-            {chat.name}
+          <p className="text-[12px] font-bold truncate flex items-center gap-1.5" style={{ color: '#162322' }}>
+            {(() => {
+              const resp = getResponsavel(chat)
+              return resp ? (
+                <span
+                  title={`Responsável: ${resp}`}
+                  className="flex-shrink-0 text-[8px] font-bold rounded-full flex items-center justify-center"
+                  style={{
+                    width: 15,
+                    height: 15,
+                    background: respMeta(resp).bg,
+                    color: respMeta(resp).color,
+                  }}
+                >
+                  {resp[0]?.toUpperCase()}
+                </span>
+              ) : null
+            })()}
+            <span className="truncate">{chat.name}</span>
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <p className="text-[10px]" style={{ color: '#A8B5B0' }}>
@@ -691,6 +736,7 @@ export default function LeadsView() {
   const [includePessoal, setIncludePessoal] = useState(false) // etiqueta "pessoal" oculta por padrão
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [onlyFollowups, setOnlyFollowups] = useState(false)
+  const [respFilter, setRespFilter] = useState<string | null>(null) // multi-atendimento
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>(
@@ -782,6 +828,7 @@ export default function LeadsView() {
       if (!includePessoal && (c.tags || []).includes('pessoal')) continue
       if (!includeGroups && c.isGroup) continue
       if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
+      if (respFilter && getResponsavel(c) !== respFilter) continue
       if (onlyFollowups && !isFollowupDue(c)) continue
       if (q) {
         const phone = c.id.split('@')[0]
@@ -798,7 +845,7 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, includePessoal, tagFilter, onlyFollowups, search, sortBy])
+  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, onlyFollowups, search, sortBy])
 
   const followupCount = useMemo(
     () =>
@@ -956,6 +1003,41 @@ export default function LeadsView() {
               />
               Incluir pessoais
             </label>
+
+            {/* filtro por responsável (multi-atendimento) */}
+            <div
+              className="flex items-center gap-1 p-0.5 rounded-full"
+              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+            >
+              {(['Karine', 'Tainá'] as const).map((nome) => {
+                const active = respFilter === nome
+                return (
+                  <button
+                    key={nome}
+                    onClick={() => setRespFilter(active ? null : nome)}
+                    title={`Só conversas da ${nome}`}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all flex items-center gap-1"
+                    style={{
+                      background: active ? respMeta(nome).color : 'transparent',
+                      color: active ? '#FFFFFF' : '#6B8585',
+                    }}
+                  >
+                    <span
+                      className="text-[8px] font-bold rounded-full flex items-center justify-center"
+                      style={{
+                        width: 14,
+                        height: 14,
+                        background: active ? 'rgba(255,255,255,0.25)' : respMeta(nome).bg,
+                        color: active ? '#FFFFFF' : respMeta(nome).color,
+                      }}
+                    >
+                      {nome[0]}
+                    </span>
+                    {nome}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
