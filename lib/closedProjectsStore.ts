@@ -1,14 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-// A tabela de projetos fechados vive num projeto Supabase próprio
-// ("Briefing_app"), e não no projeto principal do CRM: o painel do projeto
-// principal está numa conta Google sem acesso, então não dá pra criar tabela
-// nele. A chave "publishable" é pública por design (já vai no bundle do
-// navegador), portanto pode ficar no código. O restante do app continua
-// usando o projeto principal (propostas, inbox, leads).
-const FECHADOS_URL = 'https://hwsiukyxkhvmtkbqlerx.supabase.co'
-const FECHADOS_KEY = 'sb_publishable_8K3nFP4j6yPKvRZv9cJrKg_pnKSuzC6'
-const supabase = createClient(FECHADOS_URL, FECHADOS_KEY)
+// Mesmo projeto Supabase do resto do CRM (propostas, inbox, leads).
+import { supabase } from './supabase'
 
 export type ContractStatus = 'negociacao' | 'fechado' | 'cancelado'
 export type PaymentMethod =
