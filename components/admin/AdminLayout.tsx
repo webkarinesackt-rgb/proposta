@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FileText, MessageSquare, BarChart3, Tag, LogOut, PieChart, Settings } from 'lucide-react'
+import { FileText, MessageSquare, BarChart3, Tag, LogOut, PieChart, Settings, Sheet } from 'lucide-react'
 import { waServer } from '@/lib/waServer'
 import { createClient } from '@/lib/supabase/client'
 import type { ReactNode } from 'react'
@@ -11,6 +11,7 @@ const TABS = [
   { path: '/admin', icon: FileText, label: 'Propostas' },
   { path: '/admin/inbox', icon: MessageSquare, label: 'Inbox' },
   { path: '/admin/leads', icon: Tag, label: 'Leads' },
+  { path: '/admin/fechados', icon: Sheet, label: 'Fechados' },
   { path: '/admin/dashboard', icon: BarChart3, label: 'Métricas' },
   { path: '/admin/relatorios', icon: PieChart, label: 'Relatórios' },
 ] as const
