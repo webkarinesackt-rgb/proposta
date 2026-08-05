@@ -30,6 +30,16 @@ const INPUT =
 const LABEL =
   'block text-[10px] font-bold uppercase tracking-[0.13em] text-[#8AA09A] mb-1.5'
 
+// Juros de parcelamento no cartão (composto, mês a mês — tabela Price).
+const INSTALLMENT_RATE = 0.0399
+/** Valor da parcela com juros compostos (Price). Sem juros se count<=0. */
+function installmentValue(cash: number, count: number, rate = INSTALLMENT_RATE): number {
+  if (count <= 0) return 0
+  if (rate <= 0) return Math.round(cash / count)
+  const f = Math.pow(1 + rate, count)
+  return Math.round((cash * (rate * f)) / (f - 1))
+}
+
 function Field({ label, children, span2 = false }: { label: React.ReactNode; children: React.ReactNode; span2?: boolean }) {
   return (
     <div className={span2 ? 'sm:col-span-2' : ''}>
@@ -201,13 +211,13 @@ function PlanEditor({
             <Field label={
               <span className="flex items-center gap-1.5">
                 Valor parcela (R$)
-                {Math.round((plan.price_cash || 0) / Math.max(1, plan.price_installments_count || 1)) === plan.price_installment_value && (
+                {installmentValue(plan.price_cash || 0, plan.price_installments_count || 0) === plan.price_installment_value && (
                   <span
                     className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded"
                     style={{ background: '#E0F2FE', color: '#0EA5E9' }}
-                    title="Calculado automaticamente. Você pode editar pra incluir juros."
+                    title="Calculado com juros de 3,99% ao mês (parcelamento no cartão). Você pode editar."
                   >
-                    auto
+                    auto · 3,99%
                   </span>
                 )}
               </span>
@@ -395,14 +405,14 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
       prev.map(p => {
         if (p.id !== id) return p
         const next = { ...p, [field]: value } as Plan
-        // Auto-calcula valor da parcela quando muda cash OU count.
-        // Fórmula: round(cash / count). Usuário ainda pode editar
-        // a parcela manualmente depois — mas se mexer em cash/count
-        // de novo, sobrescreve. Predicabilidade > teimosia.
+        // Auto-calcula valor da parcela quando muda cash OU count, já com
+        // juros de 3,99% a.m. (compostos, tabela Price). Usuário ainda pode
+        // editar a parcela manualmente — mas se mexer em cash/count de novo,
+        // sobrescreve. Predicabilidade > teimosia.
         if (field === 'price_cash' || field === 'price_installments_count') {
           const cash = Number(next.price_cash) || 0
           const count = Number(next.price_installments_count) || 0
-          next.price_installment_value = count > 0 ? Math.round(cash / count) : 0
+          next.price_installment_value = installmentValue(cash, count)
         }
         return next
       })
