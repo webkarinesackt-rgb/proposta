@@ -8,6 +8,7 @@ export type PaymentMethod =
   | 'parcelado'
   | 'meio_pago'
   | 'pago'
+export type UrgencyLevel = 'alta' | 'media' | 'baixa'
 
 /** Uma linha da "planilha" de projetos fechados. */
 export interface ClosedProject {
@@ -21,6 +22,9 @@ export interface ClosedProject {
   plan_name: string
   contract_status: ContractStatus
   payment_method: PaymentMethod
+  urgency: UrgencyLevel
+  /** contrato (documento) assinado/feito? */
+  contract_done: boolean
   value: number
   responsavel: string
   /** proposta de origem (quando puxado de uma proposta). */
@@ -42,6 +46,18 @@ function isTableMissing(error: { code?: string; message?: string } | null): bool
   return error.code === 'PGRST205' || (error.message || '').includes('closed_projects')
 }
 
+// Se o erro for "coluna X não existe ainda" (ex: 'urgency'/'contract_done'
+// antes de rodar o ALTER), retorna o nome da coluna. Assim o app remove esse
+// campo e tenta de novo — não quebra enquanto a coluna nova não existe.
+function missingColName(
+  error: { code?: string; message?: string } | null,
+): string | null {
+  if (!error) return null
+  if (error.code !== 'PGRST204' && error.code !== '42703') return null
+  const m = (error.message || '').match(/'([^']+)' column/)
+  return m ? m[1] : null
+}
+
 type Row = Omit<ClosedProject, 'value'> & { value: number | string }
 
 function rowToProject(row: Row): ClosedProject {
@@ -53,6 +69,8 @@ function rowToProject(row: Row): ClosedProject {
     plan_name: row.plan_name ?? '',
     contract_status: (row.contract_status as ContractStatus) || 'negociacao',
     payment_method: (row.payment_method as PaymentMethod) || 'nao_efetuado',
+    urgency: (row.urgency as UrgencyLevel) || 'media',
+    contract_done: !!row.contract_done,
     value: Number(row.value) || 0,
     responsavel: row.responsavel ?? '',
     proposal_id: row.proposal_id ?? null,
@@ -86,29 +104,48 @@ export const closedProjectsStore = {
       plan_name: patch.plan_name ?? '',
       contract_status: patch.contract_status ?? 'negociacao',
       payment_method: patch.payment_method ?? 'nao_efetuado',
+      urgency: patch.urgency ?? 'media',
+      contract_done: patch.contract_done ?? false,
       value: patch.value ?? 0,
       responsavel: patch.responsavel ?? '',
       proposal_id: patch.proposal_id ?? null,
       notes: patch.notes ?? '',
     }
-    const { data, error } = await supabase
-      .from('closed_projects')
-      .insert(insert)
-      .select()
-      .single()
-    if (error) {
+    const payload: Record<string, unknown> = { ...insert }
+    // remove colunas que ainda não existem no banco e tenta de novo
+    for (let i = 0; i < 4; i++) {
+      const { data, error } = await supabase
+        .from('closed_projects')
+        .insert(payload)
+        .select()
+        .single()
+      if (!error) return rowToProject(data as Row)
       if (isTableMissing(error)) throw new TableMissingError()
+      const col = missingColName(error)
+      if (col && col in payload) {
+        delete payload[col]
+        continue
+      }
       throw error
     }
-    return rowToProject(data as Row)
+    throw new Error('closed_projects: falha ao inserir')
   },
 
   async update(id: string, patch: Patch): Promise<void> {
     const clean: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() }
     // coluna date não aceita string vazia
     if ('closed_date' in clean && !clean.closed_date) clean.closed_date = null
-    const { error } = await supabase.from('closed_projects').update(clean).eq('id', id)
-    if (error) throw error
+    // remove colunas que ainda não existem no banco e tenta de novo
+    for (let i = 0; i < 4; i++) {
+      const { error } = await supabase.from('closed_projects').update(clean).eq('id', id)
+      if (!error) return
+      const col = missingColName(error)
+      if (col && col in clean) {
+        delete clean[col]
+        continue
+      }
+      throw error
+    }
   },
 
   async remove(id: string): Promise<void> {

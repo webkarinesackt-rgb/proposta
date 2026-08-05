@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, ExternalLink, X, FileText, Search } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, X, FileText, Search, Check, Minus } from 'lucide-react'
 import {
   closedProjectsStore,
   ClosedProject,
   ContractStatus,
   PaymentMethod,
+  UrgencyLevel,
   TableMissingError,
 } from '@/lib/closedProjectsStore'
 import { proposalStore } from '@/lib/proposalStore'
@@ -26,6 +27,11 @@ const PAYMENT_OPTS: { id: PaymentMethod; label: string; bg: string; color: strin
   { id: 'parcelado', label: 'Parcelado cartão', bg: '#DCEAFB', color: '#1D4ED8' },
   { id: 'pago', label: 'Pago', bg: '#CDEBD8', color: '#0F6B39' },
 ]
+const URGENCY_OPTS: { id: UrgencyLevel; label: string; bg: string; color: string }[] = [
+  { id: 'alta', label: 'Alta', bg: '#FBE0E0', color: '#B42318' },
+  { id: 'media', label: 'Média', bg: '#FDECD3', color: '#B45309' },
+  { id: 'baixa', label: 'Baixa', bg: '#DCF3E4', color: '#137A3F' },
+]
 const RESPONSAVEIS = ['Karine', 'Tainá']
 
 function contractMeta(id: ContractStatus) {
@@ -33,6 +39,9 @@ function contractMeta(id: ContractStatus) {
 }
 function paymentMeta(id: PaymentMethod) {
   return PAYMENT_OPTS.find((o) => o.id === id) || PAYMENT_OPTS[0]
+}
+function urgencyMeta(id: UrgencyLevel) {
+  return URGENCY_OPTS.find((o) => o.id === id) || URGENCY_OPTS[1]
 }
 
 function fmtBRL(v: number) {
@@ -226,15 +235,18 @@ export default function ClosedProjectsView() {
             style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
           >
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[900px]">
+              <table className="w-full border-collapse min-w-[1240px]">
                 <thead>
                   <tr style={{ background: '#F2F5EC' }}>
                     <Th>Cliente</Th>
                     <Th>Data</Th>
+                    <Th>Urgência</Th>
                     <Th>Proposta / plano</Th>
                     <Th>Status do contrato</Th>
+                    <Th>Contrato</Th>
                     <Th>Pagamento</Th>
                     <Th className="text-right">Valor</Th>
+                    <Th>Observação</Th>
                     <Th>Resp.</Th>
                     <Th className="w-8" />
                   </tr>
@@ -278,6 +290,7 @@ function Row({
 }) {
   const cm = contractMeta(row.contract_status)
   const pm = paymentMeta(row.payment_method)
+  const um = urgencyMeta(row.urgency)
   const isCancel = row.contract_status === 'cancelado'
   return (
     <tr
@@ -301,8 +314,18 @@ function Row({
           type="date"
           value={row.closed_date || ''}
           onChange={(e) => onPatch({ closed_date: e.target.value })}
-          className="text-[12px] bg-transparent outline-none w-[120px]"
+          className="text-[13px] bg-transparent outline-none w-[130px]"
           style={{ color: '#4A5A56' }}
+        />
+      </Td>
+      {/* urgência */}
+      <Td>
+        <PillSelect
+          value={row.urgency}
+          options={URGENCY_OPTS}
+          onChange={(v) => onPatch({ urgency: v as UrgencyLevel })}
+          bg={um.bg}
+          color={um.color}
         />
       </Td>
       {/* proposta / plano */}
@@ -337,6 +360,22 @@ function Row({
           color={cm.color}
         />
       </Td>
+      {/* contrato feito ou não */}
+      <Td>
+        <button
+          onClick={() => onPatch({ contract_done: !row.contract_done })}
+          title="Clique pra marcar o contrato como feito/pendente"
+          className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+          style={
+            row.contract_done
+              ? { background: '#DCF3E4', color: '#137A3F' }
+              : { background: '#F0F0EC', color: '#8A8A82' }
+          }
+        >
+          {row.contract_done ? <Check size={12} /> : <Minus size={12} />}
+          {row.contract_done ? 'Feito' : 'Não feito'}
+        </button>
+      </Td>
       {/* pagamento */}
       <Td>
         <PillSelect
@@ -351,12 +390,20 @@ function Row({
       <Td className="text-right">
         <ValueInput value={row.value} onSave={(v) => onPatch({ value: v })} />
       </Td>
+      {/* observação */}
+      <Td>
+        <CellInput
+          value={row.notes}
+          onSave={(v) => onPatch({ notes: v })}
+          placeholder="Anotação…"
+        />
+      </Td>
       {/* responsável */}
       <Td>
         <select
           value={row.responsavel}
           onChange={(e) => onPatch({ responsavel: e.target.value })}
-          className="text-[12px] bg-transparent outline-none cursor-pointer"
+          className="text-[13px] bg-transparent outline-none cursor-pointer"
           style={{ color: row.responsavel ? '#162322' : '#A8B5B0' }}
         >
           <option value="">—</option>
@@ -407,7 +454,7 @@ function CellInput({
         if (draft !== value) onSave(draft)
       }}
       placeholder={placeholder}
-      className="text-[12px] bg-transparent outline-none w-full min-w-[90px]"
+      className="text-[13px] bg-transparent outline-none w-full min-w-[100px]"
       style={{ color: '#162322', fontWeight: bold ? 600 : 400 }}
     />
   )
@@ -418,7 +465,7 @@ function ValueInput({ value, onSave }: { value: number; onSave: (v: number) => v
   useEffect(() => setDraft(String(value || '')), [value])
   return (
     <div className="flex items-center justify-end gap-0.5">
-      <span className="text-[11px]" style={{ color: '#A8B5B0' }}>
+      <span className="text-[12px]" style={{ color: '#A8B5B0' }}>
         R$
       </span>
       <input
@@ -430,7 +477,7 @@ function ValueInput({ value, onSave }: { value: number; onSave: (v: number) => v
           if (n !== value) onSave(n)
         }}
         placeholder="0"
-        className="text-[12px] font-bold bg-transparent outline-none text-right w-[80px]"
+        className="text-[14px] font-bold bg-transparent outline-none text-right w-[90px]"
         style={{ color: '#162322' }}
       />
     </div>
@@ -458,7 +505,7 @@ function PillSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="text-[11px] font-bold bg-transparent outline-none cursor-pointer appearance-none pl-2.5 pr-1 py-1"
+        className="text-[12px] font-bold bg-transparent outline-none cursor-pointer appearance-none pl-3 pr-1 py-1.5"
         style={{ color }}
       >
         {options.map((o) => (
@@ -474,7 +521,7 @@ function PillSelect({
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
     <th
-      className={`text-left text-[10px] font-bold uppercase tracking-wider px-3 py-2.5 ${className || ''}`}
+      className={`text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3.5 ${className || ''}`}
       style={{ color: '#6B8585' }}
     >
       {children}
@@ -482,19 +529,19 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
   )
 }
 function Td({ children, className }: { children?: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 align-middle ${className || ''}`}>{children}</td>
+  return <td className={`px-4 py-3 align-middle ${className || ''}`}>{children}</td>
 }
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div
-      className="px-4 py-2.5 rounded-xl"
-      style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', minWidth: 130 }}
+      className="px-5 py-3.5 rounded-xl"
+      style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', minWidth: 150 }}
     >
-      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A8B5B0' }}>
+      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#A8B5B0' }}>
         {label}
       </p>
-      <p className="text-[16px] font-bold mt-0.5" style={{ color: accent }}>
+      <p className="text-[19px] font-bold mt-0.5" style={{ color: accent }}>
         {value}
       </p>
     </div>
@@ -512,6 +559,8 @@ function SetupBanner({ onRetry }: { onRetry: () => void }) {
   plan_name text default '',
   contract_status text not null default 'negociacao',
   payment_method text not null default 'nao_efetuado',
+  urgency text not null default 'media',
+  contract_done boolean not null default false,
   value numeric not null default 0,
   responsavel text default '',
   proposal_id uuid,
