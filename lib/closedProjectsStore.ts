@@ -43,7 +43,13 @@ export class TableMissingError extends Error {
 
 function isTableMissing(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false
-  return error.code === 'PGRST205' || (error.message || '').includes('closed_projects')
+  // PGRST205 = tabela não encontrada. NÃO usar substring com o nome da tabela:
+  // o erro de "coluna faltando" (PGRST204) também cita 'closed_projects' e
+  // era confundido com tabela inexistente (mostrava o painel de setup à toa).
+  return (
+    error.code === 'PGRST205' ||
+    (error.message || '').includes('Could not find the table')
+  )
 }
 
 // Se o erro for "coluna X não existe ainda" (ex: 'urgency'/'contract_done'
