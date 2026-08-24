@@ -40,6 +40,7 @@ export const mockProposal: Proposal = {
         'Integração pixel Facebook/Google',
         'SEO técnico básico',
         '3 levas de alterações',
+        'Até 10 dobras',
       ],
     },
     {
@@ -61,6 +62,7 @@ export const mockProposal: Proposal = {
         'Integração pixel Facebook/Google',
         'SEO Premium completo',
         '3 levas de alterações',
+        'Até 10 dobras',
       ],
     },
     {
