@@ -524,8 +524,10 @@ export default function AdminDashboard() {
   const { show: showToast, Toast } = useToast()
   const [filter, setFilter] = useState<ProposalStatus | 'all'>('all')
   const [search, setSearch] = useState('')
-  // filtro por período (created_at): 'all' | 'week' | 'month' | mês específico 'YYYY-MM'
-  const [period, setPeriod] = useState<'all' | 'week' | 'month'>('all')
+  // filtro por período (created_at) + mês específico 'YYYY-MM'
+  const [period, setPeriod] = useState<
+    'all' | 'week' | 'last_week' | 'month' | 'last_month'
+  >('all')
   const [specificMonth, setSpecificMonth] = useState('')
 
   useEffect(() => {
@@ -539,14 +541,16 @@ export default function AdminDashboard() {
   const q = search.trim().toLowerCase()
   // limites de período (semana começa na segunda)
   const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime()
   const startOfWeek = (() => {
     const d = new Date(now)
     const day = (d.getDay() + 6) % 7 // 0 = segunda
     d.setDate(d.getDate() - day)
     d.setHours(0, 0, 0, 0)
-    return d
+    return d.getTime()
   })()
+  const startOfLastWeek = startOfWeek - 7 * 86400 * 1000
   const filtered = proposals.filter((p) => {
     // filtro por status (chips)
     if (filter !== 'all') {
@@ -560,12 +564,17 @@ export default function AdminDashboard() {
     if (specificMonth || period !== 'all') {
       const created = p.created_at ? new Date(p.created_at) : null
       if (!created || isNaN(created.getTime())) return false
+      const t = created.getTime()
       if (specificMonth) {
         const ym = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`
         if (ym !== specificMonth) return false
-      } else if (period === 'week' && created < startOfWeek) {
+      } else if (period === 'week' && t < startOfWeek) {
         return false
-      } else if (period === 'month' && created < startOfMonth) {
+      } else if (period === 'last_week' && (t < startOfLastWeek || t >= startOfWeek)) {
+        return false
+      } else if (period === 'month' && t < startOfMonth) {
+        return false
+      } else if (period === 'last_month' && (t < startOfLastMonth || t >= startOfMonth)) {
         return false
       }
     }
@@ -875,7 +884,9 @@ export default function AdminDashboard() {
           {([
             { value: 'all', label: 'Todo período' },
             { value: 'week', label: 'Esta semana' },
+            { value: 'last_week', label: 'Semana passada' },
             { value: 'month', label: 'Este mês' },
+            { value: 'last_month', label: 'Mês passado' },
           ] as const).map((opt) => {
             const active = !specificMonth && period === opt.value
             return (
@@ -921,16 +932,24 @@ export default function AdminDashboard() {
               ✕
             </button>
           )}
-          <button
-            onClick={generateReport}
-            disabled={filtered.length === 0}
-            title="Baixar os dados das propostas filtradas em Excel/CSV"
-            className="ml-auto flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 rounded-full transition-all disabled:opacity-40"
-            style={{ background: T.accent, color: T.accentBright }}
-          >
-            <Download size={13} />
-            Gerar relatório
-          </button>
+          <div className="ml-auto flex items-center gap-3">
+            <span
+              className="text-[12px] font-bold px-3 py-1.5 rounded-full"
+              style={{ background: '#EEF3E0', color: '#0D3839' }}
+            >
+              {filtered.length} na tela
+            </span>
+            <button
+              onClick={generateReport}
+              disabled={filtered.length === 0}
+              title="Baixar os dados das propostas filtradas em Excel/CSV"
+              className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 rounded-full transition-all disabled:opacity-40"
+              style={{ background: T.accent, color: T.accentBright }}
+            >
+              <Download size={13} />
+              Gerar relatório
+            </button>
+          </div>
         </div>
 
         {/* list */}
