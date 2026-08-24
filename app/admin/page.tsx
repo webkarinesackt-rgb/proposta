@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Check,
   Search,
+  Download,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -523,6 +524,9 @@ export default function AdminDashboard() {
   const { show: showToast, Toast } = useToast()
   const [filter, setFilter] = useState<ProposalStatus | 'all'>('all')
   const [search, setSearch] = useState('')
+  // filtro por período (created_at): 'all' | 'week' | 'month' | mês específico 'YYYY-MM'
+  const [period, setPeriod] = useState<'all' | 'week' | 'month'>('all')
+  const [specificMonth, setSpecificMonth] = useState('')
 
   useEffect(() => {
     proposalStore.getAll().then(setProposals)
@@ -533,6 +537,16 @@ export default function AdminDashboard() {
   }
 
   const q = search.trim().toLowerCase()
+  // limites de período (semana começa na segunda)
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfWeek = (() => {
+    const d = new Date(now)
+    const day = (d.getDay() + 6) % 7 // 0 = segunda
+    d.setDate(d.getDate() - day)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })()
   const filtered = proposals.filter((p) => {
     // filtro por status (chips)
     if (filter !== 'all') {
@@ -541,6 +555,19 @@ export default function AdminDashboard() {
           ? isExpired(p.valid_until) && p.status !== 'accepted'
           : p.status === filter
       if (!okStatus) return false
+    }
+    // filtro por período (data de criação)
+    if (specificMonth || period !== 'all') {
+      const created = p.created_at ? new Date(p.created_at) : null
+      if (!created || isNaN(created.getTime())) return false
+      if (specificMonth) {
+        const ym = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`
+        if (ym !== specificMonth) return false
+      } else if (period === 'week' && created < startOfWeek) {
+        return false
+      } else if (period === 'month' && created < startOfMonth) {
+        return false
+      }
     }
     // busca livre: cliente, empresa, email, telefone, link e tipo
     if (!q) return true
@@ -576,6 +603,55 @@ export default function AdminDashboard() {
     const url = `${window.location.origin}/p/${p.slug}`
     await navigator.clipboard.writeText(url)
     showToast('Link da proposta copiado')
+  }
+
+  // Gera um relatório (CSV/Excel) das propostas atualmente filtradas.
+  function generateReport() {
+    const STATUS_PT: Record<string, string> = {
+      draft: 'Rascunho',
+      sent: 'Enviada',
+      viewed: 'Visualizada',
+      accepted: 'Aceita',
+      rejected: 'Recusada',
+      expired: 'Expirada',
+    }
+    const headers = [
+      'Cliente', 'Empresa', 'Email', 'WhatsApp', 'Tipo', 'Status',
+      'Válida até', 'Criada em', 'Planos', 'Valor recomendado (à vista)',
+    ]
+    const rows = filtered.map((p) => {
+      const rec = p.selected_plans.find((pl) => pl.is_recommended) || p.selected_plans[0]
+      const dateBR = (d?: string) =>
+        d ? new Date(d).toLocaleDateString('pt-BR') : ''
+      return [
+        p.client_name,
+        p.client_company || '',
+        p.client_email || '',
+        p.client_whatsapp || '',
+        TYPE_LABEL[p.project_type] || p.project_type,
+        STATUS_PT[p.status] || p.status,
+        dateBR(p.valid_until),
+        dateBR(p.created_at),
+        p.selected_plans.map((pl) => pl.name).join(' / '),
+        rec ? String(rec.price_cash) : '',
+      ]
+    })
+    const esc = (v: unknown) => {
+      const s = String(v ?? '')
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const csv = [headers, ...rows].map((r) => r.map(esc).join(';')).join('\r\n')
+    // BOM p/ Excel abrir com acentos corretos
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `propostas-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    showToast(`Relatório gerado (${rows.length} proposta${rows.length !== 1 ? 's' : ''})`)
   }
 
   async function handlePublish(id: string) {
@@ -789,6 +865,72 @@ export default function AdminDashboard() {
           >
             {filtered.length} proposta{filtered.length !== 1 ? 's' : ''}
           </span>
+        </div>
+
+        {/* filtro por período */}
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+            Período:
+          </span>
+          {([
+            { value: 'all', label: 'Todo período' },
+            { value: 'week', label: 'Esta semana' },
+            { value: 'month', label: 'Este mês' },
+          ] as const).map((opt) => {
+            const active = !specificMonth && period === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  setPeriod(opt.value)
+                  setSpecificMonth('')
+                }}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
+                style={{
+                  background: active ? T.accent : T.card,
+                  color: active ? T.accentBright : T.textMuted,
+                  border: `1px solid ${active ? T.accent : T.border}`,
+                }}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+          <input
+            type="month"
+            value={specificMonth}
+            onChange={(e) => {
+              setSpecificMonth(e.target.value)
+              if (e.target.value) setPeriod('all')
+            }}
+            title="Mês específico"
+            className="text-[11px] font-semibold px-3 py-1.5 rounded-full outline-none"
+            style={{
+              background: specificMonth ? T.accent : T.card,
+              color: specificMonth ? T.accentBright : T.textMuted,
+              border: `1px solid ${specificMonth ? T.accent : T.border}`,
+            }}
+          />
+          {specificMonth && (
+            <button
+              onClick={() => setSpecificMonth('')}
+              title="Limpar mês"
+              className="text-[11px] font-bold px-2 py-1.5 rounded-full"
+              style={{ color: T.textMuted }}
+            >
+              ✕
+            </button>
+          )}
+          <button
+            onClick={generateReport}
+            disabled={filtered.length === 0}
+            title="Baixar os dados das propostas filtradas em Excel/CSV"
+            className="ml-auto flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 rounded-full transition-all disabled:opacity-40"
+            style={{ background: T.accent, color: T.accentBright }}
+          >
+            <Download size={13} />
+            Gerar relatório
+          </button>
         </div>
 
         {/* list */}
