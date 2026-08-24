@@ -968,6 +968,37 @@ export default function LeadsView() {
                 </span>
               )}
             </button>
+            {(() => {
+              const on = tagFilter === 'alunos'
+              const n = (allTags.find(([t]) => t === 'alunos') || [, 0])[1] as number
+              return (
+                <button
+                  onClick={() => setTagFilter(on ? null : 'alunos')}
+                  title="Mostrar só os leads com etiqueta alunos"
+                  className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
+                  style={{
+                    background: on ? '#0D3839' : '#FFFFFF',
+                    color: on ? '#F4F99D' : '#6B8585',
+                    border: '1px solid ' + (on ? '#0D3839' : '#E6E6E1'),
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                  }}
+                >
+                  🎓 Alunos
+                  {n > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: on ? '#F4F99D' : '#EEF3E0',
+                        color: on ? '#0D3839' : '#4A5A2A',
+                      }}
+                    >
+                      {n}
+                    </span>
+                  )}
+                </button>
+              )
+            })()}
             <label
               className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
               style={{
@@ -1164,6 +1195,29 @@ export default function LeadsView() {
             style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C' }}
           >
             Servidor do WhatsApp offline. Verifique o container <code>wa-server</code> na VPS.
+          </div>
+        </div>
+      ) : onlyFollowups && filteredChats.length === 0 ? (
+        <div className="px-4 sm:px-8 pb-8">
+          <div
+            className="rounded-2xl p-8 text-center"
+            style={{ background: '#FFFFFF', border: '1px dashed #D8D8D0' }}
+          >
+            <p className="text-[28px] mb-1">⏰</p>
+            <p className="text-[15px] font-bold" style={{ color: '#162322' }}>
+              Nenhum follow-up marcado ainda
+            </p>
+            <p className="text-[13px] mt-1.5 max-w-[420px] mx-auto" style={{ color: '#8AA09A' }}>
+              Abra um lead, defina uma <b>próxima ação</b> e uma data — ele aparece
+              aqui quando o follow-up estiver pra hoje ou atrasado.
+            </p>
+            <button
+              onClick={() => setOnlyFollowups(false)}
+              className="mt-4 text-[12px] font-bold px-4 py-2 rounded-lg"
+              style={{ background: '#0D3839', color: '#F4F99D' }}
+            >
+              Voltar pro pipeline
+            </button>
           </div>
         </div>
       ) : viewMode === 'kanban' ? (
