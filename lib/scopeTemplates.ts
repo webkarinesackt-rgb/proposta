@@ -23,6 +23,7 @@ const LP_START: Plan = {
     'Integração pixel Facebook/Google',
     'SEO técnico básico',
     'Até 2 revisões',
+    'Até 10 dobras',
   ],
 }
 
@@ -45,6 +46,7 @@ const LP_PERSUASIVO: Plan = {
     'Integração pixel Facebook/Google',
     'SEO Premium completo',
     'Até 4 revisões',
+    'Até 10 dobras',
   ],
 }
 

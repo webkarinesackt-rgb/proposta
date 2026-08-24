@@ -143,6 +143,17 @@ function QuickProposalModal({
   const [clientName, setClientName] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectType>('landing_page')
   const [selectedSource, setSelectedSource] = useState<string>('')
+  const [dupSearch, setDupSearch] = useState('')
+
+  // lista filtrada de propostas pra duplicar (busca por cliente/tipo)
+  const dupFiltered = proposals.filter((p) => {
+    const q = dupSearch.trim().toLowerCase()
+    if (!q) return true
+    return (
+      p.client_name.toLowerCase().includes(q) ||
+      (TYPE_LABEL[p.project_type] || '').toLowerCase().includes(q)
+    )
+  })
 
   function submit() {
     const name = clientName.trim()
@@ -218,13 +229,32 @@ function QuickProposalModal({
             })}
           </div>
         ) : (
-          <div className="mb-4 max-h-[240px] overflow-y-auto rounded-xl" style={{ border: `1px solid ${T.border}` }}>
+          <div className="mb-4">
+            <div className="relative mb-2">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: T.textDim }}
+              />
+              <input
+                value={dupSearch}
+                onChange={(e) => setDupSearch(e.target.value)}
+                placeholder="Buscar cliente…"
+                className="w-full pl-9 pr-3 py-2 rounded-lg text-[13px] outline-none"
+                style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+              />
+            </div>
+            <div className="max-h-[240px] overflow-y-auto rounded-xl" style={{ border: `1px solid ${T.border}` }}>
             {proposals.length === 0 ? (
               <p className="text-[12px] text-center py-8" style={{ color: T.textDim }}>
                 Você ainda não tem propostas pra duplicar.
               </p>
+            ) : dupFiltered.length === 0 ? (
+              <p className="text-[12px] text-center py-8" style={{ color: T.textDim }}>
+                Nenhum cliente encontrado.
+              </p>
             ) : (
-              proposals.map((p) => {
+              dupFiltered.map((p) => {
                 const active = selectedSource === p.id
                 return (
                   <button
@@ -249,6 +279,7 @@ function QuickProposalModal({
                 )
               })
             )}
+            </div>
           </div>
         )}
 
