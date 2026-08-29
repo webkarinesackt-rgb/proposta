@@ -750,6 +750,17 @@ export default function LeadsView() {
   const [respFilter, setRespFilter] = useState<string | null>(null) // multi-atendimento
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
+  // janela de atividade: só mostra leads mexidos nos últimos N dias (0 = todos).
+  // Evita carregar milhares de cards de uma vez. Fica salvo por navegador.
+  const [activityDays, setActivityDays] = useState<number>(() => {
+    if (typeof window === 'undefined') return 30
+    const v = localStorage.getItem('fysi.leads.activityDays')
+    return v === null ? 30 : Number(v)
+  })
+  useEffect(() => {
+    if (typeof window !== 'undefined')
+      localStorage.setItem('fysi.leads.activityDays', String(activityDays))
+  }, [activityDays])
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>(
     () => (typeof window !== 'undefined' && (localStorage.getItem('fysi.leads.view') as 'kanban' | 'list')) || 'kanban'
   )
@@ -871,6 +882,12 @@ export default function LeadsView() {
       if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
       if (respFilter && getResponsavel(c) !== respFilter) continue
       if (onlyFollowups && !isFollowupDue(c)) continue
+      // janela de atividade: no browse padrão mostra só leads recentes (rápido).
+      // Busca e filtros explícitos (etiqueta/responsável/follow-up) veem tudo.
+      if (activityDays > 0 && !q && !tagFilter && !respFilter && !onlyFollowups) {
+        const cutoff = Date.now() / 1000 - activityDays * 86400
+        if ((c.lastTime || 0) < cutoff) continue
+      }
       if (q) {
         const phone = c.id.split('@')[0]
         const hay = [c.name, c.notes || '', c.email || '', phone, (c.tags || []).join(' ')]
@@ -886,7 +903,7 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, onlyFollowups, search, sortBy])
+  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, onlyFollowups, search, sortBy, activityDays])
 
   const followupCount = useMemo(
     () =>
@@ -1058,6 +1075,34 @@ export default function LeadsView() {
                 </button>
               )
             })()}
+            {/* janela de atividade — evita carregar todos os leads de uma vez */}
+            <div
+              className="flex items-center gap-1 p-0.5 rounded-full"
+              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+              title="Mostra só leads mexidos nos últimos X dias (busca e filtros veem tudo)"
+            >
+              {([
+                { d: 7, label: '7d' },
+                { d: 30, label: '30d' },
+                { d: 90, label: '90d' },
+                { d: 0, label: 'Tudo' },
+              ] as const).map((o) => {
+                const active = activityDays === o.d
+                return (
+                  <button
+                    key={o.d}
+                    onClick={() => setActivityDays(o.d)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all"
+                    style={{
+                      background: active ? '#0D3839' : 'transparent',
+                      color: active ? '#F4F99D' : '#6B8585',
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                )
+              })}
+            </div>
             <label
               className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
               style={{
