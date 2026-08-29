@@ -1513,9 +1513,10 @@ export default function InboxView() {
       }
       if (c.isGroup) groups++
       else if (!c.fromMeLast && !c.ignored) unanswered++
-      // "resp:*" é responsável, não etiqueta — não entra na lista de etiquetas.
+      // "resp:*" é responsável e "followup" é coluna do Kanban — nenhum é
+      // etiqueta comum, então não entram na lista de etiquetas.
       for (const t of c.tags || [])
-        if (!isRespTag(t)) tagCount.set(t, (tagCount.get(t) || 0) + 1)
+        if (!isRespTag(t) && t !== 'followup') tagCount.set(t, (tagCount.get(t) || 0) + 1)
     }
     return {
       unansweredCount: unanswered,
