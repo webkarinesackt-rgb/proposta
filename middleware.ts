@@ -22,14 +22,35 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   const path = req.nextUrl.pathname
 
-  // /admin/* protegido — sem user → manda pro /login
+  // Resiliência: se o Supabase Auth ficar lento/fora do ar, o getUser trava e
+  // a Vercel corta o middleware com 504 (site inteiro fora). Então damos no
+  // máximo 4s; se estourar, NÃO derruba o site — deixa passar quem já tem
+  // cookie de sessão e só manda pro login quem não tem cookie nenhum.
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
+  let authTimedOut = false
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('auth-timeout')), 4000)
+      ),
+    ])
+    user = result.data.user
+  } catch {
+    authTimedOut = true
+  }
+
+  const hasSessionCookie = req.cookies
+    .getAll()
+    .some((c) => c.name.startsWith('sb-') && c.name.includes('auth-token'))
+
+  // /admin/* protegido — sem user → manda pro /login.
+  // Exceção: se o Auth deu timeout MAS existe cookie de sessão, deixa passar
+  // (o usuário provavelmente está logado; evita outage por lentidão do Auth).
   if (path.startsWith('/admin') && !user) {
+    if (authTimedOut && hasSessionCookie) return res
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('next', path)
