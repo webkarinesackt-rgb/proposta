@@ -884,9 +884,14 @@ export default function LeadsView() {
       if (onlyFollowups && !isFollowupDue(c)) continue
       // janela de atividade: no browse padrão mostra só leads recentes (rápido).
       // Busca e filtros explícitos (etiqueta/responsável/follow-up) veem tudo.
+      // Exceção: cards em coluna por etiqueta (follow-up/alunos) sempre aparecem,
+      // mesmo antigos — senão sumiriam da própria coluna onde você os colocou.
       if (activityDays > 0 && !q && !tagFilter && !respFilter && !onlyFollowups) {
-        const cutoff = Date.now() / 1000 - activityDays * 86400
-        if ((c.lastTime || 0) < cutoff) continue
+        const inVirtualCol = (c.tags || []).some((t) => VIRTUAL_TAGS.includes(t))
+        if (!inVirtualCol) {
+          const cutoff = Date.now() / 1000 - activityDays * 86400
+          if ((c.lastTime || 0) < cutoff) continue
+        }
       }
       if (q) {
         const phone = c.id.split('@')[0]
