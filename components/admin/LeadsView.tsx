@@ -42,8 +42,17 @@ function getResponsavel(chat: WaChat): string | null {
   const t = (chat.tags || []).find((x) => x.startsWith('resp:'))
   return t ? t.slice('resp:'.length) : null
 }
+// Colunas do Kanban feitas por etiqueta (sem depender do servidor). Um card
+// com a etiqueta aparece na coluna correspondente, saindo da coluna de etapa.
+const VIRTUAL_COLS = [
+  { id: '__followup', tag: 'followup', label: 'Follow-up', color: '#7A2FA0', bg: '#F1E6F8', after: 'PROPOSTA' },
+  { id: '__alunos', tag: 'alunos', label: 'Alunos', color: '#B45309', bg: '#FDECD3', after: '__end' },
+] as const
+const VIRTUAL_TAGS = VIRTUAL_COLS.map((v) => v.tag) as string[]
+
 function visibleTags(chat: WaChat): string[] {
-  return (chat.tags || []).filter((t) => !t.startsWith('resp:'))
+  // 'followup' é mecanismo de coluna, não etiqueta pra exibir
+  return (chat.tags || []).filter((t) => !t.startsWith('resp:') && t !== 'followup')
 }
 
 function Avatar({
@@ -442,15 +451,17 @@ function StatusGroup({
 /* ── kanban column (horizontal layout) ──────────────── */
 
 function KanbanColumn({
-  status,
+  col,
   chats,
   onOpenChat,
+  onDropChat,
   onSetStatus,
   onSetValue,
 }: {
-  status: (typeof LEAD_STATUSES)[number]
+  col: { id: string; label: string; color: string; bg: string }
   chats: WaChat[]
   onOpenChat: (id: string) => void
+  onDropChat: (id: string) => void
   onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
 }) {
@@ -471,15 +482,15 @@ function KanbanColumn({
         e.preventDefault()
         setDragOver(false)
         const id = e.dataTransfer.getData('text/wa-chat-id')
-        if (id) onSetStatus(id, status.id)
+        if (id) onDropChat(id)
       }}
       className="flex flex-col rounded-2xl overflow-hidden transition-all"
       style={{
         width: 304,
         minWidth: 304,
-        background: dragOver ? status.bg : '#F4F3EF',
+        background: dragOver ? col.bg : '#F4F3EF',
         border: dragOver
-          ? `2px dashed ${status.color}`
+          ? `2px dashed ${col.color}`
           : '1px solid #E6E6E1',
         maxHeight: 'calc(100vh - 280px)',
       }}
@@ -492,12 +503,12 @@ function KanbanColumn({
         <span
           className="text-[10px] font-bold uppercase tracking-[0.08em] px-2.5 py-0.5 rounded-full"
           style={{
-            background: status.bg,
-            color: status.color,
-            border: `1px solid ${status.color}30`,
+            background: col.bg,
+            color: col.color,
+            border: `1px solid ${col.color}30`,
           }}
         >
-          {status.label}
+          {col.label}
         </span>
         <span className="text-[11px] font-bold ml-auto" style={{ color: '#6B8585' }}>
           {chats.length}
@@ -505,7 +516,7 @@ function KanbanColumn({
         {totalValue > 0 && (
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-            style={{ background: status.bg, color: status.color }}
+            style={{ background: col.bg, color: col.color }}
           >
             {fmtBRL(totalValue)}
           </span>
@@ -797,6 +808,36 @@ export default function LeadsView() {
     }
   }
 
+  // arrastar pra uma ETAPA: define status e tira das colunas por etiqueta
+  async function handleDropToStatus(id: string, status: string) {
+    const prev = chats.find((c) => c.id === id)
+    const hadVirtual = (prev?.tags || []).some((t) => VIRTUAL_TAGS.includes(t))
+    if (prev?.status === status && !hadVirtual) return
+    const nextTags = (prev?.tags || []).filter((t) => !VIRTUAL_TAGS.includes(t))
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, status, tags: nextTags } : c)))
+    try {
+      await waServer.updateChat(id, { status, tags: nextTags })
+    } catch {
+      load()
+      showToast('Erro ao mover — desfazendo', { kind: 'error' })
+    }
+  }
+
+  // arrastar pra uma COLUNA por etiqueta (follow-up/alunos): marca a etiqueta
+  async function handleDropToVirtual(id: string, tag: string) {
+    const prev = chats.find((c) => c.id === id)
+    const cur = prev?.tags || []
+    if (cur.includes(tag) && cur.filter((t) => VIRTUAL_TAGS.includes(t)).length === 1) return
+    const nextTags = [...cur.filter((t) => !VIRTUAL_TAGS.includes(t)), tag]
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, tags: nextTags } : c)))
+    try {
+      await waServer.updateChat(id, { tags: nextTags })
+    } catch {
+      load()
+      showToast('Erro ao mover — desfazendo', { kind: 'error' })
+    }
+  }
+
   async function handleSetValue(id: string, value: number) {
     const prev = chats.find((c) => c.id === id)
     if (!prev || prev.value === value) return
@@ -879,6 +920,24 @@ export default function LeadsView() {
       if (c.status === 'FECHADO') closed += v
     }
     return { byStatus: buckets, totalPipeline: pipeline, totalClosed: closed }
+  }, [filteredChats])
+
+  // Kanban: cards com etiqueta de coluna (followup/alunos) saem da etapa e vão
+  // pra coluna própria. (A visão em lista continua usando byStatus, por etapa.)
+  const kanban = useMemo(() => {
+    const status: Record<string, WaChat[]> = {}
+    for (const s of LEAD_STATUSES) status[s.id] = []
+    const virt: Record<string, WaChat[]> = {}
+    for (const v of VIRTUAL_COLS) virt[v.tag] = []
+    for (const c of filteredChats) {
+      const vt = VIRTUAL_COLS.find((v) => (c.tags || []).includes(v.tag))
+      if (vt) {
+        virt[vt.tag].push(c)
+        continue
+      }
+      ;(status[c.status] || status.LEAD).push(c)
+    }
+    return { status, virt }
   }, [filteredChats])
 
   return (
@@ -1226,12 +1285,42 @@ export default function LeadsView() {
           style={{ paddingBottom: 16 }}
         >
           <div className="flex gap-3 h-full px-4 sm:px-8 pb-2" style={{ minWidth: 'fit-content' }}>
-            {LEAD_STATUSES.map((s) => (
+            {LEAD_STATUSES.flatMap((s) => {
+              const cols = [
+                <KanbanColumn
+                  key={s.id}
+                  col={s}
+                  chats={kanban.status[s.id] || []}
+                  onOpenChat={openChat}
+                  onDropChat={(id) => handleDropToStatus(id, s.id)}
+                  onSetStatus={handleSetStatus}
+                  onSetValue={handleSetValue}
+                />,
+              ]
+              for (const v of VIRTUAL_COLS) {
+                if (v.after === s.id) {
+                  cols.push(
+                    <KanbanColumn
+                      key={v.id}
+                      col={v}
+                      chats={kanban.virt[v.tag] || []}
+                      onOpenChat={openChat}
+                      onDropChat={(id) => handleDropToVirtual(id, v.tag)}
+                      onSetStatus={handleSetStatus}
+                      onSetValue={handleSetValue}
+                    />,
+                  )
+                }
+              }
+              return cols
+            })}
+            {VIRTUAL_COLS.filter((v) => v.after === '__end').map((v) => (
               <KanbanColumn
-                key={s.id}
-                status={s}
-                chats={byStatus[s.id] || []}
+                key={v.id}
+                col={v}
+                chats={kanban.virt[v.tag] || []}
                 onOpenChat={openChat}
+                onDropChat={(id) => handleDropToVirtual(id, v.tag)}
                 onSetStatus={handleSetStatus}
                 onSetValue={handleSetValue}
               />
