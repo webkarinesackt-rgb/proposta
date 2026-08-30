@@ -90,11 +90,19 @@ export default function ClosedProjectsView() {
 
   // atualização otimista: aplica local e persiste
   async function patchRow(id: string, patch: Partial<ClosedProject>) {
+    const current = rows.find((r) => r.id === id)
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)))
     try {
       await closedProjectsStore.update(id, patch)
     } catch (e) {
       console.error('[closed.update]', e)
+    }
+    // sync Fechados → Propostas: contrato virou "fechado" numa linha vinculada
+    // a uma proposta → marca a proposta como aceita também.
+    if (patch.contract_status === 'fechado' && current?.proposal_id) {
+      proposalStore.updateStatus(current.proposal_id, 'accepted').catch((e) =>
+        console.error('[closed.syncProposal]', e),
+      )
     }
   }
 
@@ -119,6 +127,12 @@ export default function ClosedProjectsView() {
       })
       setRows((rs) => [r, ...rs])
       setShowPicker(false)
+      // sync Fechados → Propostas: entrou aqui como "fechado" → marca aceita.
+      if (p.status !== 'accepted') {
+        proposalStore.updateStatus(p.id, 'accepted').catch((e) =>
+          console.error('[closed.syncProposal]', e),
+        )
+      }
     } catch (e) {
       if (e instanceof TableMissingError) setNeedsSetup(true)
     }
