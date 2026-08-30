@@ -114,4 +114,6 @@ export interface Proposal {
   /** ISO timestamp da criação (vindo do Supabase). Opcional pra
    *  compatibilidade com dados antigos. */
   created_at?: string
+  /** ISO timestamp da última atualização (proxy da data do aceite). */
+  updated_at?: string
 }

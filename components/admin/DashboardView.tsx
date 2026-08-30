@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { waServer, WaDashboard, WaSeriesPoint } from '@/lib/waServer'
+import { proposalStore } from '@/lib/proposalStore'
 import {
   Inbox,
   MessageSquare,
@@ -168,6 +169,32 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
 
 /* ── main ────────────────────────────────────────────── */
 
+function AvisoLine({
+  n,
+  label,
+  onClick,
+  danger,
+}: {
+  n: number
+  label: string
+  onClick: () => void
+  danger?: boolean
+}) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-2.5 text-left w-full group">
+      <span
+        className="text-[16px] font-bold tabular-nums text-center"
+        style={{ color: danger ? '#B45309' : '#A8B5B0', minWidth: 24 }}
+      >
+        {n}
+      </span>
+      <span className="text-[12px] group-hover:underline" style={{ color: '#6B8585' }}>
+        {label}
+      </span>
+    </button>
+  )
+}
+
 export default function DashboardView() {
   const router = useRouter()
   const [period, setPeriod] = useState<string>('week')
@@ -175,6 +202,8 @@ export default function DashboardView() {
   const [unansweredFixed, setUnansweredFixed] = useState<number | null>(null)
   const [series, setSeries] = useState<WaSeriesPoint[]>([])
   const [serverOff, setServerOff] = useState(false)
+  const [followupsDue, setFollowupsDue] = useState(0)
+  const [monthStats, setMonthStats] = useState({ enviadas: 0, aceitas: 0, expiring: 0 })
 
   useEffect(() => {
     let alive = true
@@ -212,6 +241,15 @@ export default function DashboardView() {
                 c.lastTime >= since
             ).length
           )
+          // follow-ups pra fazer: próxima ação marcada pra hoje ou atrasada
+          const endToday = new Date()
+          endToday.setHours(23, 59, 59, 999)
+          const endTodayS = endToday.getTime() / 1000
+          setFollowupsDue(
+            cs.filter(
+              (c) => c.nextAction && (c.nextActionDate || 0) > 0 && (c.nextActionDate || 0) <= endTodayS
+            ).length
+          )
           setServerOff(false)
         }
       } catch {
@@ -240,6 +278,32 @@ export default function DashboardView() {
     }
   }, [period])
 
+  // propostas do mês (enviadas por criação; aceitas pela data do aceite) +
+  // propostas vencendo nos próximos 7 dias
+  useEffect(() => {
+    proposalStore
+      .getAll()
+      .then((ps) => {
+        const now = new Date()
+        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const weekEnd = Date.now() + 7 * 86400 * 1000
+        let enviadas = 0,
+          aceitas = 0,
+          expiring = 0
+        for (const p of ps) {
+          if (p.status !== 'draft' && (p.created_at || '').slice(0, 7) === ym) enviadas++
+          if (p.status === 'accepted' && (p.updated_at || p.created_at || '').slice(0, 7) === ym)
+            aceitas++
+          if ((p.status === 'sent' || p.status === 'viewed') && p.valid_until) {
+            const vu = new Date(p.valid_until).getTime()
+            if (vu >= Date.now() && vu <= weekEnd) expiring++
+          }
+        }
+        setMonthStats({ enviadas, aceitas, expiring })
+      })
+      .catch(() => {})
+  }, [])
+
   const periodSub = PERIOD_SUB[period] || ''
 
   return (
@@ -263,9 +327,79 @@ export default function DashboardView() {
         >
           Métricas
         </h1>
-        <p className="text-[13px] mb-8" style={{ color: T.textMuted }}>
+        <p className="text-[13px] mb-6" style={{ color: T.textMuted }}>
           Termômetro do seu atendimento no WhatsApp.
         </p>
+
+        {/* ações rápidas */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => router.push('/admin/new')}
+            className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+            style={{ background: T.accent, color: T.accentBright }}
+          >
+            + Nova proposta
+          </button>
+          <button
+            onClick={() => router.push('/admin?rapida=1')}
+            className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-colors"
+            style={{ background: T.card, color: T.textPrimary, border: `1px solid ${T.border}` }}
+          >
+            Proposta rápida
+          </button>
+        </div>
+
+        {/* este mês + avisos da semana */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-8">
+          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+              Enviadas este mês
+            </p>
+            <p className="text-[30px] font-bold leading-none mt-2" style={{ color: T.textPrimary }}>
+              {monthStats.enviadas}
+            </p>
+            <p className="text-[11px] mt-1.5" style={{ color: T.textMuted }}>propostas criadas</p>
+          </div>
+          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+              Aceitas este mês
+            </p>
+            <p className="text-[30px] font-bold leading-none mt-2" style={{ color: '#137A3F' }}>
+              {monthStats.aceitas}
+            </p>
+            <p className="text-[11px] mt-1.5" style={{ color: T.textMuted }}>
+              {monthStats.enviadas > 0
+                ? `${Math.round((monthStats.aceitas / monthStats.enviadas) * 100)}% de conversão`
+                : 'fechamentos do mês'}
+            </p>
+          </div>
+          {/* avisos da semana */}
+          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: T.textDim }}>
+              Pra fazer
+            </p>
+            <div className="flex flex-col gap-2">
+              <AvisoLine
+                n={followupsDue}
+                label="follow-ups pra hoje/atrasados"
+                onClick={() => router.push('/admin/leads')}
+                danger={followupsDue > 0}
+              />
+              <AvisoLine
+                n={unansweredFixed ?? 0}
+                label="conversas sem resposta"
+                onClick={() => router.push('/admin/inbox?filter=unanswered')}
+                danger={(unansweredFixed ?? 0) > 0}
+              />
+              <AvisoLine
+                n={monthStats.expiring}
+                label="propostas vencendo (7 dias)"
+                onClick={() => router.push('/admin')}
+                danger={monthStats.expiring > 0}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* period tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">

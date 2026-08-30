@@ -534,6 +534,15 @@ export default function AdminDashboard() {
     proposalStore.getAll().then(setProposals)
   }, [])
 
+  // abre a "Proposta rápida" quando vem do Dashboard (/admin?rapida=1)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('rapida') === '1') {
+      setQuickOpen(true)
+      window.history.replaceState({}, '', '/admin')
+    }
+  }, [])
+
   async function refresh() {
     setProposals(await proposalStore.getAll())
   }

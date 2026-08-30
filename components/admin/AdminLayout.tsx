@@ -8,12 +8,12 @@ import { createClient } from '@/lib/supabase/client'
 import type { ReactNode } from 'react'
 
 const TABS = [
+  { path: '/admin/dashboard', icon: BarChart3, label: 'Métricas' },
   { path: '/admin', icon: FileText, label: 'Propostas' },
   { path: '/admin/inbox', icon: MessageSquare, label: 'Inbox' },
   { path: '/admin/leads', icon: Tag, label: 'Leads' },
   { path: '/admin/fechados', icon: Sheet, label: 'Fechados' },
   { path: '/admin/comercial', icon: BookOpen, label: 'Comercial' },
-  { path: '/admin/dashboard', icon: BarChart3, label: 'Métricas' },
   { path: '/admin/relatorios', icon: PieChart, label: 'Relatórios' },
 ] as const
 
