@@ -953,14 +953,17 @@ export default function LeadsView() {
     for (const v of VIRTUAL_COLS) virt[v.tag] = []
     for (const c of filteredChats) {
       const vt = VIRTUAL_COLS.find((v) => (c.tags || []).includes(v.tag))
-      if (vt) {
+      // Se você está FILTRANDO justamente por essa etiqueta (ex: clicou em
+      // Alunos), mostra os cards nas colunas do funil (visíveis na tela) em vez
+      // de jogá-los na coluna virtual lá no fim.
+      if (vt && vt.tag !== tagFilter) {
         virt[vt.tag].push(c)
         continue
       }
       ;(status[c.status] || status.LEAD).push(c)
     }
     return { status, virt }
-  }, [filteredChats])
+  }, [filteredChats, tagFilter])
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative" style={{ background: '#FAFAF8' }}>
