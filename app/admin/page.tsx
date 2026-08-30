@@ -35,8 +35,8 @@ const T = {
   borderSubtle: '#F0F0EC',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
-  accent: '#0D3839',
-  accentBright: '#F4F99D',
+  accent: '#173B32',
+  accentBright: '#EFE3C2',
 }
 
 /* ── status meta ─────────────────────────────────────── */
@@ -48,7 +48,7 @@ const STATUS_META: Record<
   // Paleta derivada da marca (petróleo → sálvia → lima → oliva). Barro é o
   // único tom "de fora", reservado ao estado negativo. Nada saturado.
   draft:    { label: 'Rascunho',    color: '#7A8985', bg: '#F1F2EE', icon: <FileText size={10} /> },
-  sent:     { label: 'Enviada',     color: '#0D3839', bg: '#E7EEEB', icon: <Mail size={10} /> },
+  sent:     { label: 'Enviada',     color: '#173B32', bg: '#E7EEEB', icon: <Mail size={10} /> },
   viewed:   { label: 'Visualizada', color: '#6E7A2E', bg: '#F3F6DF', icon: <Eye size={10} /> },
   accepted: { label: 'Aceita',      color: '#2F6B4F', bg: '#E9F2EC', icon: <CheckCircle2 size={10} /> },
   rejected: { label: 'Recusada',    color: '#9C5A48', bg: '#F7EDE9', icon: <XCircle size={10} /> },
@@ -944,7 +944,7 @@ export default function AdminDashboard() {
           <div className="ml-auto flex items-center gap-3">
             <span
               className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: '#EEF3E0', color: '#0D3839' }}
+              style={{ background: '#EEF3E0', color: '#173B32' }}
             >
               {filtered.length} na tela
             </span>

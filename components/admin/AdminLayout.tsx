@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [])
 
   const connDot =
-    conn === 'open' ? '#9DE9A8' : conn === 'qr' ? '#F4D55D' : '#E57373'
+    conn === 'open' ? '#93E0A6' : conn === 'qr' ? '#F4D55D' : '#E57373'
 
   return (
     <div
@@ -78,8 +78,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <aside
         className="hidden md:flex w-[68px] flex-shrink-0 flex-col items-center py-5 my-4 ml-4 rounded-[34px] self-stretch"
         style={{
-          background: 'linear-gradient(180deg, #10413F 0%, #072121 100%)',
-          boxShadow: '0 22px 44px -20px rgba(7,33,33,0.65)',
+          background: 'linear-gradient(180deg, #1F5344 0%, #0C231D 100%)',
+          boxShadow: '0 22px 44px -20px rgba(10,30,24,0.65)',
         }}
       >
         {/* marca — vira link do QR quando o WhatsApp pede leitura */}
@@ -93,7 +93,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               : `WhatsApp: ${conn}`
           }
           className={`relative w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${conn === 'qr' ? 'cursor-pointer' : 'cursor-default'}`}
-          style={{ background: 'rgba(244,249,157,0.10)' }}
+          style={{ background: 'rgba(239,227,194,0.10)' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -106,7 +106,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${conn === 'qr' ? 'animate-pulse' : ''}`}
             style={{
               background: connDot,
-              borderColor: '#082828',
+              borderColor: '#0C231D',
               boxShadow: `0 0 8px ${connDot}88`,
             }}
           />
@@ -125,18 +125,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 onClick={() => router.push(tab.path)}
                 title={tab.label}
                 className="group relative w-11 h-11 rounded-full flex items-center justify-center transition-all flex-shrink-0"
-                style={{ background: active ? '#F4F99D' : 'transparent' }}
+                style={{ background: active ? '#EFE3C2' : 'transparent' }}
               >
                 <Icon
                   size={18}
                   style={{
-                    color: active ? '#0D3839' : 'rgba(160,196,188,0.75)',
+                    color: active ? '#173B32' : 'rgba(184,201,184,0.75)',
                   }}
                 />
                 {/* rótulo no hover — bonito e ainda descobrível */}
                 <span
                   className="absolute left-full ml-3 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50"
-                  style={{ background: '#0D3839', color: '#F4F99D' }}
+                  style={{ background: '#173B32', color: '#EFE3C2' }}
                 >
                   {tab.label}
                 </span>
@@ -151,8 +151,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors hover:bg-white/5 mb-1"
           style={{
             color: pathname.startsWith('/admin/conta')
-              ? '#F4F99D'
-              : 'rgba(160,196,188,0.55)',
+              ? '#EFE3C2'
+              : 'rgba(184,201,184,0.55)',
           }}
         >
           <Settings size={16} />
@@ -166,7 +166,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           }}
           title="Sair"
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors hover:bg-white/5"
-          style={{ color: 'rgba(160,196,188,0.55)' }}
+          style={{ color: 'rgba(184,201,184,0.55)' }}
         >
           <LogOut size={16} />
         </button>
@@ -185,7 +185,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex"
         style={{
           background:
-            'linear-gradient(180deg, #0E3C3D 0%, #082828 100%)',
+            'linear-gradient(180deg, #1F5344 0%, #0C231D 100%)',
           borderTop: '1px solid rgba(0,0,0,0.2)',
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -4px 16px rgba(0,0,0,0.15)',
@@ -202,25 +202,25 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               onClick={() => router.push(tab.path)}
               className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-all"
               style={{
-                background: active ? 'rgba(244,249,157,0.08)' : 'transparent',
+                background: active ? 'rgba(239,227,194,0.08)' : 'transparent',
               }}
             >
               {active && (
                 <span
                   className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full"
                   style={{
-                    background: '#F4F99D',
-                    boxShadow: '0 0 8px rgba(244,249,157,0.6)',
+                    background: '#EFE3C2',
+                    boxShadow: '0 0 8px rgba(239,227,194,0.6)',
                   }}
                 />
               )}
               <Icon
                 size={20}
-                style={{ color: active ? '#F4F99D' : 'rgba(139,183,175,0.65)' }}
+                style={{ color: active ? '#EFE3C2' : 'rgba(178,197,178,0.65)' }}
               />
               <span
                 className="text-[9px] font-bold uppercase tracking-[0.1em]"
-                style={{ color: active ? '#E6F1EE' : 'rgba(139,183,175,0.55)' }}
+                style={{ color: active ? '#F3EEDD' : 'rgba(178,197,178,0.55)' }}
               >
                 {tab.label}
               </span>

@@ -114,7 +114,7 @@ export default function ComercialView() {
           <button
             onClick={startNew}
             className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-            style={{ background: '#0D3839', color: '#F4F99D' }}
+            style={{ background: '#173B32', color: '#EFE3C2' }}
           >
             <Plus size={14} /> {section === 'processo' ? 'Novo processo' : 'Novo script'}
           </button>
@@ -134,9 +134,9 @@ export default function ComercialView() {
                 onClick={() => setSection(t.id)}
                 className="flex items-center gap-1.5 text-[12px] font-bold px-4 py-2 rounded-full transition-all"
                 style={{
-                  background: active ? '#0D3839' : '#FFFFFF',
-                  color: active ? '#F4F99D' : '#6B8585',
-                  border: '1px solid ' + (active ? '#0D3839' : '#E6E6E1'),
+                  background: active ? '#173B32' : '#FFFFFF',
+                  color: active ? '#EFE3C2' : '#6B8585',
+                  border: '1px solid ' + (active ? '#173B32' : '#E6E6E1'),
                 }}
               >
                 <Icon size={13} />
@@ -178,7 +178,7 @@ export default function ComercialView() {
             <button
               onClick={startNew}
               className="mt-3 text-[12px] font-bold px-4 py-2 rounded-lg"
-              style={{ background: '#0D3839', color: '#F4F99D' }}
+              style={{ background: '#173B32', color: '#EFE3C2' }}
             >
               + Criar o primeiro
             </button>
@@ -311,8 +311,8 @@ function ScriptCard({
         onClick={copy}
         className="mt-3 self-start flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
         style={{
-          background: copied ? '#DCF3E4' : '#0D3839',
-          color: copied ? '#137A3F' : '#F4F99D',
+          background: copied ? '#DCF3E4' : '#173B32',
+          color: copied ? '#137A3F' : '#EFE3C2',
         }}
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -413,7 +413,7 @@ function EditorModal({
             onClick={() => onSave(draft)}
             disabled={!draft.title.trim() && !draft.content.trim()}
             className="text-[12px] font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-            style={{ background: '#0D3839', color: '#F4F99D' }}
+            style={{ background: '#173B32', color: '#EFE3C2' }}
           >
             Salvar
           </button>
@@ -448,7 +448,7 @@ notify pgrst, 'reload schema';`
         Copie o comando, cole no <b>SQL Editor</b> do Supabase (botão “Run”) e
         clique em “Já criei”.
       </p>
-      <pre className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto" style={{ background: '#0D3839', color: '#EAF3E9' }}>
+      <pre className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto" style={{ background: '#173B32', color: '#EAF3E9' }}>
         {sql}
       </pre>
       <div className="flex items-center gap-2 mt-3">
@@ -460,11 +460,11 @@ notify pgrst, 'reload schema';`
             })
           }}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#F4F3EF', color: '#0D3839', border: '1px solid #E6E6E1' }}
+          style={{ background: '#F4F3EF', color: '#173B32', border: '1px solid #E6E6E1' }}
         >
           {copied ? 'Copiado!' : 'Copiar comando'}
         </button>
-        <button onClick={onRetry} className="text-[12px] font-bold px-3 py-2 rounded-lg" style={{ background: '#0D3839', color: '#F4F99D' }}>
+        <button onClick={onRetry} className="text-[12px] font-bold px-3 py-2 rounded-lg" style={{ background: '#173B32', color: '#EFE3C2' }}>
           Já criei
         </button>
       </div>

@@ -92,7 +92,7 @@ export default function ProposalPicker({
         <button
           onClick={novaProposta}
           className="mx-2 mt-2 flex-shrink-0 flex items-center justify-center gap-1.5 text-[12px] font-bold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
-          style={{ background: '#0D3839', color: '#F4F99D' }}
+          style={{ background: '#173B32', color: '#EFE3C2' }}
         >
           <Plus size={14} /> Criar nova proposta
         </button>

@@ -334,8 +334,8 @@ function LeadRow({
             title="Clique pra editar o valor (R$)"
             className="text-[10px] font-bold px-2 py-1 rounded transition-all hover:opacity-80"
             style={{
-              background: chat.value ? '#0D3839' : 'transparent',
-              color: chat.value ? '#F4F99D' : '#A8B5B0',
+              background: chat.value ? '#173B32' : 'transparent',
+              color: chat.value ? '#EFE3C2' : '#A8B5B0',
               border: chat.value ? 'none' : '1px dashed #C8D8D4',
             }}
           >
@@ -710,8 +710,8 @@ function KanbanCard({
             }}
             className="text-[10px] font-bold px-2 py-0.5 rounded transition-all"
             style={{
-              background: chat.value ? '#0D3839' : 'transparent',
-              color: chat.value ? '#F4F99D' : '#A8B5B0',
+              background: chat.value ? '#173B32' : 'transparent',
+              color: chat.value ? '#EFE3C2' : '#A8B5B0',
               border: chat.value ? 'none' : '1px dashed #C8D8D4',
             }}
           >
@@ -1027,7 +1027,7 @@ export default function LeadsView() {
                   </p>
                   <p
                     className="font-bold mt-0.5"
-                    style={{ color: '#0D3839', fontSize: 18 }}
+                    style={{ color: '#173B32', fontSize: 18 }}
                   >
                     {fmtBRL(totalPipeline)}
                   </p>
@@ -1057,9 +1057,9 @@ export default function LeadsView() {
               title="Mostrar só leads com follow-up pra hoje ou atrasado"
               className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
               style={{
-                background: onlyFollowups ? '#0D3839' : '#FFFFFF',
-                color: onlyFollowups ? '#F4F99D' : '#6B8585',
-                border: '1px solid ' + (onlyFollowups ? '#0D3839' : '#E6E6E1'),
+                background: onlyFollowups ? '#173B32' : '#FFFFFF',
+                color: onlyFollowups ? '#EFE3C2' : '#6B8585',
+                border: '1px solid ' + (onlyFollowups ? '#173B32' : '#E6E6E1'),
                 padding: '8px 14px',
                 borderRadius: 999,
               }}
@@ -1069,8 +1069,8 @@ export default function LeadsView() {
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{
-                    background: onlyFollowups ? '#F4F99D' : '#FEF2F2',
-                    color: onlyFollowups ? '#0D3839' : '#B91C1C',
+                    background: onlyFollowups ? '#EFE3C2' : '#FEF2F2',
+                    color: onlyFollowups ? '#173B32' : '#B91C1C',
                   }}
                 >
                   {followupCount}
@@ -1086,9 +1086,9 @@ export default function LeadsView() {
                   title="Mostrar só os leads com etiqueta alunos"
                   className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
                   style={{
-                    background: on ? '#0D3839' : '#FFFFFF',
-                    color: on ? '#F4F99D' : '#6B8585',
-                    border: '1px solid ' + (on ? '#0D3839' : '#E6E6E1'),
+                    background: on ? '#173B32' : '#FFFFFF',
+                    color: on ? '#EFE3C2' : '#6B8585',
+                    border: '1px solid ' + (on ? '#173B32' : '#E6E6E1'),
                     padding: '8px 14px',
                     borderRadius: 999,
                   }}
@@ -1098,8 +1098,8 @@ export default function LeadsView() {
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{
-                        background: on ? '#F4F99D' : '#EEF3E0',
-                        color: on ? '#0D3839' : '#4A5A2A',
+                        background: on ? '#EFE3C2' : '#EEF3E0',
+                        color: on ? '#173B32' : '#4A5A2A',
                       }}
                     >
                       {n}
@@ -1127,8 +1127,8 @@ export default function LeadsView() {
                     onClick={() => setActivityDays(o.d)}
                     className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all"
                     style={{
-                      background: active ? '#0D3839' : 'transparent',
-                      color: active ? '#F4F99D' : '#6B8585',
+                      background: active ? '#173B32' : 'transparent',
+                      color: active ? '#EFE3C2' : '#6B8585',
                     }}
                   >
                     {o.label}
@@ -1149,7 +1149,7 @@ export default function LeadsView() {
                 type="checkbox"
                 checked={includeGroups}
                 onChange={(e) => setIncludeGroups(e.target.checked)}
-                className="accent-[#0D3839]"
+                className="accent-[#173B32]"
               />
               Incluir grupos
             </label>
@@ -1167,7 +1167,7 @@ export default function LeadsView() {
                 type="checkbox"
                 checked={includePessoal}
                 onChange={(e) => setIncludePessoal(e.target.checked)}
-                className="accent-[#0D3839]"
+                className="accent-[#173B32]"
               />
               Incluir pessoais
             </label>
@@ -1213,9 +1213,9 @@ export default function LeadsView() {
                 onClick={() => setSourceMenuOpen((o) => !o)}
                 className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
                 style={{
-                  background: sourceFilter ? '#0D3839' : '#FFFFFF',
-                  color: sourceFilter ? '#F4F99D' : '#6B8585',
-                  border: '1px solid ' + (sourceFilter ? '#0D3839' : '#E6E6E1'),
+                  background: sourceFilter ? '#173B32' : '#FFFFFF',
+                  color: sourceFilter ? '#EFE3C2' : '#6B8585',
+                  border: '1px solid ' + (sourceFilter ? '#173B32' : '#E6E6E1'),
                   padding: '8px 14px',
                   borderRadius: 999,
                 }}
@@ -1236,7 +1236,7 @@ export default function LeadsView() {
                           setSourceMenuOpen(false)
                         }}
                         className="w-full text-left px-3 py-2 text-[11px] font-bold"
-                        style={{ color: '#0D3839', borderBottom: '1px solid #F0F0EC' }}
+                        style={{ color: '#173B32', borderBottom: '1px solid #F0F0EC' }}
                       >
                         Todas as origens
                       </button>
@@ -1284,9 +1284,9 @@ export default function LeadsView() {
               onClick={() => setTagFilter(null)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all"
               style={{
-                background: tagFilter === null ? '#0D3839' : '#FFFFFF',
-                color: tagFilter === null ? '#F4F99D' : '#6B8585',
-                border: '1px solid ' + (tagFilter === null ? '#0D3839' : '#E6E6E1'),
+                background: tagFilter === null ? '#173B32' : '#FFFFFF',
+                color: tagFilter === null ? '#EFE3C2' : '#6B8585',
+                border: '1px solid ' + (tagFilter === null ? '#173B32' : '#E6E6E1'),
               }}
             >
               Todas
@@ -1297,17 +1297,17 @@ export default function LeadsView() {
                 onClick={() => setTagFilter(t === tagFilter ? null : t)}
                 className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all flex items-center gap-1"
                 style={{
-                  background: t === tagFilter ? '#0D3839' : '#FFFFFF',
-                  color: t === tagFilter ? '#F4F99D' : '#6B8585',
+                  background: t === tagFilter ? '#173B32' : '#FFFFFF',
+                  color: t === tagFilter ? '#EFE3C2' : '#6B8585',
                   border:
-                    '1px solid ' + (t === tagFilter ? '#0D3839' : '#E6E6E1'),
+                    '1px solid ' + (t === tagFilter ? '#173B32' : '#E6E6E1'),
                 }}
               >
                 <Tag size={10} />
                 {t}
                 <span
                   className="text-[10px] opacity-70"
-                  style={{ color: t === tagFilter ? '#F4F99D' : '#A8B5B0' }}
+                  style={{ color: t === tagFilter ? '#EFE3C2' : '#A8B5B0' }}
                 >
                   {n}
                 </span>
@@ -1349,8 +1349,8 @@ export default function LeadsView() {
                 onClick={() => setSortBy(s)}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors"
                 style={{
-                  background: sortBy === s ? '#0D3839' : 'transparent',
-                  color: sortBy === s ? '#F4F99D' : '#6B8585',
+                  background: sortBy === s ? '#173B32' : 'transparent',
+                  color: sortBy === s ? '#EFE3C2' : '#6B8585',
                 }}
               >
                 {s === 'recent' ? 'Recente' : s === 'value' ? 'Valor' : 'Nome'}
@@ -1367,8 +1367,8 @@ export default function LeadsView() {
               onClick={() => setViewMode('kanban')}
               className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
               style={{
-                background: viewMode === 'kanban' ? '#0D3839' : 'transparent',
-                color: viewMode === 'kanban' ? '#F4F99D' : '#6B8585',
+                background: viewMode === 'kanban' ? '#173B32' : 'transparent',
+                color: viewMode === 'kanban' ? '#EFE3C2' : '#6B8585',
               }}
               title="Quadro horizontal estilo Trello"
             >
@@ -1378,8 +1378,8 @@ export default function LeadsView() {
               onClick={() => setViewMode('list')}
               className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
               style={{
-                background: viewMode === 'list' ? '#0D3839' : 'transparent',
-                color: viewMode === 'list' ? '#F4F99D' : '#6B8585',
+                background: viewMode === 'list' ? '#173B32' : 'transparent',
+                color: viewMode === 'list' ? '#EFE3C2' : '#6B8585',
               }}
               title="Lista vertical compacta com grupos colapsáveis"
             >
@@ -1416,7 +1416,7 @@ export default function LeadsView() {
             <button
               onClick={() => setOnlyFollowups(false)}
               className="mt-4 text-[12px] font-bold px-4 py-2 rounded-lg"
-              style={{ background: '#0D3839', color: '#F4F99D' }}
+              style={{ background: '#173B32', color: '#EFE3C2' }}
             >
               Voltar pro pipeline
             </button>

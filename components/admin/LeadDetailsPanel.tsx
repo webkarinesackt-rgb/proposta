@@ -368,7 +368,7 @@ export default function LeadDetailsPanel({
                   href={`/p/${p.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-[#0D3839] underline mt-1 inline-block"
+                  className="text-[11px] text-[#173B32] underline mt-1 inline-block"
                 >
                   abrir proposta →
                 </a>

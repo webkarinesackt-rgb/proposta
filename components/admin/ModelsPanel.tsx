@@ -163,8 +163,8 @@ export default function ModelsPanel({
             }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors"
             style={{
-              background: tab === t.id ? '#0D3839' : '#F4F3EF',
-              color: tab === t.id ? '#F4F99D' : '#8AA09A',
+              background: tab === t.id ? '#173B32' : '#F4F3EF',
+              color: tab === t.id ? '#EFE3C2' : '#8AA09A',
             }}
           >
             {t.icon}
@@ -222,7 +222,7 @@ export default function ModelsPanel({
                       <button
                         onClick={() => startEdit(it as WaSnippet)}
                         title="Editar este modelo"
-                        className="text-[#8AA09A] hover:text-[#0D3839] flex-shrink-0"
+                        className="text-[#8AA09A] hover:text-[#173B32] flex-shrink-0"
                       >
                         <Pencil size={13} />
                       </button>
@@ -256,7 +256,7 @@ export default function ModelsPanel({
               setAdding(true)
             }}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border border-dashed"
-            style={{ borderColor: '#0D3839', color: '#0D3839' }}
+            style={{ borderColor: '#173B32', color: '#173B32' }}
           >
             <Plus size={13} />
             {tab === 'snippets' ? 'Nova mensagem' : 'Novo áudio'}
@@ -264,7 +264,7 @@ export default function ModelsPanel({
         ) : (
           <div className="flex flex-col gap-2.5">
             {editingId && (
-              <p className="text-[11px] font-bold text-[#0D3839]">✏️ Editando modelo</p>
+              <p className="text-[11px] font-bold text-[#173B32]">✏️ Editando modelo</p>
             )}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA09A] mb-1">
@@ -326,8 +326,8 @@ export default function ModelsPanel({
                   className="flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-[12px] font-semibold"
                   style={{
                     background: '#F4FAF8',
-                    border: '1px dashed #0D3839',
-                    color: '#0D3839',
+                    border: '1px dashed #173B32',
+                    color: '#173B32',
                   }}
                 >
                   <Upload size={14} className="flex-shrink-0" />
@@ -349,7 +349,7 @@ export default function ModelsPanel({
               <button
                 onClick={handleAdd}
                 className="flex-1 py-2 rounded-lg text-[11px] font-bold"
-                style={{ background: '#0D3839', color: '#F4F99D' }}
+                style={{ background: '#173B32', color: '#EFE3C2' }}
               >
                 {editingId ? 'Salvar alterações' : 'Salvar'}
               </button>

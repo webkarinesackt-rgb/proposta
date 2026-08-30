@@ -14,15 +14,15 @@ const T = {
   border: '#E6E6E1',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
-  accent: '#0D3839',
-  accentBright: '#F4F99D',
+  accent: '#173B32',
+  accentBright: '#EFE3C2',
 }
 
 /* ── helpers / mapas ─────────────────────────────────── */
 
 // Rampa categórica da marca: distinguível no gráfico, sem tom saturado.
 const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
-  landing_page:   { label: 'Landing Page',          color: '#0D3839' },
+  landing_page:   { label: 'Landing Page',          color: '#173B32' },
   site_completo:  { label: 'Site Completo',         color: '#6E7A2E' },
   mensal:         { label: 'Mensal',                color: '#B08A3E' },
   posicionamento: { label: 'Posicionamento online', color: '#4E7F7A' },
@@ -32,7 +32,7 @@ const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
 // Mesma paleta de status da tela de Propostas (derivada da marca).
 const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }> = {
   draft:    { label: 'Rascunho',     color: '#7A8985' },
-  sent:     { label: 'Enviadas',     color: '#0D3839' },
+  sent:     { label: 'Enviadas',     color: '#173B32' },
   viewed:   { label: 'Visualizadas', color: '#6E7A2E' },
   accepted: { label: 'Aceitas',      color: '#2F6B4F' },
   rejected: { label: 'Rejeitadas',   color: '#9C5A48' },
@@ -411,7 +411,7 @@ export default function RelatoriosView() {
                 label="Pipeline pendente"
                 value={fmtBRL(totalSent)}
                 icon={<Send size={15} />}
-                accent="#0D3839"
+                accent="#173B32"
                 sub="enviadas / visualizadas"
               />
               <MetricCard

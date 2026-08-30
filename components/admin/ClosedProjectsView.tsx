@@ -241,14 +241,14 @@ export default function ClosedProjectsView() {
             <button
               onClick={() => setShowPicker(true)}
               className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: '#FFFFFF', color: '#0D3839', border: '1px solid #E6E6E1' }}
+              style={{ background: '#FFFFFF', color: '#173B32', border: '1px solid #E6E6E1' }}
             >
               <FileText size={14} /> Puxar de proposta
             </button>
             <button
               onClick={addBlank}
               className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: '#0D3839', color: '#F4F99D' }}
+              style={{ background: '#173B32', color: '#EFE3C2' }}
             >
               <Plus size={14} /> Nova linha
             </button>
@@ -275,9 +275,9 @@ export default function ClosedProjectsView() {
                 }}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
                 style={{
-                  background: active ? '#0D3839' : '#FFFFFF',
-                  color: active ? '#F4F99D' : '#6B8585',
-                  border: '1px solid ' + (active ? '#0D3839' : '#E6E6E1'),
+                  background: active ? '#173B32' : '#FFFFFF',
+                  color: active ? '#EFE3C2' : '#6B8585',
+                  border: '1px solid ' + (active ? '#173B32' : '#E6E6E1'),
                 }}
               >
                 {o.label}
@@ -291,9 +291,9 @@ export default function ClosedProjectsView() {
             title="Mês específico do fechamento"
             className="text-[11px] font-semibold px-3 py-1.5 rounded-full outline-none"
             style={{
-              background: specificMonth ? '#0D3839' : '#FFFFFF',
-              color: specificMonth ? '#F4F99D' : '#6B8585',
-              border: '1px solid ' + (specificMonth ? '#0D3839' : '#E6E6E1'),
+              background: specificMonth ? '#173B32' : '#FFFFFF',
+              color: specificMonth ? '#EFE3C2' : '#6B8585',
+              border: '1px solid ' + (specificMonth ? '#173B32' : '#E6E6E1'),
             }}
           />
         </div>
@@ -303,7 +303,7 @@ export default function ClosedProjectsView() {
           <StatCard label="Total fechado" value={fmtBRL(totals.fechado)} accent="#137A3F" />
           <StatCard label="Recebido" value={fmtBRL(totals.recebido)} accent="#0F6B39" />
           <StatCard label="A receber" value={fmtBRL(totals.aReceber)} accent="#B45309" />
-          <StatCard label="Projetos fechados" value={String(totals.count)} accent="#0D3839" />
+          <StatCard label="Projetos fechados" value={String(totals.count)} accent="#173B32" />
           <StatCard label="Em negociação" value={fmtBRL(totals.negociacao)} accent="#8A6A2A" />
         </div>
 
@@ -465,7 +465,7 @@ function Row({
               rel="noopener"
               title="Abrir proposta"
               className="flex-shrink-0"
-              style={{ color: '#0D3839' }}
+              style={{ color: '#173B32' }}
             >
               <ExternalLink size={13} />
             </a>
@@ -475,7 +475,7 @@ function Row({
               disabled={creating}
               title="Criar uma proposta (já como Aceita) pra entrar nas métricas de fechamento"
               className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: '#EEF3E0', color: '#0D3839', whiteSpace: 'nowrap' }}
+              style={{ background: '#EEF3E0', color: '#173B32', whiteSpace: 'nowrap' }}
             >
               <Plus size={11} />
               {creating ? 'Criando…' : 'Criar proposta'}
@@ -735,7 +735,7 @@ notify pgrst, 'reload schema';`
       </p>
       <pre
         className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto"
-        style={{ background: '#0D3839', color: '#EAF3E9' }}
+        style={{ background: '#173B32', color: '#EAF3E9' }}
       >
         {sql}
       </pre>
@@ -748,14 +748,14 @@ notify pgrst, 'reload schema';`
             })
           }}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#F4F3EF', color: '#0D3839', border: '1px solid #E6E6E1' }}
+          style={{ background: '#F4F3EF', color: '#173B32', border: '1px solid #E6E6E1' }}
         >
           {copied ? 'Copiado!' : 'Copiar comando'}
         </button>
         <button
           onClick={onRetry}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#0D3839', color: '#F4F99D' }}
+          style={{ background: '#173B32', color: '#EFE3C2' }}
         >
           Já criei
         </button>

@@ -101,7 +101,7 @@ export function ImageUpload({ label, value, onChange, folder, hint, aspect = '1/
             className="w-full rounded-xl px-4 py-3 text-left transition-all"
             style={{
               background: dragging ? '#E8F4F1' : '#F4F3EF',
-              border: `1px dashed ${dragging ? '#0D3839' : '#C8CEC9'}`,
+              border: `1px dashed ${dragging ? '#173B32' : '#C8CEC9'}`,
               cursor: loading ? 'wait' : 'pointer',
             }}
           >

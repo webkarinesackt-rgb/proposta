@@ -11,8 +11,8 @@ const T = {
   border: '#E6E6E1',
   card: '#FFFFFF',
   bgSubtle: '#F4F3EF',
-  accent: '#0D3839',
-  accentBright: '#F4F99D',
+  accent: '#173B32',
+  accentBright: '#EFE3C2',
 }
 
 const LABEL =

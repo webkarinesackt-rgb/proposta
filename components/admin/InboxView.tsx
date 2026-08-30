@@ -22,8 +22,8 @@ const T = {
   bgSubtle: '#FAFAF8',
   // WhatsApp Web exato — fundo beige da área de mensagens
   conversationBg: '#EFEAE2',
-  accent: '#0D3839',
-  accentBright: '#F4F99D',
+  accent: '#173B32',
+  accentBright: '#EFE3C2',
   green: '#22C55E',
 }
 
@@ -668,13 +668,13 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
             className="m-2 mb-0 px-2.5 py-1.5 rounded-lg text-[11px] border-l-2"
             style={{
               background: mine ? 'rgba(255,255,255,0.08)' : '#FAFAF8',
-              borderColor: mine ? '#F4F99D' : T.accent,
+              borderColor: mine ? '#EFE3C2' : T.accent,
               color: mine ? 'rgba(255,255,255,0.85)' : T.textMuted,
             }}
           >
             <span
               className="font-semibold block leading-tight"
-              style={{ color: mine ? '#F4F99D' : T.accent, fontSize: 10 }}
+              style={{ color: mine ? '#EFE3C2' : T.accent, fontSize: 10 }}
             >
               {msg.quoted.fromMe ? 'Você' : msg.quoted.sender || 'Citação'}
             </span>
@@ -2115,7 +2115,7 @@ export default function InboxView() {
                 className="w-24 h-24 rounded-3xl flex items-center justify-center"
                 style={{
                   background:
-                    'radial-gradient(circle at 30% 25%, #F4F99D 0%, #C8E6E0 60%, #6BA89E 100%)',
+                    'radial-gradient(circle at 30% 25%, #EFE3C2 0%, #C8E6E0 60%, #6BA89E 100%)',
                   boxShadow: '0 8px 32px rgba(13,56,57,0.15)',
                 }}
               >
@@ -2125,7 +2125,7 @@ export default function InboxView() {
                     fontStyle: 'italic',
                     fontWeight: 700,
                     fontSize: 52,
-                    color: '#0D3839',
+                    color: '#173B32',
                     lineHeight: 1,
                   }}
                 >
