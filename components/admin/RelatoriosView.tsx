@@ -299,12 +299,6 @@ export default function RelatoriosView() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-20">
-        <p
-          className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
-          style={{ color: T.textDim }}
-        >
-          RELATÓRIO · PROPOSTAS
-        </p>
         <h1
           className="leading-none tracking-tight mb-2"
           style={{

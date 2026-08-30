@@ -13,6 +13,7 @@ import {
   Timer,
   Activity,
   ArrowRight,
+  ArrowUpRight,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -110,6 +111,81 @@ function MetricCard({
   )
 }
 
+/* ── overview card (visão geral) ────────────────────────── */
+
+function OverviewCard({
+  icon,
+  label,
+  value,
+  sub,
+  onClick,
+  urgent,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+  sub?: string
+  onClick?: () => void
+  urgent?: boolean
+}) {
+  const tone = urgent ? '#B45309' : T.textPrimary
+  return (
+    <div
+      onClick={onClick}
+      className="relative rounded-[24px] p-7 transition-all hover:-translate-y-0.5 cursor-pointer"
+      style={{
+        background: T.card,
+        border: `1px solid ${urgent ? 'rgba(180,83,9,0.22)' : T.border}`,
+        boxShadow: urgent
+          ? '0 4px 20px rgba(180,83,9,0.08), 0 1px 2px rgba(22,35,34,0.03)'
+          : '0 4px 16px rgba(22,35,34,0.04), 0 1px 2px rgba(22,35,34,0.03)',
+      }}
+    >
+      <div className="flex items-start justify-between mb-7">
+        <span
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{
+            background: '#FFFFFF',
+            color: tone,
+            boxShadow: `inset 0 0 0 1.5px ${urgent ? 'rgba(180,83,9,0.3)' : 'rgba(138,160,154,0.35)'}`,
+          }}
+        >
+          {icon}
+        </span>
+        <span
+          className="w-7 h-7 rounded-full flex items-center justify-center"
+          style={{ background: T.bgSubtle, color: T.textDim }}
+        >
+          <ArrowUpRight size={13} />
+        </span>
+      </div>
+      <p
+        className="leading-none"
+        style={{
+          fontFamily: '"ivypresto-display", Georgia, serif',
+          fontStyle: 'italic',
+          fontWeight: 500,
+          color: tone,
+          fontSize: 'clamp(2.3rem, 4.4vw, 2.9rem)',
+        }}
+      >
+        {value}
+      </p>
+      <p
+        className="text-[11px] font-bold uppercase tracking-wider mt-3"
+        style={{ color: T.textPrimary }}
+      >
+        {label}
+      </p>
+      {sub && (
+        <p className="text-[11px] mt-1" style={{ color: T.textDim }}>
+          {sub}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* ── sparkline ───────────────────────────────────────── */
 
 function Sparkline({ series }: { series: WaSeriesPoint[] }) {
@@ -156,44 +232,18 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
         y1={H - PAD_Y} y2={H - PAD_Y}
         stroke="#E6E6E1" strokeWidth={1} strokeDasharray="2 3"
       />
-      {/* received (azul) */}
-      <path d={area('received')} fill="#3B82F6" fillOpacity={0.08} />
-      <path d={path('received')} fill="none" stroke="#3B82F6" strokeWidth={1.5} strokeLinejoin="round" />
-      {/* sent (verde) */}
-      <path d={area('sent')} fill="#22C55E" fillOpacity={0.08} />
-      <path d={path('sent')} fill="none" stroke="#22C55E" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* received */}
+      <path d={area('received')} fill="#0D3839" fillOpacity={0.08} />
+      <path d={path('received')} fill="none" stroke="#0D3839" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* sent */}
+      <path d={area('sent')} fill="#A65A3C" fillOpacity={0.08} />
+      <path d={path('sent')} fill="none" stroke="#A65A3C" strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
   )
 }
 
 
 /* ── main ────────────────────────────────────────────── */
-
-function AvisoLine({
-  n,
-  label,
-  onClick,
-  danger,
-}: {
-  n: number
-  label: string
-  onClick: () => void
-  danger?: boolean
-}) {
-  return (
-    <button onClick={onClick} className="flex items-center gap-2.5 text-left w-full group">
-      <span
-        className="text-[16px] font-bold tabular-nums text-center"
-        style={{ color: danger ? '#B45309' : '#A8B5B0', minWidth: 24 }}
-      >
-        {n}
-      </span>
-      <span className="text-[12px] group-hover:underline" style={{ color: '#6B8585' }}>
-        {label}
-      </span>
-    </button>
-  )
-}
 
 export default function DashboardView() {
   const router = useRouter()
@@ -309,12 +359,6 @@ export default function DashboardView() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-10 pb-20">
-        <p
-          className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
-          style={{ color: T.textDim }}
-        >
-          DASHBOARD · WHATSAPP
-        </p>
         <h1
           className="leading-none tracking-tight mb-2"
           style={{
@@ -325,10 +369,10 @@ export default function DashboardView() {
             color: T.textPrimary,
           }}
         >
-          Métricas
+          Visão geral
         </h1>
         <p className="text-[13px] mb-6" style={{ color: T.textMuted }}>
-          Termômetro do seu atendimento no WhatsApp.
+          Tudo que precisa da sua atenção agora.
         </p>
 
         {/* ações rápidas */}
@@ -349,56 +393,42 @@ export default function DashboardView() {
           </button>
         </div>
 
-        {/* este mês + avisos da semana */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-8">
-          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
-              Enviadas este mês
-            </p>
-            <p className="text-[30px] font-bold leading-none mt-2" style={{ color: T.textPrimary }}>
-              {monthStats.enviadas}
-            </p>
-            <p className="text-[11px] mt-1.5" style={{ color: T.textMuted }}>propostas criadas</p>
-          </div>
-          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
-              Aceitas este mês
-            </p>
-            <p className="text-[30px] font-bold leading-none mt-2" style={{ color: '#137A3F' }}>
-              {monthStats.aceitas}
-            </p>
-            <p className="text-[11px] mt-1.5" style={{ color: T.textMuted }}>
-              {monthStats.enviadas > 0
-                ? `${Math.round((monthStats.aceitas / monthStats.enviadas) * 100)}% de conversão`
-                : 'fechamentos do mês'}
-            </p>
-          </div>
-          {/* avisos da semana */}
-          <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: T.textDim }}>
-              Pra fazer
-            </p>
-            <div className="flex flex-col gap-2">
-              <AvisoLine
-                n={followupsDue}
-                label="follow-ups pra hoje/atrasados"
-                onClick={() => router.push('/admin/leads')}
-                danger={followupsDue > 0}
-              />
-              <AvisoLine
-                n={unansweredFixed ?? 0}
-                label="conversas sem resposta"
-                onClick={() => router.push('/admin/inbox?filter=unanswered')}
-                danger={(unansweredFixed ?? 0) > 0}
-              />
-              <AvisoLine
-                n={monthStats.expiring}
-                label="propostas vencendo (7 dias)"
-                onClick={() => router.push('/admin')}
-                danger={monthStats.expiring > 0}
-              />
-            </div>
-          </div>
+        {/* visão geral: aguardando resposta (destaque) + enviadas + pra fazer */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+          <OverviewCard
+            icon={<MessageSquare size={15} />}
+            label="Aguardando resposta"
+            value={unansweredFixed ?? 0}
+            sub={
+              data
+                ? `conversas esperando você · espera máx. ${fmtWait(data.longestWaitH)}`
+                : 'conversas esperando você'
+            }
+            onClick={() => router.push('/admin/inbox?filter=unanswered')}
+            urgent={(unansweredFixed ?? 0) > 0}
+          />
+          <OverviewCard
+            icon={<Send size={15} />}
+            label="Propostas enviadas"
+            value={monthStats.enviadas}
+            sub={
+              monthStats.enviadas > 0
+                ? `${monthStats.aceitas} aceitas · ${Math.round((monthStats.aceitas / monthStats.enviadas) * 100)}% de conversão`
+                : 'nenhuma este mês'
+            }
+            onClick={() => router.push('/admin')}
+          />
+          <OverviewCard
+            icon={<Clock size={15} />}
+            label="Pra fazer"
+            value={followupsDue}
+            sub={
+              monthStats.expiring > 0
+                ? `follow-ups pra hoje · +${monthStats.expiring} proposta${monthStats.expiring > 1 ? 's' : ''} vencendo`
+                : 'follow-ups pra hoje/atrasados'
+            }
+            onClick={() => router.push('/admin/leads')}
+          />
         </div>
 
         {/* period tabs */}
@@ -442,70 +472,6 @@ export default function DashboardView() {
           </p>
         ) : (
           <>
-            {/* hero card: não respondidas */}
-            <div
-              onClick={() => router.push('/admin/inbox?filter=unanswered')}
-              className="rounded-2xl p-7 mb-3 cursor-pointer transition-transform hover:-translate-y-0.5"
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #FCA5A5',
-                boxShadow: '0 4px 16px rgba(239,68,68,0.06)',
-              }}
-            >
-              <div className="flex items-start justify-between gap-6 flex-wrap">
-                <div>
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
-                    style={{ color: '#DC2626' }}
-                  >
-                    <AlertCircle size={12} />
-                    Aguardando sua resposta
-                  </p>
-                  <p
-                    className="font-bold leading-none"
-                    style={{
-                      color: '#DC2626',
-                      fontSize: 'clamp(3rem, 7vw, 4.5rem)',
-                    }}
-                  >
-                    {unansweredFixed ?? data.unanswered}
-                  </p>
-                  <p
-                    className="text-[12px] mt-3"
-                    style={{ color: T.textMuted }}
-                  >
-                    {(unansweredFixed ?? data.unanswered) === 1
-                      ? 'conversa esperando sua resposta'
-                      : 'conversas esperando sua resposta'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2"
-                    style={{ color: T.textDim }}
-                  >
-                    Maior espera
-                  </p>
-                  <p
-                    className="font-bold leading-none"
-                    style={{
-                      color: '#DC2626',
-                      fontSize: 'clamp(1.6rem, 3vw, 2.2rem)',
-                    }}
-                  >
-                    {fmtWait(data.longestWaitH)}
-                  </p>
-                </div>
-              </div>
-              <div
-                className="mt-5 inline-flex items-center gap-2 text-[12px] font-bold"
-                style={{ color: T.accent }}
-              >
-                Abrir essas conversas
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
             {/* main grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
               <MetricCard
@@ -523,14 +489,14 @@ export default function DashboardView() {
                 label="Recebidas"
                 value={data.received}
                 icon={<Inbox size={15} />}
-                accent="#3B82F6"
+                accent="#0D3839"
                 sub={periodSub}
               />
               <MetricCard
                 label="Enviadas"
                 value={data.sent}
                 icon={<Send size={15} />}
-                accent="#22C55E"
+                accent="#A65A3C"
                 sub={periodSub}
               />
             </div>
@@ -565,11 +531,11 @@ export default function DashboardView() {
                   </span>
                   <div className="flex items-center gap-3 text-[10px]" style={{ color: T.textMuted }}>
                     <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#3B82F6' }} />
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#0D3839' }} />
                       Recebidas
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#A65A3C' }} />
                       Enviadas
                     </span>
                   </div>

@@ -1001,9 +1001,6 @@ export default function LeadsView() {
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8AA09A] mb-3">
-              PIPELINE · LEADS
-            </p>
             <h1
               className="leading-none tracking-tight"
               style={{
