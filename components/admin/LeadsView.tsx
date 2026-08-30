@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
-import { waServer, WaChat, LEAD_STATUSES, STATUS_META } from '@/lib/waServer'
+import { waServer, WaChat, LEAD_STATUSES, LEAD_SOURCES, STATUS_META } from '@/lib/waServer'
 import { useToast } from '@/lib/useToast'
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -718,6 +718,15 @@ function KanbanCard({
             {chat.value ? fmtBRL(chat.value) : '+ R$'}
           </button>
         )}
+        {chat.source && (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5"
+            style={{ background: '#EAF1FB', color: '#2456A6' }}
+            title={`Origem: ${chat.source}`}
+          >
+            📍 {chat.source}
+          </span>
+        )}
         {visibleTags(chat).slice(0, 2).map((t) => (
           <span
             key={t}
@@ -748,6 +757,8 @@ export default function LeadsView() {
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [onlyFollowups, setOnlyFollowups] = useState(false)
   const [respFilter, setRespFilter] = useState<string | null>(null) // multi-atendimento
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null) // origem do lead
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
   // janela de atividade: só mostra leads mexidos nos últimos N dias (0 = todos).
@@ -881,12 +892,16 @@ export default function LeadsView() {
       if (!includeGroups && c.isGroup) continue
       if (tagFilter && !(c.tags || []).includes(tagFilter)) continue
       if (respFilter && getResponsavel(c) !== respFilter) continue
+      if (sourceFilter) {
+        const src = (c.source || '').trim()
+        if (sourceFilter === '__none__' ? src !== '' : src !== sourceFilter) continue
+      }
       if (onlyFollowups && !isFollowupDue(c)) continue
       // janela de atividade: no browse padrão mostra só leads recentes (rápido).
       // Busca e filtros explícitos (etiqueta/responsável/follow-up) veem tudo.
       // Exceção: cards em coluna por etiqueta (follow-up/alunos) sempre aparecem,
       // mesmo antigos — senão sumiriam da própria coluna onde você os colocou.
-      if (activityDays > 0 && !q && !tagFilter && !respFilter && !onlyFollowups) {
+      if (activityDays > 0 && !q && !tagFilter && !respFilter && !sourceFilter && !onlyFollowups) {
         const inVirtualCol = (c.tags || []).some((t) => VIRTUAL_TAGS.includes(t))
         if (!inVirtualCol) {
           const cutoff = Date.now() / 1000 - activityDays * 86400
@@ -908,7 +923,20 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, onlyFollowups, search, sortBy, activityDays])
+  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, sourceFilter, onlyFollowups, search, sortBy, activityDays])
+
+  // contagem de leads por origem (pra ver de onde vem mais)
+  const sourceCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const c of chats) {
+      if (c.archived) continue
+      if (!includeGroups && c.isGroup) continue
+      if ((c.tags || []).includes('pessoal')) continue
+      const src = (c.source || '').trim()
+      if (src) m.set(src, (m.get(src) || 0) + 1)
+    }
+    return m
+  }, [chats, includeGroups])
 
   const followupCount = useMemo(
     () =>
@@ -1180,6 +1208,71 @@ export default function LeadsView() {
                   </button>
                 )
               })}
+            </div>
+
+            {/* filtro por origem do lead */}
+            <div className="relative">
+              <button
+                onClick={() => setSourceMenuOpen((o) => !o)}
+                className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
+                style={{
+                  background: sourceFilter ? '#0D3839' : '#FFFFFF',
+                  color: sourceFilter ? '#F4F99D' : '#6B8585',
+                  border: '1px solid ' + (sourceFilter ? '#0D3839' : '#E6E6E1'),
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                }}
+              >
+                📍 {sourceFilter === '__none__' ? 'Sem origem' : sourceFilter || 'Origem'}
+              </button>
+              {sourceMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setSourceMenuOpen(false)} />
+                  <div
+                    className="absolute z-40 top-full mt-1.5 left-0 w-56 rounded-xl py-1 max-h-72 overflow-y-auto thin-scroll"
+                    style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', boxShadow: '0 12px 32px rgba(0,0,0,0.12)' }}
+                  >
+                    {sourceFilter && (
+                      <button
+                        onClick={() => {
+                          setSourceFilter(null)
+                          setSourceMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-2 text-[11px] font-bold"
+                        style={{ color: '#0D3839', borderBottom: '1px solid #F0F0EC' }}
+                      >
+                        Todas as origens
+                      </button>
+                    )}
+                    {LEAD_SOURCES.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          setSourceFilter(s)
+                          setSourceMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-[#FAFAF8] transition-colors"
+                        style={{ background: sourceFilter === s ? '#FAFAF8' : 'transparent' }}
+                      >
+                        <span className="text-[12px]" style={{ color: '#162322' }}>{s}</span>
+                        <span className="text-[10px] font-bold" style={{ color: '#A8B5B0' }}>
+                          {sourceCounts.get(s) || 0}
+                        </span>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setSourceFilter('__none__')
+                        setSourceMenuOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-[12px] hover:bg-[#FAFAF8] transition-colors"
+                      style={{ color: '#6B8585', borderTop: '1px solid #F0F0EC' }}
+                    >
+                      Sem origem definida
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
