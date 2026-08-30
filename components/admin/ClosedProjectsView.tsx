@@ -11,7 +11,9 @@ import {
   TableMissingError,
 } from '@/lib/closedProjectsStore'
 import { proposalStore } from '@/lib/proposalStore'
+import { mockProposal } from '@/lib/mockData'
 import { Proposal } from '@/lib/types'
+import { useToast } from '@/lib/useToast'
 
 /* ── opções coloridas (espelham a planilha atual) ─────── */
 
@@ -62,6 +64,8 @@ export default function ClosedProjectsView() {
   const [needsSetup, setNeedsSetup] = useState(false)
   const [search, setSearch] = useState('')
   const [showPicker, setShowPicker] = useState(false)
+  const [creatingId, setCreatingId] = useState<string | null>(null)
+  const { show: showToast, Toast } = useToast()
 
   useEffect(() => {
     load()
@@ -116,6 +120,47 @@ export default function ClosedProjectsView() {
     }
   }
 
+  // Cria uma proposta (já como Aceita) a partir de uma linha de Fechados que
+  // não veio de proposta — assim ela entra nas métricas de fechamento.
+  async function createProposalFromRow(row: ClosedProject) {
+    if (creatingId) return
+    setCreatingId(row.id)
+    try {
+      const base = JSON.parse(JSON.stringify(mockProposal)) as Proposal
+      const plan0 = base.selected_plans?.[0]
+      base.id = ''
+      base.slug = ''
+      base.client_name = row.client_name || 'Cliente'
+      base.status = 'accepted'
+      base.selected_plans = [
+        {
+          ...plan0,
+          id: 'p1',
+          name: row.plan_name || 'Projeto fechado',
+          price_cash: row.value || 0,
+          is_recommended: true,
+        },
+      ]
+      const saved = await proposalStore.save(base)
+      const link = proposalLink(saved.slug)
+      await closedProjectsStore.update(row.id, {
+        proposal_id: saved.id,
+        proposal_link: link,
+      })
+      setRows((rs) =>
+        rs.map((r) =>
+          r.id === row.id ? { ...r, proposal_id: saved.id, proposal_link: link } : r,
+        ),
+      )
+      showToast('Proposta criada e vinculada ✓')
+    } catch (e) {
+      console.error('[createProposalFromRow]', e)
+      showToast('Erro ao criar proposta', { kind: 'error' })
+    } finally {
+      setCreatingId(null)
+    }
+  }
+
   async function removeRow(id: string) {
     setRows((rs) => rs.filter((r) => r.id !== id))
     try {
@@ -153,6 +198,7 @@ export default function ClosedProjectsView() {
 
   return (
     <div className="flex flex-col h-full" style={{ background: '#F7F7F4' }}>
+      <Toast />
       {/* header */}
       <div className="px-5 md:px-8 pt-6 pb-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -258,6 +304,8 @@ export default function ClosedProjectsView() {
                       row={r}
                       onPatch={(p) => patchRow(r.id, p)}
                       onRemove={() => removeRow(r.id)}
+                      onCreateProposal={() => createProposalFromRow(r)}
+                      creating={creatingId === r.id}
                     />
                   ))}
                 </tbody>
@@ -283,10 +331,14 @@ function Row({
   row,
   onPatch,
   onRemove,
+  onCreateProposal,
+  creating,
 }: {
   row: ClosedProject
   onPatch: (p: Partial<ClosedProject>) => void
   onRemove: () => void
+  onCreateProposal: () => void
+  creating: boolean
 }) {
   const cm = contractMeta(row.contract_status)
   const pm = paymentMeta(row.payment_method)
@@ -336,7 +388,7 @@ function Row({
             onSave={(v) => onPatch({ plan_name: v })}
             placeholder="Qual plano"
           />
-          {row.proposal_link && (
+          {row.proposal_link ? (
             <a
               href={row.proposal_link}
               target="_blank"
@@ -347,6 +399,17 @@ function Row({
             >
               <ExternalLink size={13} />
             </a>
+          ) : (
+            <button
+              onClick={onCreateProposal}
+              disabled={creating}
+              title="Criar uma proposta (já como Aceita) pra entrar nas métricas de fechamento"
+              className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: '#EEF3E0', color: '#0D3839', whiteSpace: 'nowrap' }}
+            >
+              <Plus size={11} />
+              {creating ? 'Criando…' : 'Criar proposta'}
+            </button>
           )}
         </div>
       </Td>
