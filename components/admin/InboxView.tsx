@@ -1512,7 +1512,8 @@ export default function InboxView() {
         continue
       }
       if (c.isGroup) groups++
-      else if (!c.fromMeLast && !c.ignored) unanswered++
+      else if (!c.fromMeLast && !c.ignored && !(c.tags || []).includes('pessoal'))
+        unanswered++
       // "resp:*" é responsável e "followup" é coluna do Kanban — nenhum é
       // etiqueta comum, então não entram na lista de etiquetas.
       for (const t of c.tags || [])
@@ -1545,7 +1546,7 @@ export default function InboxView() {
       if (chatFilter === 'archived') return !!c.archived
       if (c.archived) return false
       if (chatFilter === 'groups') return c.isGroup
-      if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored)) return false
+      if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored || (c.tags || []).includes('pessoal'))) return false
       return true
     })
   }, [chats, search, searchHits, tagFilter, chatFilter, respFilter])
