@@ -13,6 +13,7 @@ import {
 import { proposalStore } from '@/lib/proposalStore'
 import { mockProposal } from '@/lib/mockData'
 import { Proposal } from '@/lib/types'
+import { LEAD_SOURCES } from '@/lib/waServer'
 import { useToast } from '@/lib/useToast'
 
 /* ── opções coloridas (espelham a planilha atual) ─────── */
@@ -349,7 +350,7 @@ export default function ClosedProjectsView() {
             style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
           >
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[1240px]">
+              <table className="w-full border-collapse min-w-[1380px]">
                 <thead>
                   <tr style={{ background: '#F2F5EC' }}>
                     <Th>Cliente</Th>
@@ -360,6 +361,7 @@ export default function ClosedProjectsView() {
                     <Th>Contrato</Th>
                     <Th>Pagamento</Th>
                     <Th className="text-right">Valor</Th>
+                    <Th>Origem</Th>
                     <Th>Observação</Th>
                     <Th>Resp.</Th>
                     <Th className="w-8" />
@@ -520,6 +522,22 @@ function Row({
       {/* valor */}
       <Td className="text-right">
         <ValueInput value={row.value} onSave={(v) => onPatch({ value: v })} />
+      </Td>
+      {/* origem */}
+      <Td>
+        <select
+          value={row.source}
+          onChange={(e) => onPatch({ source: e.target.value })}
+          className="text-[12px] bg-transparent outline-none cursor-pointer"
+          style={{ color: row.source ? '#162322' : '#A8B5B0' }}
+        >
+          <option value="">—</option>
+          {LEAD_SOURCES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </Td>
       {/* observação */}
       <Td>
@@ -694,6 +712,7 @@ function SetupBanner({ onRetry }: { onRetry: () => void }) {
   contract_done boolean not null default false,
   value numeric not null default 0,
   responsavel text default '',
+  source text default '',
   proposal_id uuid,
   notes text default '',
   created_at timestamptz not null default now(),

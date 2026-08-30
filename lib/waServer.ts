@@ -71,8 +71,10 @@ export interface WaChatPatch {
 
 export const LEAD_SOURCES = [
   'Instagram',
-  'Indicação',
+  'Facebook/Meta Ads',
+  'Google Ads',
   'Tráfego pago',
+  'Indicação',
   'Site',
   'Orgânico (WhatsApp)',
   'Lista de espera',

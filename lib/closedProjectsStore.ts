@@ -27,6 +27,8 @@ export interface ClosedProject {
   contract_done: boolean
   value: number
   responsavel: string
+  /** origem do lead (Instagram, Meta Ads, Indicação…). */
+  source: string
   /** proposta de origem (quando puxado de uma proposta). */
   proposal_id: string | null
   notes: string
@@ -79,6 +81,7 @@ function rowToProject(row: Row): ClosedProject {
     contract_done: !!row.contract_done,
     value: Number(row.value) || 0,
     responsavel: row.responsavel ?? '',
+    source: row.source ?? '',
     proposal_id: row.proposal_id ?? null,
     notes: row.notes ?? '',
     created_at: row.created_at,
@@ -114,6 +117,7 @@ export const closedProjectsStore = {
       contract_done: patch.contract_done ?? false,
       value: patch.value ?? 0,
       responsavel: patch.responsavel ?? '',
+      source: patch.source ?? '',
       proposal_id: patch.proposal_id ?? null,
       notes: patch.notes ?? '',
     }
