@@ -1539,6 +1539,8 @@ export default function InboxView() {
         if (!nameMatch && !msgMatch) return false
       }
       if (tagFilter && !(c.tags || []).includes(tagFilter)) return false
+      // oculta contatos pessoais da lista (só aparecem ao filtrar por "pessoal")
+      if (tagFilter !== 'pessoal' && (c.tags || []).includes('pessoal')) return false
       if (respFilter) {
         const r = getResponsavel(c)
         if (respFilter === '__none__' ? r !== null : r !== respFilter) return false
@@ -1792,6 +1794,19 @@ export default function InboxView() {
                   </button>
                 )
               })}
+
+              {/* Atalho: filtrar Alunos */}
+              <button
+                onClick={() => setTagFilter(tagFilter === 'alunos' ? null : 'alunos')}
+                className="py-1.5 px-3 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1"
+                style={{
+                  background: tagFilter === 'alunos' ? T.accent : T.bgSubtle,
+                  color: tagFilter === 'alunos' ? T.accentBright : T.textMuted,
+                  border: `1px solid ${tagFilter === 'alunos' ? T.accent : T.border}`,
+                }}
+              >
+                🎓 Alunos
+              </button>
 
               {/* Dropdown de Etiquetas */}
               <div className="relative">
