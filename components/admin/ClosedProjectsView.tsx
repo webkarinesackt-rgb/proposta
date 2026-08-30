@@ -65,6 +65,9 @@ export default function ClosedProjectsView() {
   const [search, setSearch] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const [creatingId, setCreatingId] = useState<string | null>(null)
+  // filtro por mês do fechamento (closed_date): 'all' | 'this' | 'last' | 'YYYY-MM'
+  const [period, setPeriod] = useState<'all' | 'this' | 'last'>('all')
+  const [specificMonth, setSpecificMonth] = useState('')
   const { show: showToast, Toast } = useToast()
 
   useEffect(() => {
@@ -170,31 +173,51 @@ export default function ClosedProjectsView() {
     }
   }
 
+  // mês-alvo (YYYY-MM) conforme o filtro de período escolhido
+  const targetMonth = useMemo(() => {
+    if (specificMonth) return specificMonth
+    if (period === 'all') return null
+    const d = new Date()
+    if (period === 'last') d.setMonth(d.getMonth() - 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }, [period, specificMonth])
+
+  // filtra por mês do fechamento (closed_date). Usado nos totais e na tabela.
+  const periodFiltered = useMemo(() => {
+    if (!targetMonth) return rows
+    return rows.filter((r) => (r.closed_date || '').slice(0, 7) === targetMonth)
+  }, [rows, targetMonth])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) =>
+    if (!q) return periodFiltered
+    return periodFiltered.filter((r) =>
       [r.client_name, r.plan_name, r.notes, r.responsavel]
         .join(' ')
         .toLowerCase()
         .includes(q),
     )
-  }, [rows, search])
+  }, [periodFiltered, search])
 
+  // totais do período: total fechado, recebido (pago=100%, 50% pago=metade),
+  // a receber (o que falta do fechado) e em negociação.
   const totals = useMemo(() => {
     let fechado = 0,
       negociacao = 0,
+      recebido = 0,
       count = 0
-    for (const r of rows) {
+    for (const r of periodFiltered) {
       if (r.contract_status === 'fechado') {
         fechado += r.value
         count++
+        if (r.payment_method === 'pago') recebido += r.value
+        else if (r.payment_method === 'meio_pago') recebido += r.value / 2
       } else if (r.contract_status === 'negociacao') {
         negociacao += r.value
       }
     }
-    return { fechado, negociacao, count }
-  }, [rows])
+    return { fechado, negociacao, recebido, aReceber: Math.max(0, fechado - recebido), count }
+  }, [periodFiltered])
 
   return (
     <div className="flex flex-col h-full" style={{ background: '#F7F7F4' }}>
@@ -231,11 +254,56 @@ export default function ClosedProjectsView() {
           </div>
         </div>
 
+        {/* filtro por mês do fechamento */}
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A8B5B0' }}>
+            Período:
+          </span>
+          {([
+            { v: 'all', label: 'Tudo' },
+            { v: 'this', label: 'Este mês' },
+            { v: 'last', label: 'Mês passado' },
+          ] as const).map((o) => {
+            const active = !specificMonth && period === o.v
+            return (
+              <button
+                key={o.v}
+                onClick={() => {
+                  setPeriod(o.v)
+                  setSpecificMonth('')
+                }}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
+                style={{
+                  background: active ? '#0D3839' : '#FFFFFF',
+                  color: active ? '#F4F99D' : '#6B8585',
+                  border: '1px solid ' + (active ? '#0D3839' : '#E6E6E1'),
+                }}
+              >
+                {o.label}
+              </button>
+            )
+          })}
+          <input
+            type="month"
+            value={specificMonth}
+            onChange={(e) => setSpecificMonth(e.target.value)}
+            title="Mês específico do fechamento"
+            className="text-[11px] font-semibold px-3 py-1.5 rounded-full outline-none"
+            style={{
+              background: specificMonth ? '#0D3839' : '#FFFFFF',
+              color: specificMonth ? '#F4F99D' : '#6B8585',
+              border: '1px solid ' + (specificMonth ? '#0D3839' : '#E6E6E1'),
+            }}
+          />
+        </div>
+
         {/* totais */}
         <div className="flex items-center gap-2.5 mt-4 flex-wrap">
           <StatCard label="Total fechado" value={fmtBRL(totals.fechado)} accent="#137A3F" />
+          <StatCard label="Recebido" value={fmtBRL(totals.recebido)} accent="#0F6B39" />
+          <StatCard label="A receber" value={fmtBRL(totals.aReceber)} accent="#B45309" />
           <StatCard label="Projetos fechados" value={String(totals.count)} accent="#0D3839" />
-          <StatCard label="Em negociação" value={fmtBRL(totals.negociacao)} accent="#B45309" />
+          <StatCard label="Em negociação" value={fmtBRL(totals.negociacao)} accent="#8A6A2A" />
         </div>
 
         {/* busca */}
