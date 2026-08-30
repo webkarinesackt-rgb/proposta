@@ -57,61 +57,7 @@ function fmtWait(h: number) {
   return `${Math.floor(h / 24)}d`
 }
 
-/* ── card ────────────────────────────────────────────── */
-
-function MetricCard({
-  label,
-  value,
-  icon,
-  sub,
-  accent,
-  onClick,
-}: {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  sub?: string
-  accent?: string
-  onClick?: () => void
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className="rounded-2xl p-5 transition-all"
-      style={{
-        background: T.card,
-        border: `1px solid ${T.border}`,
-        cursor: onClick ? 'pointer' : 'default',
-      }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: T.textDim }}
-        >
-          {label}
-        </span>
-        <span style={{ color: T.textDim }}>{icon}</span>
-      </div>
-      <p
-        className="font-bold leading-none tracking-tight"
-        style={{
-          color: accent ?? T.textPrimary,
-          fontSize: 'clamp(2rem, 4vw, 2.6rem)',
-        }}
-      >
-        {value}
-      </p>
-      {sub && (
-        <p className="text-[11px] mt-2" style={{ color: T.textDim }}>
-          {sub}
-        </p>
-      )}
-    </div>
-  )
-}
-
-/* ── overview card (visão geral) ────────────────────────── */
+/* ── card (usado em toda a página — número sempre no mesmo estilo) ── */
 
 function OverviewCard({
   icon,
@@ -132,31 +78,30 @@ function OverviewCard({
   return (
     <div
       onClick={onClick}
-      className="relative rounded-[24px] p-7 transition-all hover:-translate-y-0.5 cursor-pointer"
+      className="relative rounded-2xl p-5 transition-all"
       style={{
         background: T.card,
         border: `1px solid ${urgent ? 'rgba(180,83,9,0.22)' : T.border}`,
-        boxShadow: urgent
-          ? '0 4px 20px rgba(180,83,9,0.08), 0 1px 2px rgba(22,35,34,0.03)'
-          : '0 4px 16px rgba(22,35,34,0.04), 0 1px 2px rgba(22,35,34,0.03)',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
-      <div className="flex items-start justify-between mb-7">
+      <div className="flex items-center justify-between mb-4">
         <span
-          className="w-11 h-11 rounded-full flex items-center justify-center"
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
-            background: '#FFFFFF',
+            background: T.bgSubtle,
             color: tone,
-            boxShadow: `inset 0 0 0 1.5px ${urgent ? 'rgba(180,83,9,0.3)' : 'rgba(138,160,154,0.35)'}`,
+            boxShadow: urgent ? 'inset 0 0 0 1.5px rgba(180,83,9,0.3)' : 'none',
           }}
         >
           {icon}
         </span>
         <span
-          className="w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ background: T.bgSubtle, color: T.textDim }}
+          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-right"
+          style={{ color: T.textDim }}
         >
-          <ArrowUpRight size={13} />
+          {label}
+          <ArrowUpRight size={11} />
         </span>
       </div>
       <p
@@ -166,19 +111,13 @@ function OverviewCard({
           fontStyle: 'italic',
           fontWeight: 500,
           color: tone,
-          fontSize: 'clamp(2.3rem, 4.4vw, 2.9rem)',
+          fontSize: 'clamp(1.9rem, 3.2vw, 2.35rem)',
         }}
       >
         {value}
       </p>
-      <p
-        className="text-[11px] font-bold uppercase tracking-wider mt-3"
-        style={{ color: T.textPrimary }}
-      >
-        {label}
-      </p>
       {sub && (
-        <p className="text-[11px] mt-1" style={{ color: T.textDim }}>
+        <p className="text-[11px] mt-1.5" style={{ color: T.textDim }}>
           {sub}
         </p>
       )}
@@ -232,12 +171,19 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
         y1={H - PAD_Y} y2={H - PAD_Y}
         stroke="#E6E6E1" strokeWidth={1} strokeDasharray="2 3"
       />
-      {/* received */}
-      <path d={area('received')} fill="#0D3839" fillOpacity={0.08} />
-      <path d={path('received')} fill="none" stroke="#0D3839" strokeWidth={1.5} strokeLinejoin="round" />
-      {/* sent */}
-      <path d={area('sent')} fill="#A65A3C" fillOpacity={0.08} />
-      <path d={path('sent')} fill="none" stroke="#A65A3C" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* received: linha cheia */}
+      <path d={area('received')} fill="#162322" fillOpacity={0.05} />
+      <path d={path('received')} fill="none" stroke="#162322" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* sent: linha tracejada, mesma tinta — diferencia sem precisar de 2ª cor */}
+      <path
+        d={path('sent')}
+        fill="none"
+        stroke="#162322"
+        strokeOpacity={0.45}
+        strokeWidth={1.5}
+        strokeDasharray="5 4"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -358,7 +304,7 @@ export default function DashboardView() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-10 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-8 pb-20">
         <h1
           className="leading-none tracking-tight mb-2"
           style={{
@@ -371,12 +317,12 @@ export default function DashboardView() {
         >
           Visão geral
         </h1>
-        <p className="text-[13px] mb-6" style={{ color: T.textMuted }}>
+        <p className="text-[13px] mb-5" style={{ color: T.textMuted }}>
           Tudo que precisa da sua atenção agora.
         </p>
 
         {/* ações rápidas */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="flex gap-2 mb-5 flex-wrap">
           <button
             onClick={() => router.push('/admin/new')}
             className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-opacity hover:opacity-90"
@@ -394,7 +340,7 @@ export default function DashboardView() {
         </div>
 
         {/* visão geral: aguardando resposta (destaque) + enviadas + pra fazer */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
           <OverviewCard
             icon={<MessageSquare size={15} />}
             label="Aguardando resposta"
@@ -474,41 +420,39 @@ export default function DashboardView() {
           <>
             {/* main grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-              <MetricCard
+              <OverviewCard
                 label="Conversas"
                 value={data.totalChats}
                 icon={<MessageSquare size={15} />}
               />
-              <MetricCard
+              <OverviewCard
                 label="Conversas ativas"
                 value={data.activeChats}
                 icon={<Activity size={15} />}
                 sub={periodSub}
               />
-              <MetricCard
+              <OverviewCard
                 label="Recebidas"
                 value={data.received}
                 icon={<Inbox size={15} />}
-                accent="#0D3839"
                 sub={periodSub}
               />
-              <MetricCard
+              <OverviewCard
                 label="Enviadas"
                 value={data.sent}
                 icon={<Send size={15} />}
-                accent="#A65A3C"
                 sub={periodSub}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MetricCard
+              <OverviewCard
                 label="Tempo médio de resposta"
                 value={fmtResponse(data.avgResponseMin)}
                 icon={<Clock size={15} />}
                 sub={`quanto seus clientes esperaram ${periodSub}`}
               />
-              <MetricCard
+              <OverviewCard
                 label="Volume"
                 value={`${data.received + data.sent}`}
                 icon={<Timer size={15} />}
@@ -530,12 +474,18 @@ export default function DashboardView() {
                     Volume {period === 'today' ? 'por hora' : 'por dia'}
                   </span>
                   <div className="flex items-center gap-3 text-[10px]" style={{ color: T.textMuted }}>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#0D3839' }} />
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block w-3 h-[1.5px]" style={{ background: '#162322' }} />
                       Recebidas
                     </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: '#A65A3C' }} />
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-3 h-[1.5px]"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(90deg, #162322 0 3px, transparent 3px 5px)',
+                          opacity: 0.55,
+                        }}
+                      />
                       Enviadas
                     </span>
                   </div>
