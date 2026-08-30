@@ -208,6 +208,7 @@ export default function DashboardView() {
                 !c.archived &&
                 !c.ignored &&
                 !c.fromMeLast &&
+                !(c.tags || []).includes('pessoal') &&
                 c.lastTime >= since
             ).length
           )
