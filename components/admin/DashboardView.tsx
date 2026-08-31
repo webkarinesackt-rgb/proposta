@@ -249,20 +249,24 @@ function TasksPanel() {
   }
 
   async function toggleDone(id: string) {
+    const prev = tasks
     setTasks((ts) => ts.filter((x) => x.id !== id))
     try {
       await taskStore.update(id, { done: true })
     } catch (e) {
       console.error('[tasks.done]', e)
+      setTasks(prev) // desfaz o otimista — a tarefa não sumiu de verdade
     }
   }
 
   async function removeTask(id: string) {
+    const prev = tasks
     setTasks((ts) => ts.filter((x) => x.id !== id))
     try {
       await taskStore.remove(id)
     } catch (e) {
       console.error('[tasks.remove]', e)
+      setTasks(prev)
     }
   }
 
@@ -556,22 +560,30 @@ export default function DashboardView() {
           <OverviewCard
             icon={<MessageSquare size={15} />}
             label="Aguardando resposta"
-            value={unansweredFixed ?? 0}
+            // "0" some antes de carregar de verdade daria falsa sensação de
+            // que está tudo em dia — mostra "—" enquanto não sabe o número
+            // real (ainda carregando, ou wa-server fora do ar).
+            value={serverOff ? '—' : unansweredFixed ?? '···'}
             sub={
-              data
+              serverOff
+                ? 'servidor do WhatsApp offline'
+                : data
                 ? `conversas esperando você · espera máx. ${fmtWait(data.longestWaitH)}`
                 : 'conversas esperando você'
             }
             onClick={() => router.push('/admin/inbox?filter=unanswered')}
-            urgent={(unansweredFixed ?? 0) > 0}
+            urgent={!serverOff && (unansweredFixed ?? 0) > 0}
           />
           <OverviewCard
             icon={<Send size={15} />}
             label="Propostas enviadas"
             value={monthStats.enviadas}
             sub={
+              // não é "% de conversão" de verdade — "aceitas" conta pela
+              // data em que aceitou, "enviadas" pela data de criação, são
+              // grupos diferentes de propostas. Sem dividir um pelo outro.
               monthStats.enviadas > 0
-                ? `${monthStats.aceitas} aceitas · ${Math.round((monthStats.aceitas / monthStats.enviadas) * 100)}% de conversão`
+                ? `${monthStats.aceitas} aceita${monthStats.aceitas !== 1 ? 's' : ''} este mês`
                 : 'nenhuma este mês'
             }
             onClick={() => router.push('/admin')}
@@ -587,6 +599,9 @@ export default function DashboardView() {
                 : 'follow-ups pra hoje/atrasados'
             }
             onClick={() => router.push('/admin/leads')}
+            // sinal de urgência sutil (âmbar), sem virar um 2º card lima
+            // brigando com "Aguardando resposta" pela atenção.
+            tone={followupsDue > 0 || monthStats.expiring > 0 ? '#B45309' : undefined}
           />
         </div>
 
