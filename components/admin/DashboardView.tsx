@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { waServer, WaDashboard, WaSeriesPoint } from '@/lib/waServer'
 import { proposalStore } from '@/lib/proposalStore'
+import { taskStore, Task, TaskTableMissingError } from '@/lib/taskStore'
 import {
   Inbox,
   MessageSquare,
@@ -14,6 +15,9 @@ import {
   Activity,
   ArrowRight,
   ArrowUpRight,
+  Plus,
+  Trash2,
+  ListChecks,
 } from 'lucide-react'
 
 /* ── tokens ──────────────────────────────────────────── */
@@ -188,6 +192,235 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
   )
 }
 
+
+/* ── tarefas/lembretes ───────────────────────────────── */
+
+const TASK_OWNERS = ['Karine', 'Tainá']
+
+function TaskSetupBanner({ onRetry }: { onRetry: () => void }) {
+  const sql = `create table if not exists public.tasks (
+  id uuid primary key default gen_random_uuid(),
+  title text not null default '',
+  due_date date,
+  owner text default '',
+  done boolean not null default false,
+  linked_chat_id text,
+  linked_chat_name text default '',
+  notes text default '',
+  created_at timestamptz not null default now()
+);
+notify pgrst, 'reload schema';`
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+      <p className="text-[13px] font-bold" style={{ color: T.textPrimary }}>
+        Falta um passo único pra ativar as tarefas (30 segundos)
+      </p>
+      <p className="text-[12px] mt-1.5 leading-relaxed" style={{ color: T.textMuted }}>
+        Copie o comando abaixo, cole no <b>SQL Editor</b> do Supabase e clique em
+        &quot;Run&quot;. Depois clique em &quot;Já criei&quot;.
+      </p>
+      <pre
+        className="text-[10px] mt-3 p-3 rounded-lg overflow-x-auto"
+        style={{ background: T.accent, color: T.accentBright }}
+      >
+        {sql}
+      </pre>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(sql).then(() => {
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            })
+          }}
+          className="text-[11px] font-bold px-3 py-2 rounded-lg"
+          style={{ background: T.bgSubtle, color: T.textPrimary, border: `1px solid ${T.border}` }}
+        >
+          {copied ? 'Copiado!' : 'Copiar comando'}
+        </button>
+        <button
+          onClick={onRetry}
+          className="text-[11px] font-bold px-3 py-2 rounded-lg"
+          style={{ background: T.accent, color: T.accentBright }}
+        >
+          Já criei
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function dueTone(dueDate: string): { label: string; color: string; bg: string } | null {
+  if (!dueDate) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const d = new Date(dueDate + 'T00:00:00')
+  const diffDays = Math.round((d.getTime() - today.getTime()) / 86400_000)
+  if (diffDays < 0) return { label: `atrasada ${Math.abs(diffDays)}d`, color: '#B45309', bg: 'rgba(180,83,9,0.1)' }
+  if (diffDays === 0) return { label: 'hoje', color: '#B45309', bg: 'rgba(180,83,9,0.1)' }
+  if (diffDays === 1) return { label: 'amanhã', color: T.textMuted, bg: T.bgSubtle }
+  return { label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), color: T.textMuted, bg: T.bgSubtle }
+}
+
+function TasksPanel() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const [title, setTitle] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [owner, setOwner] = useState('')
+
+  function load() {
+    setLoading(true)
+    taskStore
+      .getAll()
+      .then((t) => { setTasks(t); setNeedsSetup(false) })
+      .catch((e) => { if (e instanceof TaskTableMissingError) setNeedsSetup(true) })
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  async function addTask() {
+    const t = title.trim()
+    if (!t) return
+    setTitle('')
+    try {
+      const created = await taskStore.create({ title: t, due_date: dueDate, owner })
+      setTasks((ts) => [created, ...ts])
+      setDueDate('')
+    } catch (e) {
+      console.error('[tasks.create]', e)
+      setTitle(t)
+    }
+  }
+
+  async function toggleDone(id: string) {
+    setTasks((ts) => ts.filter((x) => x.id !== id))
+    try {
+      await taskStore.update(id, { done: true })
+    } catch (e) {
+      console.error('[tasks.done]', e)
+    }
+  }
+
+  async function removeTask(id: string) {
+    setTasks((ts) => ts.filter((x) => x.id !== id))
+    try {
+      await taskStore.remove(id)
+    } catch (e) {
+      console.error('[tasks.remove]', e)
+    }
+  }
+
+  const open = useMemo(() => tasks.filter((t) => !t.done), [tasks])
+
+  if (needsSetup) return <TaskSetupBanner onRetry={load} />
+
+  return (
+    <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+      <div className="flex items-center justify-between mb-3">
+        <p
+          className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+          style={{ color: T.textDim }}
+        >
+          <ListChecks size={13} />
+          Suas tarefas
+        </p>
+        {open.length > 0 && (
+          <span className="text-[11px]" style={{ color: T.textMuted }}>{open.length} em aberto</span>
+        )}
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-3">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addTask()}
+          placeholder="Nova tarefa — ex: Ligar pra Fulana sobre o contrato"
+          className="flex-1 min-w-[200px] text-[13px] px-3 py-2 rounded-lg outline-none"
+          style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+        />
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="text-[12px] px-2 py-2 rounded-lg outline-none"
+          style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+        />
+        <select
+          value={owner}
+          onChange={(e) => setOwner(e.target.value)}
+          className="text-[12px] px-2 py-2 rounded-lg outline-none"
+          style={{ background: T.bgSubtle, border: `1px solid ${T.border}`, color: T.textPrimary }}
+        >
+          <option value="">Quem</option>
+          {TASK_OWNERS.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <button
+          onClick={addTask}
+          className="flex items-center gap-1 text-[12px] font-bold px-3 py-2 rounded-lg"
+          style={{ background: T.accent, color: T.accentBright }}
+        >
+          <Plus size={14} />
+          Adicionar
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-[12px]" style={{ color: T.textDim }}>Carregando…</p>
+      ) : open.length === 0 ? (
+        <p className="text-[12px]" style={{ color: T.textDim }}>Nenhuma tarefa em aberto. 🎉</p>
+      ) : (
+        <div className="flex flex-col">
+          {open.map((t, i) => {
+            const tone = dueTone(t.due_date)
+            return (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 py-2.5 group"
+                style={{ borderTop: i > 0 ? `1px solid ${T.border}` : 'none' }}
+              >
+                <input
+                  type="checkbox"
+                  onChange={() => toggleDone(t.id)}
+                  className="w-4 h-4 flex-shrink-0 cursor-pointer"
+                  style={{ accentColor: T.accent }}
+                />
+                <span className="flex-1 min-w-0 truncate text-[13px]" style={{ color: T.textPrimary }}>
+                  {t.title}
+                </span>
+                {t.owner && (
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: T.bgSubtle, color: T.textMuted }}
+                  >
+                    {t.owner}
+                  </span>
+                )}
+                {tone && (
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ color: tone.color, background: tone.bg }}
+                  >
+                    {tone.label}
+                  </span>
+                )}
+                <button
+                  onClick={() => removeTask(t.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  style={{ color: T.textDim }}
+                  title="Excluir"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ── main ────────────────────────────────────────────── */
 
@@ -375,6 +608,11 @@ export default function DashboardView() {
             }
             onClick={() => router.push('/admin/leads')}
           />
+        </div>
+
+        {/* tarefas/lembretes */}
+        <div className="mb-5">
+          <TasksPanel />
         </div>
 
         {/* period tabs */}
