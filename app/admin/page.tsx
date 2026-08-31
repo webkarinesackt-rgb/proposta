@@ -616,16 +616,10 @@ export default function AdminDashboard() {
   const stats = {
     total: proposals.length,
     draft: proposals.filter((p) => p.status === 'draft').length,
-    // "Enviadas" no card de destaque = enviadas ESTE MÊS (mesma definição
-    // da Visão geral), não o total histórico — assim os números batem
-    // entre as duas telas.
-    sent: proposals.filter((p) => {
-      if (p.status === 'draft') return false
-      const ym = (p.created_at || '').slice(0, 7)
-      const now = new Date()
-      const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      return ym === thisYm
-    }).length,
+    // card de destaque: quem já ABRIU a proposta mas ainda não decidiu —
+    // é quem mais vale a pena chamar agora (mais acionável que só contar
+    // quantas foram enviadas).
+    viewed: proposals.filter((p) => p.status === 'viewed').length,
   }
 
   async function handleDelete(id: string) {
@@ -776,6 +770,7 @@ export default function AdminDashboard() {
     { value: 'all',      label: 'Todas' },
     { value: 'draft',    label: 'Rascunho' },
     { value: 'sent',     label: 'Enviadas' },
+    { value: 'viewed',   label: 'Vistas' },
     { value: 'accepted', label: 'Aceitas' },
     { value: 'expired',  label: 'Expiradas' },
   ]
@@ -846,7 +841,13 @@ export default function AdminDashboard() {
             label="Rascunhos"
             onClick={() => setFilter('draft')}
           />
-          <Stat icon={<Send size={15} />} value={stats.sent} label="Enviadas este mês" highlight />
+          <Stat
+            icon={<Eye size={15} />}
+            value={stats.viewed}
+            label="Vistas · aguardando decisão"
+            onClick={() => setFilter('viewed')}
+            highlight
+          />
         </div>
 
         {/* busca */}
