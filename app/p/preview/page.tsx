@@ -72,7 +72,7 @@ export default function PreviewPage() {
         </Link>
       </div>
 
-      <ProposalPage proposal={proposal} />
+      <ProposalPage proposal={proposal} isPreview />
     </>
   )
 }

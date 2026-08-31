@@ -31,9 +31,13 @@ const PORTFOLIO_IMAGES = [
 interface ProposalPageProps {
   proposal: Proposal
   initialTab?: 'cliente' | 'proposta'
+  /** true quando é a Karine olhando (/p/preview, via "Prévia"/"Copiar link"
+   *  no editor) — nunca marca como "vista" nesse caso, só numa visita real
+   *  ao link público em /p/[slug]. */
+  isPreview?: boolean
 }
 
-export function ProposalPage({ proposal }: ProposalPageProps) {
+export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
   const plansRef = useRef<HTMLDivElement>(null)
   const casesRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
@@ -41,9 +45,11 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
   // Marca como "vista" quando o cliente realmente abre a página (roda só
   // no navegador, depois de hidratar — bots de preview de link em geral
   // não executam JS, então não disparam isso à toa). Só sai de "enviada"
-  // pra "vista"; não mexe se já foi aceita/recusada/etc.
+  // pra "vista"; não mexe se já foi aceita/recusada/etc. Nunca dispara em
+  // modo prévia (isPreview) — senão a própria Karine conferindo a proposta
+  // já marcaria como vista pelo cliente.
   useEffect(() => {
-    if (proposal.id && proposal.status === 'sent') {
+    if (!isPreview && proposal.id && proposal.status === 'sent') {
       proposalStore.updateStatus(proposal.id, 'viewed').catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
