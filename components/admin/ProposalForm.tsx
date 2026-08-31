@@ -74,6 +74,7 @@ const SCOPE_TYPES: { value: ProjectType; label: string; desc: string }[] = [
   { value: 'site_completo',  label: 'Site Completo',         desc: 'Múltiplas páginas e seções' },
   { value: 'mensal',         label: 'Mensal',                desc: 'Gestão recorrente' },
   { value: 'posicionamento', label: 'Posicionamento online', desc: 'Estratégia, identidade e presença digital' },
+  { value: 'pacote',         label: 'Pacote',                desc: 'Vários serviços num preço único (ex: Vendas + Obrigado)' },
   { value: 'custom',         label: 'Custom',                desc: 'Escopo personalizado' },
 ]
 

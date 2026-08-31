@@ -30,6 +30,7 @@ const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
   site_completo:  { label: 'Site Completo',         color: '#65A30D' },
   mensal:         { label: 'Mensal',                color: '#CA8A04' },
   posicionamento: { label: 'Posicionamento online', color: '#0284C7' },
+  pacote:         { label: 'Pacote',                color: '#7C3AED' },
   custom:         { label: 'Custom',                color: '#A3A3A3' },
 }
 

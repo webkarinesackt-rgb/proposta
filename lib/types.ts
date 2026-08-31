@@ -3,6 +3,7 @@ export type ProjectType =
   | 'site_completo'
   | 'mensal'
   | 'posicionamento'
+  | 'pacote'
   | 'custom'
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired'
 export type Currency = 'BRL' | 'EUR' | 'USD'

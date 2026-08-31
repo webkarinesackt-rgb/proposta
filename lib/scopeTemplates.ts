@@ -225,11 +225,28 @@ const POSICIONAMENTO_PLANS: Plan[] = [
 export type LpConfig = 'sem_copy_com_copy' | 'start_scale' | '3_planos' | 'so_copy'
 export type SitePages = '3-5' | '6-10' | '10+'
 
+// Pacote: um card único, preço único, com os serviços/páginas listados nos
+// itens inclusos. A Karine edita nome, preço e a lista.
+const PACOTE_PLAN: Plan = {
+  id: pid(1),
+  name: 'Pacote de serviços',
+  tagline: 'Serviços combinados',
+  description: 'Um pacote sob medida com tudo o que você precisa, num valor único.',
+  delivery_days: 12,
+  price_cash: 2200,
+  price_installments_count: 6,
+  price_installment_value: 420,
+  highlight_phrase: 'Tudo num pacote só',
+  is_recommended: true,
+  features: ['Página de vendas', 'Página de obrigado'],
+}
+
 export function getPlansForScope(
   type: string,
   lpConfig?: LpConfig,
   sitePages?: SitePages
 ): Plan[] {
+  if (type === 'pacote') return [{ ...PACOTE_PLAN, features: [...PACOTE_PLAN.features] }]
   if (type === 'landing_page') {
     switch (lpConfig) {
       case 'sem_copy_com_copy': return [LP_START, LP_PERSUASIVO]

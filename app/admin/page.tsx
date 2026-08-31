@@ -61,6 +61,7 @@ const TYPE_LABEL: Record<string, string> = {
   site_completo:  'Site Completo',
   mensal:         'Mensal',
   posicionamento: 'Posicionamento online',
+  pacote:         'Pacote',
   custom:         'Custom',
 }
 
