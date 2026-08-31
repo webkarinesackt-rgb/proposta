@@ -13,17 +13,17 @@ import LeadDetailsPanel from './LeadDetailsPanel'
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#162322',
-  textMuted: '#6B8585',
-  textDim: '#8AA09A',
+  textPrimary: '#141414',
+  textMuted: '#6E6E6E',
+  textDim: '#9B9B9B',
   border: '#E6E6E1',
   borderSubtle: '#F0F0EC',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
   // WhatsApp Web exato — fundo beige da área de mensagens
   conversationBg: '#EFEAE2',
-  accent: '#173B32',
-  accentBright: '#EFE3C2',
+  accent: '#141414',
+  accentBright: '#D6F23C',
   green: '#22C55E',
 }
 
@@ -75,7 +75,7 @@ function DaySeparator({ timestamp }: { timestamp: number }) {
         className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full"
         style={{
           background: 'rgba(13,56,57,0.06)',
-          color: '#6B8585',
+          color: '#6E6E6E',
         }}
       >
         {dayLabel(timestamp)}
@@ -504,7 +504,7 @@ function _ChatRow({
                           {s.label}
                         </span>
                         {chat.status === s.id && (
-                          <span className="ml-auto text-[10px] text-[#8AA09A]">
+                          <span className="ml-auto text-[10px] text-[#9B9B9B]">
                             atual
                           </span>
                         )}
@@ -556,7 +556,7 @@ function _ChatRow({
                         onIgnore()
                         setMenuOpen(false)
                       }}
-                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6B8585]"
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6E6E6E]"
                       title='Tira essa conversa do filtro "Sem resposta" sem precisar responder'
                     >
                       <span className="text-[11px]">🔕</span>
@@ -568,7 +568,7 @@ function _ChatRow({
                         onArchive()
                         setMenuOpen(false)
                       }}
-                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6B8585]"
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors text-[12px] text-[#6E6E6E]"
                     >
                       <Archive size={11} />
                       {chat.archived ? 'Desarquivar' : 'Arquivar conversa'}
@@ -668,13 +668,13 @@ function _Bubble({ msg, chatId, onReply }: { msg: WaMessage; chatId: string; onR
             className="m-2 mb-0 px-2.5 py-1.5 rounded-lg text-[11px] border-l-2"
             style={{
               background: mine ? 'rgba(255,255,255,0.08)' : '#FAFAF8',
-              borderColor: mine ? '#EFE3C2' : T.accent,
+              borderColor: mine ? '#D6F23C' : T.accent,
               color: mine ? 'rgba(255,255,255,0.85)' : T.textMuted,
             }}
           >
             <span
               className="font-semibold block leading-tight"
-              style={{ color: mine ? '#EFE3C2' : T.accent, fontSize: 10 }}
+              style={{ color: mine ? '#D6F23C' : T.accent, fontSize: 10 }}
             >
               {msg.quoted.fromMe ? 'Você' : msg.quoted.sender || 'Citação'}
             </span>
@@ -2115,7 +2115,7 @@ export default function InboxView() {
                 className="w-24 h-24 rounded-3xl flex items-center justify-center"
                 style={{
                   background:
-                    'radial-gradient(circle at 30% 25%, #EFE3C2 0%, #C8E6E0 60%, #6BA89E 100%)',
+                    'radial-gradient(circle at 30% 25%, #D6F23C 0%, #C8E6E0 60%, #6BA89E 100%)',
                   boxShadow: '0 8px 32px rgba(13,56,57,0.15)',
                 }}
               >
@@ -2125,7 +2125,7 @@ export default function InboxView() {
                     fontStyle: 'italic',
                     fontWeight: 700,
                     fontSize: 52,
-                    color: '#173B32',
+                    color: '#141414',
                     lineHeight: 1,
                   }}
                 >
@@ -2136,10 +2136,11 @@ export default function InboxView() {
                 <h2
                   className="leading-tight mb-2"
                   style={{
-                    fontFamily: '"ivypresto-display", Georgia, serif',
-                    fontStyle: 'italic',
-                    fontWeight: 300,
-                    fontSize: '1.8rem',
+                    fontFamily: 'var(--font-inter), Inter, sans-serif',
+                    fontStyle: 'normal',
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                    fontSize: '1.6rem',
                     color: T.textPrimary,
                   }}
                 >
@@ -2339,7 +2340,7 @@ export default function InboxView() {
                                     {nome}
                                   </span>
                                   {currentResp === nome && (
-                                    <span className="ml-auto text-[10px] text-[#8AA09A]">atual</span>
+                                    <span className="ml-auto text-[10px] text-[#9B9B9B]">atual</span>
                                   )}
                                 </button>
                               ))}
@@ -2354,7 +2355,7 @@ export default function InboxView() {
                               >
                                 Ninguém
                                 {!currentResp && (
-                                  <span className="ml-auto text-[10px] text-[#8AA09A]">atual</span>
+                                  <span className="ml-auto text-[10px] text-[#9B9B9B]">atual</span>
                                 )}
                               </button>
                             </div>

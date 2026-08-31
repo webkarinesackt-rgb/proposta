@@ -68,6 +68,7 @@ function OverviewCard({
   sub,
   onClick,
   urgent,
+  tone,
 }: {
   icon: React.ReactNode
   label: string
@@ -75,28 +76,33 @@ function OverviewCard({
   sub?: string
   onClick?: () => void
   urgent?: boolean
+  /** cor de destaque leve (ícone + número), sem preencher o card inteiro */
+  tone?: string
 }) {
-  const ink = '#141414'
+  const ink = urgent ? '#141414' : tone ?? '#141414'
   return (
     <div
       onClick={onClick}
       className="relative rounded-2xl p-5 transition-all"
       style={{
         background: urgent ? T.accentBright : T.card,
-        border: urgent ? 'none' : `1px solid ${T.border}`,
+        border: 'none',
+        boxShadow: urgent
+          ? '0 12px 28px -8px rgba(214,242,60,0.55)'
+          : '0 4px 16px rgba(20,20,20,0.06), 0 1px 3px rgba(20,20,20,0.04)',
         cursor: onClick ? 'pointer' : 'default',
       }}
     >
       <div className="flex items-center justify-between mb-4">
         <span
           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: urgent ? 'rgba(20,20,20,0.1)' : T.bgSubtle, color: ink }}
+          style={{ background: urgent ? 'rgba(20,20,20,0.1)' : tone ? tone + '1C' : T.bgSubtle, color: ink }}
         >
           {icon}
         </span>
         <span
           className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: urgent ? '#FFFFFF' : T.bgSubtle, color: ink }}
+          style={{ background: urgent ? '#FFFFFF' : T.bgSubtle, color: urgent ? ink : '#141414' }}
         >
           <ArrowUpRight size={13} />
         </span>
@@ -111,7 +117,10 @@ function OverviewCard({
       >
         {value}
       </p>
-      <p className="text-[11px] font-bold uppercase tracking-wider mt-2.5" style={{ color: ink, opacity: urgent ? 0.75 : 1 }}>
+      <p
+        className="text-[11px] font-bold uppercase tracking-wider mt-2.5"
+        style={{ color: urgent ? ink : '#141414', opacity: urgent ? 0.75 : 1 }}
+      >
         {label}
       </p>
       {sub && (
@@ -170,13 +179,13 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
         stroke="#E6E6E1" strokeWidth={1} strokeDasharray="2 3"
       />
       {/* received: linha cheia */}
-      <path d={area('received')} fill="#162322" fillOpacity={0.05} />
-      <path d={path('received')} fill="none" stroke="#162322" strokeWidth={1.5} strokeLinejoin="round" />
+      <path d={area('received')} fill="#141414" fillOpacity={0.05} />
+      <path d={path('received')} fill="none" stroke="#141414" strokeWidth={1.5} strokeLinejoin="round" />
       {/* sent: linha tracejada, mesma tinta — diferencia sem precisar de 2ª cor */}
       <path
         d={path('sent')}
         fill="none"
-        stroke="#162322"
+        stroke="#141414"
         strokeOpacity={0.45}
         strokeWidth={1.5}
         strokeDasharray="5 4"
@@ -264,7 +273,7 @@ function TasksPanel() {
   if (needsSetup) return null
 
   return (
-    <div className="rounded-2xl p-5 mb-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+    <div className="rounded-2xl p-5 mb-5" style={{ background: T.card, border: 'none', boxShadow: '0 4px 16px rgba(20,20,20,0.06), 0 1px 3px rgba(20,20,20,0.04)' }}>
       <div className="flex items-center justify-between mb-3">
         <p
           className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
@@ -485,38 +494,60 @@ export default function DashboardView() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-8 pb-20">
-        <h1
-          className="leading-none mb-2"
-          style={{
-            fontFamily: 'var(--font-inter), Inter, sans-serif',
-            fontStyle: 'normal',
-            fontWeight: 800,
-            letterSpacing: '-0.03em',
-            fontSize: 'clamp(1.75rem, 4vw, 2.4rem)',
-            color: T.textPrimary,
-          }}
-        >
-          Visão geral
-        </h1>
-        <p className="text-[13px] mb-5" style={{ color: T.textMuted }}>
-          Tudo que precisa da sua atenção agora.
-        </p>
+        <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+          <div>
+            <h1
+              className="leading-none mb-2"
+              style={{
+                fontFamily: 'var(--font-inter), Inter, sans-serif',
+                fontStyle: 'normal',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                fontSize: 'clamp(1.75rem, 4vw, 2.4rem)',
+                color: T.textPrimary,
+              }}
+            >
+              Visão geral
+            </h1>
+            <p className="text-[13px]" style={{ color: T.textMuted }}>
+              Tudo que precisa da sua atenção agora.
+            </p>
+          </div>
 
-        {/* ações rápidas */}
+          {/* ações rápidas */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => router.push('/admin/new')}
+              className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+              style={{ background: T.accent, color: T.accentBright }}
+            >
+              + Nova proposta
+            </button>
+            <button
+              onClick={() => router.push('/admin?rapida=1')}
+              className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-colors"
+              style={{ background: T.card, color: T.textPrimary, border: `1px solid ${T.border}` }}
+            >
+              Proposta rápida
+            </button>
+          </div>
+        </div>
+
+        {/* acesso rápido a outras telas */}
         <div className="flex gap-2 mb-5 flex-wrap">
           <button
-            onClick={() => router.push('/admin/new')}
-            className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-opacity hover:opacity-90"
-            style={{ background: T.accent, color: T.accentBright }}
-          >
-            + Nova proposta
-          </button>
-          <button
-            onClick={() => router.push('/admin?rapida=1')}
-            className="text-[12px] font-bold px-4 py-2.5 rounded-lg transition-colors"
+            onClick={() => router.push('/admin/fechados')}
+            className="text-[12px] font-semibold px-3.5 py-2 rounded-lg transition-colors"
             style={{ background: T.card, color: T.textPrimary, border: `1px solid ${T.border}` }}
           >
-            Proposta rápida
+            Fechados
+          </button>
+          <button
+            onClick={() => router.push('/admin/leads')}
+            className="text-[12px] font-semibold px-3.5 py-2 rounded-lg transition-colors"
+            style={{ background: T.card, color: T.textPrimary, border: `1px solid ${T.border}` }}
+          >
+            Leads · etapas do funil
           </button>
         </div>
 
@@ -544,6 +575,7 @@ export default function DashboardView() {
                 : 'nenhuma este mês'
             }
             onClick={() => router.push('/admin')}
+            tone="#16A34A"
           />
           <OverviewCard
             icon={<Clock size={15} />}
@@ -648,7 +680,7 @@ export default function DashboardView() {
             {series.length > 0 && (
               <div
                 className="rounded-2xl p-5 mt-3"
-                style={{ background: T.card, border: `1px solid ${T.border}` }}
+                style={{ background: T.card, border: 'none', boxShadow: '0 4px 16px rgba(20,20,20,0.06), 0 1px 3px rgba(20,20,20,0.04)' }}
               >
                 <div className="flex items-center justify-between mb-4">
                   <span
@@ -659,14 +691,14 @@ export default function DashboardView() {
                   </span>
                   <div className="flex items-center gap-3 text-[10px]" style={{ color: T.textMuted }}>
                     <span className="flex items-center gap-1.5">
-                      <span className="inline-block w-3 h-[1.5px]" style={{ background: '#162322' }} />
+                      <span className="inline-block w-3 h-[1.5px]" style={{ background: '#141414' }} />
                       Recebidas
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span
                         className="inline-block w-3 h-[1.5px]"
                         style={{
-                          backgroundImage: 'repeating-linear-gradient(90deg, #162322 0 3px, transparent 3px 5px)',
+                          backgroundImage: 'repeating-linear-gradient(90deg, #141414 0 3px, transparent 3px 5px)',
                           opacity: 0.55,
                         }}
                       />

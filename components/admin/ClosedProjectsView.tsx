@@ -243,11 +243,11 @@ export default function ClosedProjectsView() {
           <div>
             <h1
               className="text-[22px] md:text-[26px] font-bold"
-              style={{ color: '#162322', fontFamily: 'var(--font-serif, ivypresto-display)' }}
+              style={{ color: '#141414', fontFamily: 'var(--font-inter), Inter, sans-serif', fontStyle: 'normal' }}
             >
               Projetos fechados
             </h1>
-            <p className="text-[12px] mt-0.5" style={{ color: '#8AA09A' }}>
+            <p className="text-[12px] mt-0.5" style={{ color: '#9B9B9B' }}>
               Registre os fechamentos, valores e forma de pagamento.
             </p>
           </div>
@@ -255,14 +255,14 @@ export default function ClosedProjectsView() {
             <button
               onClick={() => setShowPicker(true)}
               className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: '#FFFFFF', color: '#173B32', border: '1px solid #E6E6E1' }}
+              style={{ background: '#FFFFFF', color: '#141414', border: '1px solid #E6E6E1' }}
             >
               <FileText size={14} /> Puxar de proposta
             </button>
             <button
               onClick={addBlank}
               className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: '#173B32', color: '#EFE3C2' }}
+              style={{ background: '#141414', color: '#D6F23C' }}
             >
               <Plus size={14} /> Nova linha
             </button>
@@ -289,9 +289,9 @@ export default function ClosedProjectsView() {
                 }}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
                 style={{
-                  background: active ? '#173B32' : '#FFFFFF',
-                  color: active ? '#EFE3C2' : '#6B8585',
-                  border: '1px solid ' + (active ? '#173B32' : '#E6E6E1'),
+                  background: active ? '#141414' : '#FFFFFF',
+                  color: active ? '#D6F23C' : '#6E6E6E',
+                  border: '1px solid ' + (active ? '#141414' : '#E6E6E1'),
                 }}
               >
                 {o.label}
@@ -305,9 +305,9 @@ export default function ClosedProjectsView() {
             title="Mês específico do fechamento"
             className="text-[11px] font-semibold px-3 py-1.5 rounded-full outline-none"
             style={{
-              background: specificMonth ? '#173B32' : '#FFFFFF',
-              color: specificMonth ? '#EFE3C2' : '#6B8585',
-              border: '1px solid ' + (specificMonth ? '#173B32' : '#E6E6E1'),
+              background: specificMonth ? '#141414' : '#FFFFFF',
+              color: specificMonth ? '#D6F23C' : '#6E6E6E',
+              border: '1px solid ' + (specificMonth ? '#141414' : '#E6E6E1'),
             }}
           />
         </div>
@@ -317,7 +317,7 @@ export default function ClosedProjectsView() {
           <StatCard label="Total fechado" value={fmtBRL(totals.fechado)} accent="#137A3F" />
           <StatCard label="Recebido" value={fmtBRL(totals.recebido)} accent="#0F6B39" />
           <StatCard label="A receber" value={fmtBRL(totals.aReceber)} accent="#B45309" />
-          <StatCard label="Projetos fechados" value={String(totals.count)} accent="#173B32" />
+          <StatCard label="Projetos fechados" value={String(totals.count)} accent="#141414" />
           <StatCard label="Em negociação" value={fmtBRL(totals.negociacao)} accent="#8A6A2A" />
         </div>
 
@@ -333,7 +333,7 @@ export default function ClosedProjectsView() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar cliente, plano…"
             className="w-full text-[13px] pl-9 pr-3 py-2 rounded-lg outline-none"
-            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#162322' }}
+            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
           />
         </div>
       </div>
@@ -351,10 +351,10 @@ export default function ClosedProjectsView() {
             className="text-center py-16 rounded-2xl"
             style={{ background: '#FFFFFF', border: '1px dashed #D8D8D0' }}
           >
-            <p className="text-[14px] font-semibold" style={{ color: '#162322' }}>
+            <p className="text-[14px] font-semibold" style={{ color: '#141414' }}>
               Nenhum projeto registrado ainda.
             </p>
-            <p className="text-[12px] mt-1" style={{ color: '#8AA09A' }}>
+            <p className="text-[12px] mt-1" style={{ color: '#9B9B9B' }}>
               Use “Puxar de proposta” pra trazer cliente, plano e valor automaticamente.
             </p>
           </div>
@@ -479,7 +479,7 @@ function Row({
               rel="noopener"
               title="Abrir proposta"
               className="flex-shrink-0"
-              style={{ color: '#173B32' }}
+              style={{ color: '#141414' }}
             >
               <ExternalLink size={13} />
             </a>
@@ -489,7 +489,7 @@ function Row({
               disabled={creating}
               title="Criar uma proposta (já como Aceita) pra entrar nas métricas de fechamento"
               className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: '#EEF3E0', color: '#173B32', whiteSpace: 'nowrap' }}
+              style={{ background: '#EEF3E0', color: '#141414', whiteSpace: 'nowrap' }}
             >
               <Plus size={11} />
               {creating ? 'Criando…' : 'Criar proposta'}
@@ -543,7 +543,7 @@ function Row({
           value={row.source}
           onChange={(e) => onPatch({ source: e.target.value })}
           className="text-[12px] bg-transparent outline-none cursor-pointer"
-          style={{ color: row.source ? '#162322' : '#A8B5B0' }}
+          style={{ color: row.source ? '#141414' : '#A8B5B0' }}
         >
           <option value="">—</option>
           {LEAD_SOURCES.map((s) => (
@@ -567,7 +567,7 @@ function Row({
           value={row.responsavel}
           onChange={(e) => onPatch({ responsavel: e.target.value })}
           className="text-[13px] bg-transparent outline-none cursor-pointer"
-          style={{ color: row.responsavel ? '#162322' : '#A8B5B0' }}
+          style={{ color: row.responsavel ? '#141414' : '#A8B5B0' }}
         >
           <option value="">—</option>
           {RESPONSAVEIS.map((n) => (
@@ -618,7 +618,7 @@ function CellInput({
       }}
       placeholder={placeholder}
       className="text-[13px] bg-transparent outline-none w-full min-w-[100px]"
-      style={{ color: '#162322', fontWeight: bold ? 600 : 400 }}
+      style={{ color: '#141414', fontWeight: bold ? 600 : 400 }}
     />
   )
 }
@@ -641,7 +641,7 @@ function ValueInput({ value, onSave }: { value: number; onSave: (v: number) => v
         }}
         placeholder="0"
         className="text-[14px] font-bold bg-transparent outline-none text-right w-[90px]"
-        style={{ color: '#162322' }}
+        style={{ color: '#141414' }}
       />
     </div>
   )
@@ -672,7 +672,7 @@ function PillSelect({
         style={{ color }}
       >
         {options.map((o) => (
-          <option key={o.id} value={o.id} style={{ color: '#162322' }}>
+          <option key={o.id} value={o.id} style={{ color: '#141414' }}>
             {o.label}
           </option>
         ))}
@@ -685,7 +685,7 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
   return (
     <th
       className={`text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3.5 ${className || ''}`}
-      style={{ color: '#6B8585' }}
+      style={{ color: '#6E6E6E' }}
     >
       {children}
     </th>
@@ -739,17 +739,17 @@ notify pgrst, 'reload schema';`
       className="max-w-[640px] mx-auto mt-4 rounded-2xl p-6"
       style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
     >
-      <p className="text-[15px] font-bold" style={{ color: '#162322' }}>
+      <p className="text-[15px] font-bold" style={{ color: '#141414' }}>
         Falta um passo único (30 segundos)
       </p>
-      <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: '#6B8585' }}>
+      <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: '#6E6E6E' }}>
         Pra guardar os projetos no banco, precisamos criar a tabela uma vez. É
         só copiar o comando abaixo e colar no <b>SQL Editor</b> do Supabase
         (botão “Run”). Depois clique em “Já criei”.
       </p>
       <pre
         className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto"
-        style={{ background: '#173B32', color: '#EAF3E9' }}
+        style={{ background: '#141414', color: '#EAF3E9' }}
       >
         {sql}
       </pre>
@@ -762,14 +762,14 @@ notify pgrst, 'reload schema';`
             })
           }}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#F4F3EF', color: '#173B32', border: '1px solid #E6E6E1' }}
+          style={{ background: '#F4F3EF', color: '#141414', border: '1px solid #E6E6E1' }}
         >
           {copied ? 'Copiado!' : 'Copiar comando'}
         </button>
         <button
           onClick={onRetry}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#173B32', color: '#EFE3C2' }}
+          style={{ background: '#141414', color: '#D6F23C' }}
         >
           Já criei
         </button>
@@ -818,7 +818,7 @@ function ProposalPickerModal({
           className="px-4 py-3 flex items-center justify-between"
           style={{ borderBottom: '1px solid #E6E6E1' }}
         >
-          <span className="text-[14px] font-bold" style={{ color: '#162322' }}>
+          <span className="text-[14px] font-bold" style={{ color: '#141414' }}>
             Puxar de uma proposta
           </span>
           <button onClick={onClose} style={{ color: '#A8B5B0' }}>
@@ -832,7 +832,7 @@ function ProposalPickerModal({
             placeholder="Buscar cliente…"
             autoFocus
             className="w-full text-[13px] px-3 py-2 rounded-lg outline-none"
-            style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+            style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
           />
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
@@ -866,15 +866,15 @@ function ProposalPickerModal({
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: '#F4F3EF', color: '#8AA09A' }}
+                      style={{ background: '#F4F3EF', color: '#9B9B9B' }}
                     >
                       <FileText size={14} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold truncate" style={{ color: '#162322' }}>
+                      <p className="text-[13px] font-bold truncate" style={{ color: '#141414' }}>
                         {p.client_name || 'Sem nome'}
                       </p>
-                      <p className="text-[11px] truncate" style={{ color: '#8AA09A' }}>
+                      <p className="text-[11px] truncate" style={{ color: '#9B9B9B' }}>
                         {plans.length > 1
                           ? `${plans.length} planos — escolher`
                           : plans[0]?.name || 'Sem plano'}
@@ -891,7 +891,7 @@ function ProposalPickerModal({
                           }
                           className="w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between transition-colors hover:bg-[#F4F3EF]"
                         >
-                          <span className="text-[12px]" style={{ color: '#162322' }}>
+                          <span className="text-[12px]" style={{ color: '#141414' }}>
                             {pl.name}
                           </span>
                           <span className="text-[12px] font-bold" style={{ color: '#137A3F' }}>

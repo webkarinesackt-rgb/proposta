@@ -28,15 +28,15 @@ import {
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#162322',
-  textMuted: '#6B8585',
-  textDim: '#8AA09A',
+  textPrimary: '#141414',
+  textMuted: '#6E6E6E',
+  textDim: '#9B9B9B',
   border: '#E6E6E1',
   borderSubtle: '#F0F0EC',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
-  accent: '#173B32',
-  accentBright: '#EFE3C2',
+  accent: '#141414',
+  accentBright: '#D6F23C',
 }
 
 /* ── status meta ─────────────────────────────────────── */
@@ -48,7 +48,7 @@ const STATUS_META: Record<
   // Paleta derivada da marca (petróleo → sálvia → lima → oliva). Barro é o
   // único tom "de fora", reservado ao estado negativo. Nada saturado.
   draft:    { label: 'Rascunho',    color: '#7A8985', bg: '#F1F2EE', icon: <FileText size={10} /> },
-  sent:     { label: 'Enviada',     color: '#173B32', bg: '#E7EEEB', icon: <Mail size={10} /> },
+  sent:     { label: 'Enviada',     color: '#141414', bg: '#E7EEEB', icon: <Mail size={10} /> },
   viewed:   { label: 'Visualizada', color: '#6E7A2E', bg: '#F3F6DF', icon: <Eye size={10} /> },
   accepted: { label: 'Aceita',      color: '#2F6B4F', bg: '#E9F2EC', icon: <CheckCircle2 size={10} /> },
   rejected: { label: 'Recusada',    color: '#9C5A48', bg: '#F7EDE9', icon: <XCircle size={10} /> },
@@ -346,7 +346,7 @@ function ProposalCard({
         background: T.card,
         border: '1px solid #EDEDE8',
         boxShadow:
-          '0 1px 2px rgba(22,35,34,0.04), 0 10px 28px -16px rgba(22,35,34,0.16)',
+          '0 1px 2px rgba(20,20,20,0.04), 0 10px 28px -16px rgba(20,20,20,0.16)',
       }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -354,9 +354,11 @@ function ProposalCard({
           <p
             className="truncate leading-tight"
             style={{
-              fontFamily: '"ivypresto-display", Georgia, serif',
-              fontWeight: 400,
-              fontSize: '1.15rem',
+              fontFamily: 'var(--font-inter), Inter, sans-serif',
+              fontStyle: 'normal',
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              fontSize: '1.05rem',
               color: T.textPrimary,
             }}
           >
@@ -781,12 +783,13 @@ export default function AdminDashboard() {
         {/* hero */}
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <h1
-            className="leading-[0.95] tracking-tight"
+            className="leading-[0.95]"
             style={{
-              fontFamily: '"ivypresto-display", Georgia, serif',
-              fontStyle: 'italic',
-              fontWeight: 300,
-              fontSize: 'clamp(2.2rem, 5vw, 3.1rem)',
+              fontFamily: 'var(--font-inter), Inter, sans-serif',
+              fontStyle: 'normal',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              fontSize: 'clamp(1.9rem, 4.4vw, 2.7rem)',
               color: T.textPrimary,
             }}
           >
@@ -942,7 +945,7 @@ export default function AdminDashboard() {
           <div className="ml-auto flex items-center gap-3">
             <span
               className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: '#EEF3E0', color: '#173B32' }}
+              style={{ background: '#EEF3E0', color: '#141414' }}
             >
               {filtered.length} na tela
             </span>

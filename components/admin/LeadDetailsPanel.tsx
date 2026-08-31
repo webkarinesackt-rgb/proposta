@@ -30,7 +30,7 @@ function Field({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8AA09A] mb-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9B9B9B] mb-1.5">
         {label}
       </p>
       {children}
@@ -43,7 +43,7 @@ const INPUT =
 const INPUT_STYLE = {
   background: '#F4F3EF',
   border: '1px solid #E6E6E1',
-  color: '#162322',
+  color: '#141414',
 }
 
 /* Detalhes de grupo: subject, descrição, lista de participantes com admin badge.
@@ -71,7 +71,7 @@ function GroupInfo({ chatId }: { chatId: string }) {
 
   if (loading) {
     return (
-      <p className="text-[12px] text-[#8AA09A] italic">Carregando dados do grupo…</p>
+      <p className="text-[12px] text-[#9B9B9B] italic">Carregando dados do grupo…</p>
     )
   }
   if (!data?.ok) {
@@ -91,7 +91,7 @@ function GroupInfo({ chatId }: { chatId: string }) {
     <div className="flex flex-col gap-2">
       {data.description && (
         <p
-          className="text-[12px] text-[#162322] whitespace-pre-wrap rounded-lg px-3 py-2"
+          className="text-[12px] text-[#141414] whitespace-pre-wrap rounded-lg px-3 py-2"
           style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}
         >
           {data.description}
@@ -100,7 +100,7 @@ function GroupInfo({ chatId }: { chatId: string }) {
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors hover:bg-[#F4F3EF]"
-        style={{ background: '#FAFAF8', border: '1px solid #E6E6E1', color: '#162322' }}
+        style={{ background: '#FAFAF8', border: '1px solid #E6E6E1', color: '#141414' }}
       >
         <span className="flex items-center gap-2">
           <Users size={13} />
@@ -132,7 +132,7 @@ function GroupInfo({ chatId }: { chatId: string }) {
                 {p.isOwner && (
                   <Crown size={11} style={{ color: '#EAB308', flexShrink: 0 }} />
                 )}
-                <span className="truncate" style={{ color: '#162322' }}>
+                <span className="truncate" style={{ color: '#141414' }}>
                   {p.name || '+' + p.number}
                 </span>
               </span>
@@ -239,7 +239,7 @@ export default function LeadDetailsPanel({
         className="px-4 py-3 flex items-center justify-between flex-shrink-0"
         style={{ borderBottom: '1px solid #E6E6E1' }}
       >
-        <span className="text-[13px] font-bold text-[#162322]">
+        <span className="text-[13px] font-bold text-[#141414]">
           Detalhes do lead
         </span>
         <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export default function LeadDetailsPanel({
           )}
           <button
             onClick={onClose}
-            className="text-[#A8B5B0] hover:text-[#162322]"
+            className="text-[#A8B5B0] hover:text-[#141414]"
           >
             <X size={16} />
           </button>
@@ -261,14 +261,14 @@ export default function LeadDetailsPanel({
       <div className="flex-1 min-h-0 overflow-y-auto thin-scroll p-4 flex flex-col gap-4">
         {/* contato */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8AA09A] mb-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9B9B9B] mb-1">
             {chat.isGroup ? 'Grupo' : 'Contato'}
           </p>
-          <p className="text-[14px] font-bold text-[#162322] truncate">
+          <p className="text-[14px] font-bold text-[#141414] truncate">
             {chat.name}
           </p>
           {!chat.isGroup && (
-            <p className="text-[12px] text-[#6B8585]">+{phone}</p>
+            <p className="text-[12px] text-[#6E6E6E]">+{phone}</p>
           )}
         </div>
 
@@ -368,7 +368,7 @@ export default function LeadDetailsPanel({
                   href={`/p/${p.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-[#173B32] underline mt-1 inline-block"
+                  className="text-[11px] text-[#141414] underline mt-1 inline-block"
                 >
                   abrir proposta →
                 </a>
@@ -423,7 +423,7 @@ export default function LeadDetailsPanel({
                   key={t}
                   onClick={() => addTag(t)}
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-dashed transition-colors hover:bg-[#F4F3EF]"
-                  style={{ color: '#6B8585', borderColor: '#C8D8D4' }}
+                  style={{ color: '#6E6E6E', borderColor: '#C8D8D4' }}
                 >
                   + {t}
                 </button>
@@ -488,7 +488,7 @@ export default function LeadDetailsPanel({
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-bold transition-all"
             style={{
               background: chat.archived ? '#F0FDF4' : '#FAFAF8',
-              color: chat.archived ? '#0D7A4A' : '#6B8585',
+              color: chat.archived ? '#0D7A4A' : '#6E6E6E',
               border: `1px solid ${chat.archived ? '#86EFAC' : '#E6E6E1'}`,
             }}
           >

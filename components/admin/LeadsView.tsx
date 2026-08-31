@@ -82,7 +82,7 @@ function Avatar({
         height: 36,
         fontSize: 12,
         background: '#F4F3EF',
-        color: '#8AA09A',
+        color: '#9B9B9B',
         border: '1px solid #E6E6E1',
       }}
     >
@@ -193,7 +193,7 @@ function StatusBadge({
                   {s.label}
                 </span>
                 {status === s.id && (
-                  <span className="ml-auto text-[10px] text-[#8AA09A]">atual</span>
+                  <span className="ml-auto text-[10px] text-[#9B9B9B]">atual</span>
                 )}
               </button>
             ))}
@@ -244,7 +244,7 @@ function LeadRow({
       <Avatar chatId={chat.id} name={chat.name} isGroup={chat.isGroup} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold text-[#162322] truncate flex items-center gap-1.5">
+          <span className="text-[13px] font-semibold text-[#141414] truncate flex items-center gap-1.5">
             {(() => {
               const resp = getResponsavel(chat)
               return resp ? (
@@ -268,7 +268,7 @@ function LeadRow({
             {fmtTime(chat.lastTime)}
           </span>
         </div>
-        <p className="text-[12px] text-[#8AA09A] truncate mt-0.5">
+        <p className="text-[12px] text-[#9B9B9B] truncate mt-0.5">
           {chat.fromMeLast && (
             <span className="text-[#A8B5B0]">Você: </span>
           )}
@@ -322,7 +322,7 @@ function LeadRow({
             style={{
               background: '#F4F3EF',
               border: '1px solid #C8D8D4',
-              color: '#162322',
+              color: '#141414',
             }}
           />
         ) : (
@@ -334,8 +334,8 @@ function LeadRow({
             title="Clique pra editar o valor (R$)"
             className="text-[10px] font-bold px-2 py-1 rounded transition-all hover:opacity-80"
             style={{
-              background: chat.value ? '#173B32' : 'transparent',
-              color: chat.value ? '#EFE3C2' : '#A8B5B0',
+              background: chat.value ? '#141414' : 'transparent',
+              color: chat.value ? '#D6F23C' : '#A8B5B0',
               border: chat.value ? 'none' : '1px dashed #C8D8D4',
             }}
           >
@@ -414,7 +414,7 @@ function StatusGroup({
         >
           {status.label}
         </span>
-        <span className="text-[12px] text-[#8AA09A] font-semibold">
+        <span className="text-[12px] text-[#9B9B9B] font-semibold">
           {chats.length}
         </span>
         {totalValue > 0 && (
@@ -510,7 +510,7 @@ function KanbanColumn({
         >
           {col.label}
         </span>
-        <span className="text-[11px] font-bold ml-auto" style={{ color: '#6B8585' }}>
+        <span className="text-[11px] font-bold ml-auto" style={{ color: '#6E6E6E' }}>
           {chats.length}
         </span>
         {totalValue > 0 && (
@@ -552,7 +552,7 @@ function inactivityBadge(lastTime: number) {
   if (!lastTime) return null
   const days = Math.floor((Date.now() / 1000 - lastTime) / 86400)
   if (days < 3) return null
-  let bg = '#F4F3EF', color = '#8AA09A', label = `${days}d sem mexer`
+  let bg = '#F4F3EF', color = '#9B9B9B', label = `${days}d sem mexer`
   if (days >= 14) { bg = '#FEF2F2'; color = '#B91C1C' }
   else if (days >= 7) { bg = '#FFF7ED'; color = '#C2410C' }
   return { bg, color, label }
@@ -622,7 +622,7 @@ function KanbanCard({
       <div className="flex items-start gap-2 mb-2">
         <Avatar chatId={chat.id} name={chat.name} isGroup={chat.isGroup} />
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-bold truncate flex items-center gap-1.5" style={{ color: '#162322' }}>
+          <p className="text-[12px] font-bold truncate flex items-center gap-1.5" style={{ color: '#141414' }}>
             {(() => {
               const resp = getResponsavel(chat)
               return resp ? (
@@ -667,7 +667,7 @@ function KanbanCard({
         </div>
       )}
       {chat.lastText && (
-        <p className="text-[11px] line-clamp-2 mb-2" style={{ color: '#6B8585' }}>
+        <p className="text-[11px] line-clamp-2 mb-2" style={{ color: '#6E6E6E' }}>
           {chat.fromMeLast && (
             <span style={{ color: '#A8B5B0' }}>Você: </span>
           )}
@@ -700,7 +700,7 @@ function KanbanCard({
               setEditingValue(false)
             }}
             className="w-20 text-[10px] font-bold px-2 py-0.5 rounded outline-none"
-            style={{ background: '#F4F3EF', border: '1px solid #C8D8D4', color: '#162322' }}
+            style={{ background: '#F4F3EF', border: '1px solid #C8D8D4', color: '#141414' }}
           />
         ) : (
           <button
@@ -710,8 +710,8 @@ function KanbanCard({
             }}
             className="text-[10px] font-bold px-2 py-0.5 rounded transition-all"
             style={{
-              background: chat.value ? '#173B32' : 'transparent',
-              color: chat.value ? '#EFE3C2' : '#A8B5B0',
+              background: chat.value ? '#141414' : 'transparent',
+              color: chat.value ? '#D6F23C' : '#A8B5B0',
               border: chat.value ? 'none' : '1px dashed #C8D8D4',
             }}
           >
@@ -731,7 +731,7 @@ function KanbanCard({
           <span
             key={t}
             className="text-[9px] px-1.5 py-0.5 rounded"
-            style={{ background: '#F4F3EF', color: '#6B8585' }}
+            style={{ background: '#F4F3EF', color: '#6E6E6E' }}
           >
             {t}
           </span>
@@ -1002,18 +1002,19 @@ export default function LeadsView() {
         <div className="flex items-end justify-between gap-4 mb-8 flex-wrap">
           <div>
             <h1
-              className="leading-none tracking-tight"
+              className="leading-none"
               style={{
-                fontFamily: '"ivypresto-display", Georgia, serif',
-                fontStyle: 'italic',
-                fontWeight: 300,
-                fontSize: 'clamp(2.2rem, 4.5vw, 3rem)',
-                color: '#162322',
+                fontFamily: 'var(--font-inter), Inter, sans-serif',
+                fontStyle: 'normal',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                fontSize: 'clamp(1.9rem, 4vw, 2.6rem)',
+                color: '#141414',
               }}
             >
               Leads
             </h1>
-            <p className="text-[13px] text-[#6B8585] mt-2">
+            <p className="text-[13px] text-[#6E6E6E] mt-2">
               Suas conversas organizadas por etapa do funil.
             </p>
             {totalPipeline > 0 && (
@@ -1021,13 +1022,13 @@ export default function LeadsView() {
                 <div>
                   <p
                     className="font-bold uppercase tracking-[0.14em] text-[10px]"
-                    style={{ color: '#8AA09A' }}
+                    style={{ color: '#9B9B9B' }}
                   >
                     Pipeline ativo
                   </p>
                   <p
                     className="font-bold mt-0.5"
-                    style={{ color: '#173B32', fontSize: 18 }}
+                    style={{ color: '#141414', fontSize: 18 }}
                   >
                     {fmtBRL(totalPipeline)}
                   </p>
@@ -1036,7 +1037,7 @@ export default function LeadsView() {
                   <div>
                     <p
                       className="font-bold uppercase tracking-[0.14em] text-[10px]"
-                      style={{ color: '#8AA09A' }}
+                      style={{ color: '#9B9B9B' }}
                     >
                       Fechado
                     </p>
@@ -1057,9 +1058,9 @@ export default function LeadsView() {
               title="Mostrar só leads com follow-up pra hoje ou atrasado"
               className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
               style={{
-                background: onlyFollowups ? '#173B32' : '#FFFFFF',
-                color: onlyFollowups ? '#EFE3C2' : '#6B8585',
-                border: '1px solid ' + (onlyFollowups ? '#173B32' : '#E6E6E1'),
+                background: onlyFollowups ? '#141414' : '#FFFFFF',
+                color: onlyFollowups ? '#D6F23C' : '#6E6E6E',
+                border: '1px solid ' + (onlyFollowups ? '#141414' : '#E6E6E1'),
                 padding: '8px 14px',
                 borderRadius: 999,
               }}
@@ -1069,8 +1070,8 @@ export default function LeadsView() {
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{
-                    background: onlyFollowups ? '#EFE3C2' : '#FEF2F2',
-                    color: onlyFollowups ? '#173B32' : '#B91C1C',
+                    background: onlyFollowups ? '#D6F23C' : '#FEF2F2',
+                    color: onlyFollowups ? '#141414' : '#B91C1C',
                   }}
                 >
                   {followupCount}
@@ -1086,9 +1087,9 @@ export default function LeadsView() {
                   title="Mostrar só os leads com etiqueta alunos"
                   className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
                   style={{
-                    background: on ? '#173B32' : '#FFFFFF',
-                    color: on ? '#EFE3C2' : '#6B8585',
-                    border: '1px solid ' + (on ? '#173B32' : '#E6E6E1'),
+                    background: on ? '#141414' : '#FFFFFF',
+                    color: on ? '#D6F23C' : '#6E6E6E',
+                    border: '1px solid ' + (on ? '#141414' : '#E6E6E1'),
                     padding: '8px 14px',
                     borderRadius: 999,
                   }}
@@ -1098,8 +1099,8 @@ export default function LeadsView() {
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                       style={{
-                        background: on ? '#EFE3C2' : '#EEF3E0',
-                        color: on ? '#173B32' : '#4A5A2A',
+                        background: on ? '#D6F23C' : '#EEF3E0',
+                        color: on ? '#141414' : '#4A5A2A',
                       }}
                     >
                       {n}
@@ -1127,8 +1128,8 @@ export default function LeadsView() {
                     onClick={() => setActivityDays(o.d)}
                     className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all"
                     style={{
-                      background: active ? '#173B32' : 'transparent',
-                      color: active ? '#EFE3C2' : '#6B8585',
+                      background: active ? '#141414' : 'transparent',
+                      color: active ? '#D6F23C' : '#6E6E6E',
                     }}
                   >
                     {o.label}
@@ -1137,7 +1138,7 @@ export default function LeadsView() {
               })}
             </div>
             <label
-              className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
+              className="flex items-center gap-2 text-[11px] font-semibold text-[#6E6E6E] cursor-pointer select-none"
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E6E6E1',
@@ -1149,12 +1150,12 @@ export default function LeadsView() {
                 type="checkbox"
                 checked={includeGroups}
                 onChange={(e) => setIncludeGroups(e.target.checked)}
-                className="accent-[#173B32]"
+                className="accent-[#141414]"
               />
               Incluir grupos
             </label>
             <label
-              className="flex items-center gap-2 text-[11px] font-semibold text-[#6B8585] cursor-pointer select-none"
+              className="flex items-center gap-2 text-[11px] font-semibold text-[#6E6E6E] cursor-pointer select-none"
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E6E6E1',
@@ -1167,7 +1168,7 @@ export default function LeadsView() {
                 type="checkbox"
                 checked={includePessoal}
                 onChange={(e) => setIncludePessoal(e.target.checked)}
-                className="accent-[#173B32]"
+                className="accent-[#141414]"
               />
               Incluir pessoais
             </label>
@@ -1187,7 +1188,7 @@ export default function LeadsView() {
                     className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all flex items-center gap-1"
                     style={{
                       background: active ? respMeta(nome).color : 'transparent',
-                      color: active ? '#FFFFFF' : '#6B8585',
+                      color: active ? '#FFFFFF' : '#6E6E6E',
                     }}
                   >
                     <span
@@ -1213,9 +1214,9 @@ export default function LeadsView() {
                 onClick={() => setSourceMenuOpen((o) => !o)}
                 className="flex items-center gap-2 text-[11px] font-semibold select-none transition-all"
                 style={{
-                  background: sourceFilter ? '#173B32' : '#FFFFFF',
-                  color: sourceFilter ? '#EFE3C2' : '#6B8585',
-                  border: '1px solid ' + (sourceFilter ? '#173B32' : '#E6E6E1'),
+                  background: sourceFilter ? '#141414' : '#FFFFFF',
+                  color: sourceFilter ? '#D6F23C' : '#6E6E6E',
+                  border: '1px solid ' + (sourceFilter ? '#141414' : '#E6E6E1'),
                   padding: '8px 14px',
                   borderRadius: 999,
                 }}
@@ -1236,7 +1237,7 @@ export default function LeadsView() {
                           setSourceMenuOpen(false)
                         }}
                         className="w-full text-left px-3 py-2 text-[11px] font-bold"
-                        style={{ color: '#173B32', borderBottom: '1px solid #F0F0EC' }}
+                        style={{ color: '#141414', borderBottom: '1px solid #F0F0EC' }}
                       >
                         Todas as origens
                       </button>
@@ -1251,7 +1252,7 @@ export default function LeadsView() {
                         className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-[#FAFAF8] transition-colors"
                         style={{ background: sourceFilter === s ? '#FAFAF8' : 'transparent' }}
                       >
-                        <span className="text-[12px]" style={{ color: '#162322' }}>{s}</span>
+                        <span className="text-[12px]" style={{ color: '#141414' }}>{s}</span>
                         <span className="text-[10px] font-bold" style={{ color: '#A8B5B0' }}>
                           {sourceCounts.get(s) || 0}
                         </span>
@@ -1263,7 +1264,7 @@ export default function LeadsView() {
                         setSourceMenuOpen(false)
                       }}
                       className="w-full text-left px-3 py-2 text-[12px] hover:bg-[#FAFAF8] transition-colors"
-                      style={{ color: '#6B8585', borderTop: '1px solid #F0F0EC' }}
+                      style={{ color: '#6E6E6E', borderTop: '1px solid #F0F0EC' }}
                     >
                       Sem origem definida
                     </button>
@@ -1284,9 +1285,9 @@ export default function LeadsView() {
               onClick={() => setTagFilter(null)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all"
               style={{
-                background: tagFilter === null ? '#173B32' : '#FFFFFF',
-                color: tagFilter === null ? '#EFE3C2' : '#6B8585',
-                border: '1px solid ' + (tagFilter === null ? '#173B32' : '#E6E6E1'),
+                background: tagFilter === null ? '#141414' : '#FFFFFF',
+                color: tagFilter === null ? '#D6F23C' : '#6E6E6E',
+                border: '1px solid ' + (tagFilter === null ? '#141414' : '#E6E6E1'),
               }}
             >
               Todas
@@ -1297,17 +1298,17 @@ export default function LeadsView() {
                 onClick={() => setTagFilter(t === tagFilter ? null : t)}
                 className="text-[11px] font-semibold px-3 py-1 rounded-full transition-all flex items-center gap-1"
                 style={{
-                  background: t === tagFilter ? '#173B32' : '#FFFFFF',
-                  color: t === tagFilter ? '#EFE3C2' : '#6B8585',
+                  background: t === tagFilter ? '#141414' : '#FFFFFF',
+                  color: t === tagFilter ? '#D6F23C' : '#6E6E6E',
                   border:
-                    '1px solid ' + (t === tagFilter ? '#173B32' : '#E6E6E1'),
+                    '1px solid ' + (t === tagFilter ? '#141414' : '#E6E6E1'),
                 }}
               >
                 <Tag size={10} />
                 {t}
                 <span
                   className="text-[10px] opacity-70"
-                  style={{ color: t === tagFilter ? '#EFE3C2' : '#A8B5B0' }}
+                  style={{ color: t === tagFilter ? '#D6F23C' : '#A8B5B0' }}
                 >
                   {n}
                 </span>
@@ -1327,7 +1328,7 @@ export default function LeadsView() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome, telefone, email, tag ou nota…"
               className="flex-1 bg-transparent text-[13px] outline-none"
-              style={{ color: '#162322' }}
+              style={{ color: '#141414' }}
             />
             {search && (
               <button
@@ -1349,8 +1350,8 @@ export default function LeadsView() {
                 onClick={() => setSortBy(s)}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors"
                 style={{
-                  background: sortBy === s ? '#173B32' : 'transparent',
-                  color: sortBy === s ? '#EFE3C2' : '#6B8585',
+                  background: sortBy === s ? '#141414' : 'transparent',
+                  color: sortBy === s ? '#D6F23C' : '#6E6E6E',
                 }}
               >
                 {s === 'recent' ? 'Recente' : s === 'value' ? 'Valor' : 'Nome'}
@@ -1367,8 +1368,8 @@ export default function LeadsView() {
               onClick={() => setViewMode('kanban')}
               className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
               style={{
-                background: viewMode === 'kanban' ? '#173B32' : 'transparent',
-                color: viewMode === 'kanban' ? '#EFE3C2' : '#6B8585',
+                background: viewMode === 'kanban' ? '#141414' : 'transparent',
+                color: viewMode === 'kanban' ? '#D6F23C' : '#6E6E6E',
               }}
               title="Quadro horizontal estilo Trello"
             >
@@ -1378,8 +1379,8 @@ export default function LeadsView() {
               onClick={() => setViewMode('list')}
               className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
               style={{
-                background: viewMode === 'list' ? '#173B32' : 'transparent',
-                color: viewMode === 'list' ? '#EFE3C2' : '#6B8585',
+                background: viewMode === 'list' ? '#141414' : 'transparent',
+                color: viewMode === 'list' ? '#D6F23C' : '#6E6E6E',
               }}
               title="Lista vertical compacta com grupos colapsáveis"
             >
@@ -1406,17 +1407,17 @@ export default function LeadsView() {
             style={{ background: '#FFFFFF', border: '1px dashed #D8D8D0' }}
           >
             <p className="text-[28px] mb-1">⏰</p>
-            <p className="text-[15px] font-bold" style={{ color: '#162322' }}>
+            <p className="text-[15px] font-bold" style={{ color: '#141414' }}>
               Nenhum follow-up marcado ainda
             </p>
-            <p className="text-[13px] mt-1.5 max-w-[420px] mx-auto" style={{ color: '#8AA09A' }}>
+            <p className="text-[13px] mt-1.5 max-w-[420px] mx-auto" style={{ color: '#9B9B9B' }}>
               Abra um lead, defina uma <b>próxima ação</b> e uma data — ele aparece
               aqui quando o follow-up estiver pra hoje ou atrasado.
             </p>
             <button
               onClick={() => setOnlyFollowups(false)}
               className="mt-4 text-[12px] font-bold px-4 py-2 rounded-lg"
-              style={{ background: '#173B32', color: '#EFE3C2' }}
+              style={{ background: '#141414', color: '#D6F23C' }}
             >
               Voltar pro pipeline
             </button>

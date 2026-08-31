@@ -82,8 +82,8 @@ export default function ProposalPicker({
           className="px-4 py-3 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: '1px solid #E6E6E1' }}
         >
-          <span className="text-[13px] font-bold text-[#162322]">Proposta</span>
-          <button onClick={onClose} className="text-[#A8B5B0] hover:text-[#162322]">
+          <span className="text-[13px] font-bold text-[#141414]">Proposta</span>
+          <button onClick={onClose} className="text-[#A8B5B0] hover:text-[#141414]">
             <X size={16} />
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function ProposalPicker({
         <button
           onClick={novaProposta}
           className="mx-2 mt-2 flex-shrink-0 flex items-center justify-center gap-1.5 text-[12px] font-bold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
-          style={{ background: '#173B32', color: '#EFE3C2' }}
+          style={{ background: '#141414', color: '#D6F23C' }}
         >
           <Plus size={14} /> Criar nova proposta
         </button>
@@ -121,15 +121,15 @@ export default function ProposalPicker({
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: '#E6E6E1', color: '#8AA09A' }}
+                    style={{ background: '#E6E6E1', color: '#9B9B9B' }}
                   >
                     <FileText size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-[#162322] truncate">
+                    <p className="text-[12px] font-bold text-[#141414] truncate">
                       {p.client_name}
                     </p>
-                    <p className="text-[11px] text-[#8AA09A] truncate">
+                    <p className="text-[11px] text-[#9B9B9B] truncate">
                       {p.client_company || `/p/${p.slug}`}
                     </p>
                   </div>

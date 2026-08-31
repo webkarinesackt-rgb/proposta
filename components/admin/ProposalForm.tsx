@@ -25,10 +25,10 @@ import { ImageUpload } from './ImageUpload'
 /* ── style helpers ───────────────────────────────────── */
 
 const INPUT =
-  'w-full bg-[#F4F3EF] border border-[#DFE0DB] rounded-xl px-4 py-3 text-sm text-[#162322] placeholder-[#A8B5B0] focus:outline-none focus:border-[#173B32] transition-colors'
+  'w-full bg-[#F4F3EF] border border-[#DFE0DB] rounded-xl px-4 py-3 text-sm text-[#141414] placeholder-[#A8B5B0] focus:outline-none focus:border-[#141414] transition-colors'
 
 const LABEL =
-  'block text-[10px] font-bold uppercase tracking-[0.13em] text-[#8AA09A] mb-1.5'
+  'block text-[10px] font-bold uppercase tracking-[0.13em] text-[#9B9B9B] mb-1.5'
 
 // Juros de parcelamento no cartão (composto, mês a mês — tabela Price).
 const INSTALLMENT_RATE = 0.0399
@@ -54,12 +54,12 @@ function SectionCard({ step, title, desc, children }: { step: string; title: str
     <div className="bg-white rounded-2xl border border-[#E6E6E1] p-8 mb-4">
       <div className="flex items-start gap-4 mb-7">
         <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold"
-          style={{ background: '#173B32', color: '#EFE3C2' }}>
+          style={{ background: '#141414', color: '#D6F23C' }}>
           {step}
         </div>
         <div>
-          <p className="text-[15px] font-bold text-[#162322] tracking-tight">{title}</p>
-          <p className="text-xs text-[#8AA09A] mt-0.5">{desc}</p>
+          <p className="text-[15px] font-bold text-[#141414] tracking-tight">{title}</p>
+          <p className="text-xs text-[#9B9B9B] mt-0.5">{desc}</p>
         </div>
       </div>
       {children}
@@ -106,7 +106,7 @@ function PlanEditor({
     <div
       className="rounded-xl border transition-all"
       style={{
-        borderColor: plan.is_recommended ? '#173B32' : '#E6E6E1',
+        borderColor: plan.is_recommended ? '#141414' : '#E6E6E1',
         background: plan.is_recommended ? '#F4FAF8' : '#FAFAF8',
       }}
     >
@@ -118,16 +118,16 @@ function PlanEditor({
       >
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-            style={{ background: '#173B32', color: '#EFE3C2' }}>
+            style={{ background: '#141414', color: '#D6F23C' }}>
             {index + 1}
           </div>
           <div>
-            <p className="text-[13px] font-bold text-[#162322]">{plan.name}</p>
-            <p className="text-[11px] text-[#8AA09A]">{plan.tagline}</p>
+            <p className="text-[13px] font-bold text-[#141414]">{plan.name}</p>
+            <p className="text-[11px] text-[#9B9B9B]">{plan.tagline}</p>
           </div>
           {plan.is_recommended && (
             <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-              style={{ background: '#EFE3C2', color: '#162322' }}>
+              style={{ background: '#D6F23C', color: '#141414' }}>
               Recomendado
             </span>
           )}
@@ -135,9 +135,9 @@ function PlanEditor({
         <div className="flex items-center gap-4">
           {/* toggle recommended */}
           <div className="flex items-center gap-2" onClick={e => { e.stopPropagation(); onToggleRecommended(plan.id) }}>
-            <span className="text-[11px] text-[#8AA09A]">Recomendar</span>
+            <span className="text-[11px] text-[#9B9B9B]">Recomendar</span>
             <div className="w-9 h-5 rounded-full relative transition-colors"
-              style={{ background: plan.is_recommended ? '#173B32' : '#DFE0DB' }}>
+              style={{ background: plan.is_recommended ? '#141414' : '#DFE0DB' }}>
               <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all"
                 style={{ left: plan.is_recommended ? '18px' : '2px' }} />
             </div>
@@ -147,13 +147,13 @@ function PlanEditor({
               role="button"
               tabIndex={0}
               onClick={e => { e.stopPropagation(); onRemove(plan.id) }}
-              className="text-[#8AA09A] hover:text-[#B83B3B] transition-colors p-1 -m-1"
+              className="text-[#9B9B9B] hover:text-[#B83B3B] transition-colors p-1 -m-1"
               aria-label="Remover plano"
             >
               <Trash2 size={14} />
             </span>
           )}
-          <ChevronRight size={14} className="text-[#8AA09A] transition-transform"
+          <ChevronRight size={14} className="text-[#9B9B9B] transition-transform"
             style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
         </div>
       </button>
@@ -186,16 +186,16 @@ function PlanEditor({
                   onClick={() => onCurrencyChange(c)}
                   className="flex-1 rounded-xl px-3 py-2.5 text-center text-[12px] font-bold transition-all"
                   style={{
-                    background: currency === c ? '#173B32' : '#F4F3EF',
-                    border: `1px solid ${currency === c ? '#173B32' : '#DFE0DB'}`,
-                    color: currency === c ? '#FFFFFF' : '#162322',
+                    background: currency === c ? '#141414' : '#F4F3EF',
+                    border: `1px solid ${currency === c ? '#141414' : '#DFE0DB'}`,
+                    color: currency === c ? '#FFFFFF' : '#141414',
                   }}
                 >
                   {CURRENCIES[c].symbol} {c}
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-[#8AA09A] mt-1.5">
+            <p className="text-[10px] text-[#9B9B9B] mt-1.5">
               Vale para a proposta toda. Os valores abaixo são sempre em reais.
             </p>
           </div>
@@ -225,7 +225,7 @@ function PlanEditor({
               <input className={INPUT} type="number" value={plan.price_installment_value}
                 onChange={e => onChange(plan.id, 'price_installment_value', Number(e.target.value))} />
               {plan.price_installments_count > 0 && plan.price_installment_value > 0 && (
-                <p className="text-[10px] mt-1" style={{ color: '#8AA09A' }}>
+                <p className="text-[10px] mt-1" style={{ color: '#9B9B9B' }}>
                   Total: {formatMoney(
                     plan.price_installment_value * plan.price_installments_count,
                     currency,
@@ -252,14 +252,14 @@ function PlanEditor({
           </div>
           {currency !== 'BRL' && (
             <div className="-mt-1 mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-[#F4FAF8] px-3 py-2 text-[11px]">
-              <span className="font-bold uppercase tracking-wide text-[#8AA09A]">
+              <span className="font-bold uppercase tracking-wide text-[#9B9B9B]">
                 Cliente vê:
               </span>
-              <span className="font-bold text-[#173B32]">
+              <span className="font-bold text-[#141414]">
                 {formatMoney(plan.price_cash, currency, exchangeRate)} à vista
               </span>
               {plan.price_installments_count > 0 && (
-                <span className="text-[#8AA09A]">
+                <span className="text-[#9B9B9B]">
                   · {plan.price_installments_count}× de{' '}
                   {formatMoney(plan.price_installment_value, currency, exchangeRate)}
                 </span>
@@ -274,7 +274,7 @@ function PlanEditor({
                 onChange={e => onChange(plan.id, 'delivery_label', e.target.value)}
                 placeholder="Primeira versão em"
               />
-              <p className="text-[10px] text-[#8AA09A] mt-1.5">
+              <p className="text-[10px] text-[#9B9B9B] mt-1.5">
                 Aparece antes do nº de dias. Ex.: &quot;Prazo total de&quot;, &quot;Entrega em&quot;, &quot;Projeto pronto em&quot;.
               </p>
             </Field>
@@ -298,7 +298,7 @@ function PlanEditor({
                 onChange(plan.id, 'features', e.target.value.split('\n').filter(Boolean))
               }
             />
-            <p className="text-[10px] text-[#8AA09A] mt-1.5">
+            <p className="text-[10px] text-[#9B9B9B] mt-1.5">
               Dica: termine uma linha com <strong>:</strong> para virar título de seção (sem check).
             </p>
           </div>
@@ -492,14 +492,14 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
         <div className="max-w-5xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <button
             onClick={() => router.push('/admin')}
-            className="flex items-center gap-2 text-[11px] font-semibold text-[#8AA09A] hover:text-[#173B32] transition-colors"
+            className="flex items-center gap-2 text-[11px] font-semibold text-[#9B9B9B] hover:text-[#141414] transition-colors"
           >
             <ArrowLeft size={13} />
             Voltar ao painel
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: '#173B32' }} />
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8AA09A]">
+            <div className="w-2 h-2 rounded-full" style={{ background: '#141414' }} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#9B9B9B]">
               Fysi Lab Digital
             </span>
           </div>
@@ -512,7 +512,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#A8B5B0] mb-2">
             {mode === 'new' ? 'NOVA PROPOSTA' : 'EDITAR PROPOSTA'}
           </p>
-          <h1 className="text-[2rem] font-bold text-[#162322] tracking-tight">
+          <h1 className="text-[2rem] font-bold text-[#141414] tracking-tight">
             {mode === 'new' ? 'Criar proposta' : form.client_name || 'Editar proposta'}
           </h1>
         </div>
@@ -530,9 +530,9 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                   onClick={() => handleScopeType(s.value)}
                   className="relative rounded-xl px-4 py-5 text-left transition-all hover:-translate-y-0.5"
                   style={{
-                    background: active ? '#173B32' : '#FFFFFF',
-                    border: `1px solid ${active ? '#173B32' : '#E6E6E1'}`,
-                    color: active ? '#FFFFFF' : '#162322',
+                    background: active ? '#141414' : '#FFFFFF',
+                    border: `1px solid ${active ? '#141414' : '#E6E6E1'}`,
+                    color: active ? '#FFFFFF' : '#141414',
                     boxShadow: active
                       ? '0 8px 24px rgba(13,56,57,0.18)'
                       : '0 1px 2px rgba(0,0,0,0.02)',
@@ -541,14 +541,14 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                   {/* eyebrow numerado pra dar hierarquia premium */}
                   <span
                     className="text-[9px] font-bold uppercase tracking-[0.18em] block mb-2"
-                    style={{ color: active ? '#EFE3C2' : '#A8B5B0' }}
+                    style={{ color: active ? '#D6F23C' : '#A8B5B0' }}
                   >
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <p className="text-[14px] font-semibold leading-tight">{s.label}</p>
                   <p
                     className="text-[11px] mt-1.5 leading-snug"
-                    style={{ color: active ? '#8BB7AF' : '#8AA09A' }}
+                    style={{ color: active ? '#8BB7AF' : '#9B9B9B' }}
                   >
                     {s.desc}
                   </p>
@@ -570,11 +570,11 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                     className="rounded-xl px-4 py-3 text-left transition-all"
                     style={{
                       background: lpConfig === c.value ? '#F4FAF8' : '#F4F3EF',
-                      border: `1px solid ${lpConfig === c.value ? '#173B32' : '#DFE0DB'}`,
+                      border: `1px solid ${lpConfig === c.value ? '#141414' : '#DFE0DB'}`,
                     }}
                   >
-                    <p className="text-[12px] font-bold text-[#162322]">{c.label}</p>
-                    <p className="text-[10px] text-[#8AA09A] mt-0.5">{c.desc}</p>
+                    <p className="text-[12px] font-bold text-[#141414]">{c.label}</p>
+                    <p className="text-[10px] text-[#9B9B9B] mt-0.5">{c.desc}</p>
                   </button>
                 ))}
               </div>
@@ -594,11 +594,11 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                     className="rounded-xl px-4 py-3 text-left transition-all"
                     style={{
                       background: sitePages === s.value ? '#F4FAF8' : '#F4F3EF',
-                      border: `1px solid ${sitePages === s.value ? '#173B32' : '#DFE0DB'}`,
+                      border: `1px solid ${sitePages === s.value ? '#141414' : '#DFE0DB'}`,
                     }}
                   >
-                    <p className="text-[12px] font-bold text-[#162322]">{s.label}</p>
-                    <p className="text-[10px] text-[#8AA09A] mt-0.5">{s.desc}</p>
+                    <p className="text-[12px] font-bold text-[#141414]">{s.label}</p>
+                    <p className="text-[10px] text-[#9B9B9B] mt-0.5">{s.desc}</p>
                   </button>
                 ))}
               </div>
@@ -607,13 +607,13 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
 
           {/* plans preview chips */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="text-[10px] text-[#8AA09A] self-center">Planos:</span>
+            <span className="text-[10px] text-[#9B9B9B] self-center">Planos:</span>
             {plans.map(p => (
               <span key={p.id}
                 className="text-[10px] font-semibold px-3 py-1 rounded-full"
                 style={{
-                  background: p.is_recommended ? '#EFE3C2' : '#E8E7E1',
-                  color: '#162322',
+                  background: p.is_recommended ? '#D6F23C' : '#E8E7E1',
+                  color: '#141414',
                 }}>
                 {p.name}
                 {p.is_recommended && ' ★'}
@@ -690,9 +690,9 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                   onClick={() => handleCurrency(c)}
                   className="rounded-xl px-4 py-3 text-center transition-all"
                   style={{
-                    background: form.currency === c ? '#173B32' : '#F4F3EF',
-                    border: `1px solid ${form.currency === c ? '#173B32' : '#DFE0DB'}`,
-                    color: form.currency === c ? '#FFFFFF' : '#162322',
+                    background: form.currency === c ? '#141414' : '#F4F3EF',
+                    border: `1px solid ${form.currency === c ? '#141414' : '#DFE0DB'}`,
+                    color: form.currency === c ? '#FFFFFF' : '#141414',
                   }}
                 >
                   <p className="text-[12px] font-bold">{CURRENCIES[c].label}</p>
@@ -714,9 +714,9 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
                     }
                   />
                 </Field>
-                <p className="text-[10px] text-[#8AA09A] mt-1.5">
+                <p className="text-[10px] text-[#9B9B9B] mt-1.5">
                   Ex.: um plano de R$ 2.300 aparece como{' '}
-                  <strong style={{ color: '#173B32' }}>
+                  <strong style={{ color: '#141414' }}>
                     {formatMoney(2300, form.currency, form.exchange_rate)}
                   </strong>{' '}
                   para o cliente.
@@ -724,7 +724,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
               </div>
             )}
 
-            <p className="text-[10px] text-[#8AA09A] mt-3">
+            <p className="text-[10px] text-[#9B9B9B] mt-3">
               Os valores abaixo são sempre digitados em reais. A moeda escolhida
               converte automaticamente o que o cliente vê na proposta.
             </p>
@@ -752,7 +752,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
               type="button"
               onClick={addPlan}
               className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-[12px] font-semibold transition-colors hover:bg-[#F4FAF8]"
-              style={{ borderColor: '#173B32', color: '#173B32', background: '#FAFAF8' }}
+              style={{ borderColor: '#141414', color: '#141414', background: '#FAFAF8' }}
             >
               <Plus size={14} />
               Adicionar outro plano
@@ -765,7 +765,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
       <div className="fixed bottom-0 left-0 right-0 px-6 pb-6 pt-2 pointer-events-none">
         <div
           className="max-w-5xl mx-auto rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3 pointer-events-auto"
-          style={{ background: '#162322', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
+          style={{ background: '#141414', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
         >
           <div className="min-w-0">
             <p className="text-[13px] font-bold text-white leading-snug truncate">
@@ -793,7 +793,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
             </button>
             <button onClick={handleSave}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all hover:opacity-90 active:scale-95"
-              style={{ background: '#EFE3C2', color: '#162322' }}>
+              style={{ background: '#D6F23C', color: '#141414' }}>
               {mode === 'new' ? 'Salvar proposta' : 'Salvar alterações'}
             </button>
           </div>

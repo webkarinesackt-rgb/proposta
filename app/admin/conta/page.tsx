@@ -5,14 +5,14 @@ import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck, Check } from 'lucide-react'
 
 const T = {
-  textPrimary: '#162322',
-  textMuted: '#6B8585',
-  textDim: '#8AA09A',
+  textPrimary: '#141414',
+  textMuted: '#6E6E6E',
+  textDim: '#9B9B9B',
   border: '#E6E6E1',
   card: '#FFFFFF',
   bgSubtle: '#F4F3EF',
-  accent: '#173B32',
-  accentBright: '#EFE3C2',
+  accent: '#141414',
+  accentBright: '#D6F23C',
 }
 
 const LABEL =
@@ -63,12 +63,13 @@ export default function ContaPage() {
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-xl mx-auto px-4 sm:px-8 pt-8 sm:pt-12 pb-20">
         <h1
-          className="leading-[0.95] tracking-tight mb-8"
+          className="leading-[0.95] mb-8"
           style={{
-            fontFamily: '"ivypresto-display", Georgia, serif',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: 'clamp(2rem, 4.5vw, 2.6rem)',
+            fontFamily: 'var(--font-inter), Inter, sans-serif',
+            fontStyle: 'normal',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            fontSize: 'clamp(1.75rem, 4vw, 2.3rem)',
             color: T.textPrimary,
           }}
         >

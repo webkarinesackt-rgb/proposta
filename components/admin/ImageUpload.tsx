@@ -44,7 +44,7 @@ export function ImageUpload({ label, value, onChange, folder, hint, aspect = '1/
     <div>
       <label
         className="block text-[10px] font-bold uppercase tracking-[0.13em] mb-1.5"
-        style={{ color: '#8AA09A' }}
+        style={{ color: '#9B9B9B' }}
       >
         {label}
       </label>
@@ -101,13 +101,13 @@ export function ImageUpload({ label, value, onChange, folder, hint, aspect = '1/
             className="w-full rounded-xl px-4 py-3 text-left transition-all"
             style={{
               background: dragging ? '#E8F4F1' : '#F4F3EF',
-              border: `1px dashed ${dragging ? '#173B32' : '#C8CEC9'}`,
+              border: `1px dashed ${dragging ? '#141414' : '#C8CEC9'}`,
               cursor: loading ? 'wait' : 'pointer',
             }}
           >
             <div className="flex items-center gap-2">
-              <Upload size={14} style={{ color: '#8AA09A' }} />
-              <span className="text-[12px]" style={{ color: '#8AA09A' }}>
+              <Upload size={14} style={{ color: '#9B9B9B' }} />
+              <span className="text-[12px]" style={{ color: '#9B9B9B' }}>
                 {loading ? 'Enviando...' : 'Clique ou arraste uma imagem'}
               </span>
             </div>

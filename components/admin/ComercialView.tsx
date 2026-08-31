@@ -105,18 +105,18 @@ export default function ComercialView() {
           <div>
             <h1
               className="text-[22px] md:text-[26px] font-bold"
-              style={{ color: '#162322', fontFamily: 'var(--font-serif, ivypresto-display)' }}
+              style={{ color: '#141414', fontFamily: 'var(--font-inter), Inter, sans-serif', fontStyle: 'normal' }}
             >
               Comercial
             </h1>
-            <p className="text-[12px] mt-0.5" style={{ color: '#8AA09A' }}>
+            <p className="text-[12px] mt-0.5" style={{ color: '#9B9B9B' }}>
               Base de conhecimento do time: processos e prospecção.
             </p>
           </div>
           <button
             onClick={startNew}
             className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-            style={{ background: '#173B32', color: '#EFE3C2' }}
+            style={{ background: '#141414', color: '#D6F23C' }}
           >
             <Plus size={14} /> {section === 'processo' ? 'Novo processo' : 'Novo script'}
           </button>
@@ -136,9 +136,9 @@ export default function ComercialView() {
                 onClick={() => setSection(t.id)}
                 className="flex items-center gap-1.5 text-[12px] font-bold px-4 py-2 rounded-full transition-all"
                 style={{
-                  background: active ? '#173B32' : '#FFFFFF',
-                  color: active ? '#EFE3C2' : '#6B8585',
-                  border: '1px solid ' + (active ? '#173B32' : '#E6E6E1'),
+                  background: active ? '#141414' : '#FFFFFF',
+                  color: active ? '#D6F23C' : '#6E6E6E',
+                  border: '1px solid ' + (active ? '#141414' : '#E6E6E1'),
                 }}
               >
                 <Icon size={13} />
@@ -153,7 +153,7 @@ export default function ComercialView() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar…"
               className="w-full text-[13px] pl-9 pr-3 py-2 rounded-lg outline-none"
-              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#162322' }}
+              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
             />
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function ComercialView() {
             className="text-center py-16 rounded-2xl"
             style={{ background: '#FFFFFF', border: '1px dashed #D8D8D0' }}
           >
-            <p className="text-[14px] font-semibold" style={{ color: '#162322' }}>
+            <p className="text-[14px] font-semibold" style={{ color: '#141414' }}>
               {section === 'processo'
                 ? 'Nenhum processo cadastrado ainda.'
                 : 'Nenhum script de prospecção ainda.'}
@@ -180,7 +180,7 @@ export default function ComercialView() {
             <button
               onClick={startNew}
               className="mt-3 text-[12px] font-bold px-4 py-2 rounded-lg"
-              style={{ background: '#173B32', color: '#EFE3C2' }}
+              style={{ background: '#141414', color: '#D6F23C' }}
             >
               + Criar o primeiro
             </button>
@@ -195,7 +195,7 @@ export default function ComercialView() {
           <div className="flex flex-col gap-6 max-w-4xl">
             {grouped.map(([cat, items]) => (
               <div key={cat}>
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#8AA09A' }}>
+                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#9B9B9B' }}>
                   {cat}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -252,11 +252,11 @@ function ProcessCard({
       style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <p className="text-[14px] font-bold" style={{ color: '#162322' }}>
+        <p className="text-[14px] font-bold" style={{ color: '#141414' }}>
           {entry.title || '(sem título)'}
         </p>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-          <button onClick={onEdit} title="Editar" className="p-1 rounded hover:bg-[#F4F3EF]" style={{ color: '#6B8585' }}>
+          <button onClick={onEdit} title="Editar" className="p-1 rounded hover:bg-[#F4F3EF]" style={{ color: '#6E6E6E' }}>
             <Pencil size={13} />
           </button>
           <button onClick={onRemove} title="Excluir" className="p-1 rounded hover:bg-[#FBE0E0]" style={{ color: '#C86B6B' }}>
@@ -298,11 +298,11 @@ function ScriptCard({
       style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <p className="text-[13px] font-bold" style={{ color: '#162322' }}>
+        <p className="text-[13px] font-bold" style={{ color: '#141414' }}>
           {entry.title || '(sem título)'}
         </p>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-          <button onClick={onEdit} title="Editar" className="p-1 rounded hover:bg-[#F4F3EF]" style={{ color: '#6B8585' }}>
+          <button onClick={onEdit} title="Editar" className="p-1 rounded hover:bg-[#F4F3EF]" style={{ color: '#6E6E6E' }}>
             <Pencil size={12} />
           </button>
           <button onClick={onRemove} title="Excluir" className="p-1 rounded hover:bg-[#FBE0E0]" style={{ color: '#C86B6B' }}>
@@ -321,8 +321,8 @@ function ScriptCard({
           onClick={copy}
           className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
           style={{
-            background: copied ? '#DCF3E4' : '#173B32',
-            color: copied ? '#137A3F' : '#EFE3C2',
+            background: copied ? '#DCF3E4' : '#141414',
+            color: copied ? '#137A3F' : '#D6F23C',
           }}
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -332,7 +332,7 @@ function ScriptCard({
           onClick={onBroadcast}
           title="Enviar esse script pra vários contatos de uma vez"
           className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-          style={{ background: '#FFFFFF', color: '#173B32', border: '1px solid #E6E6E1' }}
+          style={{ background: '#FFFFFF', color: '#141414', border: '1px solid #E6E6E1' }}
         >
           <Send size={12} />
           Disparar
@@ -365,7 +365,7 @@ function EditorModal({
         style={{ background: '#FFFFFF', maxHeight: '85vh' }}
       >
         <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E6E6E1' }}>
-          <span className="text-[14px] font-bold" style={{ color: '#162322' }}>
+          <span className="text-[14px] font-bold" style={{ color: '#141414' }}>
             {isNew ? 'Novo' : 'Editar'} {isScript ? 'script' : 'processo'}
           </span>
           <button onClick={onClose} style={{ color: '#A8B5B0' }}>
@@ -374,7 +374,7 @@ function EditorModal({
         </div>
         <div className="p-4 flex flex-col gap-3 overflow-y-auto">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8AA09A' }}>
+            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
               Título
             </label>
             <input
@@ -383,12 +383,12 @@ function EditorModal({
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               placeholder={isScript ? 'Ex: Primeira abordagem' : 'Ex: Como fechar contrato'}
               className="w-full text-[14px] px-3 py-2 rounded-lg outline-none"
-              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
             />
           </div>
           {isScript && (
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8AA09A' }}>
+              <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
                 Categoria
               </label>
               <input
@@ -397,7 +397,7 @@ function EditorModal({
                 onChange={(e) => setDraft({ ...draft, category: e.target.value })}
                 placeholder="Ex: Prospecção, Objeções, Follow-up"
                 className="w-full text-[14px] px-3 py-2 rounded-lg outline-none"
-                style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+                style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
               />
               <datalist id="kb-cats">
                 <option value="Prospecção" />
@@ -408,7 +408,7 @@ function EditorModal({
             </div>
           )}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8AA09A' }}>
+            <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
               {isScript ? 'Texto do script (pra copiar)' : 'Conteúdo / passo a passo'}
             </label>
             <textarea
@@ -421,19 +421,19 @@ function EditorModal({
                   : '1. Enviar proposta\n2. Follow-up em 2 dias\n3. …'
               }
               className="w-full text-[13px] px-3 py-2 rounded-lg outline-none resize-y leading-relaxed"
-              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
             />
           </div>
         </div>
         <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid #E6E6E1' }}>
-          <button onClick={onClose} className="text-[12px] font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B8585' }}>
+          <button onClick={onClose} className="text-[12px] font-semibold px-4 py-2 rounded-lg" style={{ color: '#6E6E6E' }}>
             Cancelar
           </button>
           <button
             onClick={() => onSave(draft)}
             disabled={!draft.title.trim() && !draft.content.trim()}
             className="text-[12px] font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-            style={{ background: '#173B32', color: '#EFE3C2' }}
+            style={{ background: '#141414', color: '#D6F23C' }}
           >
             Salvar
           </button>
@@ -460,15 +460,15 @@ notify pgrst, 'reload schema';`
   const [copied, setCopied] = useState(false)
   return (
     <div className="max-w-[640px] mx-auto mt-4 rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
-      <p className="text-[15px] font-bold" style={{ color: '#162322' }}>
+      <p className="text-[15px] font-bold" style={{ color: '#141414' }}>
         Falta um passo único (30 segundos)
       </p>
-      <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: '#6B8585' }}>
+      <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: '#6E6E6E' }}>
         Pra guardar a base de conhecimento, precisamos criar a tabela uma vez.
         Copie o comando, cole no <b>SQL Editor</b> do Supabase (botão “Run”) e
         clique em “Já criei”.
       </p>
-      <pre className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto" style={{ background: '#173B32', color: '#EAF3E9' }}>
+      <pre className="text-[11px] mt-3 p-3 rounded-lg overflow-x-auto" style={{ background: '#141414', color: '#EAF3E9' }}>
         {sql}
       </pre>
       <div className="flex items-center gap-2 mt-3">
@@ -480,11 +480,11 @@ notify pgrst, 'reload schema';`
             })
           }}
           className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#F4F3EF', color: '#173B32', border: '1px solid #E6E6E1' }}
+          style={{ background: '#F4F3EF', color: '#141414', border: '1px solid #E6E6E1' }}
         >
           {copied ? 'Copiado!' : 'Copiar comando'}
         </button>
-        <button onClick={onRetry} className="text-[12px] font-bold px-3 py-2 rounded-lg" style={{ background: '#173B32', color: '#EFE3C2' }}>
+        <button onClick={onRetry} className="text-[12px] font-bold px-3 py-2 rounded-lg" style={{ background: '#141414', color: '#D6F23C' }}>
           Já criei
         </button>
       </div>

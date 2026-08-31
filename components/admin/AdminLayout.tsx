@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div
       className="h-screen flex flex-col md:flex-row overflow-hidden"
       style={{
-        background: '#FAFAFA',
+        background: '#EDEDEA',
         fontFamily: 'var(--font-inter)',
         color: '#141414',
       }}

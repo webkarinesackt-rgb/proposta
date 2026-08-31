@@ -10,21 +10,21 @@ import { closedProjectsStore, ClosedProject } from '@/lib/closedProjectsStore'
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#162322',
-  textMuted: '#6B8585',
-  textDim: '#8AA09A',
+  textPrimary: '#141414',
+  textMuted: '#6E6E6E',
+  textDim: '#9B9B9B',
   border: '#E6E6E1',
   card: '#FFFFFF',
   bgSubtle: '#FAFAF8',
-  accent: '#173B32',
-  accentBright: '#EFE3C2',
+  accent: '#141414',
+  accentBright: '#D6F23C',
 }
 
 /* ── helpers / mapas ─────────────────────────────────── */
 
 // Rampa categórica da marca: distinguível no gráfico, sem tom saturado.
 const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
-  landing_page:   { label: 'Landing Page',          color: '#173B32' },
+  landing_page:   { label: 'Landing Page',          color: '#141414' },
   site_completo:  { label: 'Site Completo',         color: '#6E7A2E' },
   mensal:         { label: 'Mensal',                color: '#B08A3E' },
   posicionamento: { label: 'Posicionamento online', color: '#4E7F7A' },
@@ -34,7 +34,7 @@ const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
 // Mesma paleta de status da tela de Propostas (derivada da marca).
 const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }> = {
   draft:    { label: 'Rascunho',     color: '#7A8985' },
-  sent:     { label: 'Enviadas',     color: '#173B32' },
+  sent:     { label: 'Enviadas',     color: '#141414' },
   viewed:   { label: 'Visualizadas', color: '#6E7A2E' },
   accepted: { label: 'Aceitas',      color: '#2F6B4F' },
   rejected: { label: 'Rejeitadas',   color: '#9C5A48' },
@@ -111,7 +111,7 @@ function PieChart({ slices, size = 180 }: { slices: Slice[]; size?: number }) {
         textAnchor="middle"
         fontSize={28}
         fontWeight={700}
-        fill="#162322"
+        fill="#141414"
       >
         {total}
       </text>
@@ -120,7 +120,7 @@ function PieChart({ slices, size = 180 }: { slices: Slice[]; size?: number }) {
         textAnchor="middle"
         fontSize={10}
         fontWeight={600}
-        fill="#8AA09A"
+        fill="#9B9B9B"
         style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}
       >
         total
@@ -462,12 +462,13 @@ export default function RelatoriosView() {
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-6 sm:pt-10 pb-20">
         <h1
-          className="leading-none tracking-tight mb-2"
+          className="leading-none mb-2"
           style={{
-            fontFamily: '"ivypresto-display", Georgia, serif',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: 'clamp(2rem, 4.5vw, 2.8rem)',
+            fontFamily: 'var(--font-inter), Inter, sans-serif',
+            fontStyle: 'normal',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
             color: T.textPrimary,
           }}
         >
@@ -571,7 +572,7 @@ export default function RelatoriosView() {
                 label="Pipeline pendente"
                 value={fmtBRL(totalSent)}
                 icon={<Send size={15} />}
-                accent="#173B32"
+                accent="#141414"
                 sub="enviadas / visualizadas"
               />
               <MetricCard

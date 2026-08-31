@@ -38,13 +38,13 @@ export function useToast() {
         ? '#7F1D1D'
         : toast.kind === 'info'
         ? '#1E3A8A'
-        : '#173B32'
+        : '#141414'
     const fg =
       toast.kind === 'error'
         ? '#FECACA'
         : toast.kind === 'info'
         ? '#BFDBFE'
-        : '#EFE3C2'
+        : '#D6F23C'
     return (
       <div
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 text-[12px] font-semibold px-4 py-2.5 rounded-full transition-all"

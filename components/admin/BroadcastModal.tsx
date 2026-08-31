@@ -131,7 +131,7 @@ export default function BroadcastModal({
           className="px-4 py-3 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: '1px solid #E6E6E1' }}
         >
-          <span className="text-[14px] font-bold flex items-center gap-2" style={{ color: '#162322' }}>
+          <span className="text-[14px] font-bold flex items-center gap-2" style={{ color: '#141414' }}>
             <Send size={15} />
             Disparo de mensagens
           </span>
@@ -163,7 +163,7 @@ export default function BroadcastModal({
 
           {done ? (
             <>
-              <p className="text-[13px] font-bold" style={{ color: '#162322' }}>
+              <p className="text-[13px] font-bold" style={{ color: '#141414' }}>
                 Disparo concluído: {okCount} enviada{okCount !== 1 ? 's' : ''}
                 {failCount > 0 ? `, ${failCount} falhou/falharam` : ''}.
               </p>
@@ -175,7 +175,7 @@ export default function BroadcastModal({
                     ) : (
                       <XCircle size={13} style={{ color: '#B45309' }} />
                     )}
-                    <span style={{ color: '#162322' }}>{r.name}</span>
+                    <span style={{ color: '#141414' }}>{r.name}</span>
                     {r.error && (
                       <span className="text-[10px]" style={{ color: '#B45309' }}>
                         — {r.error}
@@ -190,7 +190,7 @@ export default function BroadcastModal({
               <div>
                 <label
                   className="block text-[10px] font-bold uppercase tracking-wider mb-1"
-                  style={{ color: '#8AA09A' }}
+                  style={{ color: '#9B9B9B' }}
                 >
                   Mensagem — use {'{nome}'} pra personalizar
                 </label>
@@ -200,7 +200,7 @@ export default function BroadcastModal({
                   disabled={sending}
                   rows={4}
                   className="w-full text-[13px] px-3 py-2 rounded-lg outline-none resize-y leading-relaxed"
-                  style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+                  style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
                 />
               </div>
 
@@ -208,7 +208,7 @@ export default function BroadcastModal({
                 <div className="flex items-center justify-between mb-1.5">
                   <label
                     className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: '#8AA09A' }}
+                    style={{ color: '#9B9B9B' }}
                   >
                     Destinatários ({selected.size}/{MAX_RECIPIENTS})
                   </label>
@@ -216,7 +216,7 @@ export default function BroadcastModal({
                     onClick={selectFiltered}
                     disabled={sending}
                     className="text-[11px] font-bold"
-                    style={{ color: '#173B32' }}
+                    style={{ color: '#141414' }}
                   >
                     selecionar da busca (até {MAX_RECIPIENTS})
                   </button>
@@ -229,7 +229,7 @@ export default function BroadcastModal({
                     disabled={sending}
                     placeholder="Buscar contato…"
                     className="w-full text-[12.5px] pl-8 pr-3 py-2 rounded-lg outline-none"
-                    style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#162322' }}
+                    style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
                   />
                 </div>
                 {chatsError ? (
@@ -245,7 +245,7 @@ export default function BroadcastModal({
                       <label
                         key={c.id}
                         className="flex items-center gap-2.5 px-3 py-2 text-[12.5px] cursor-pointer transition-colors hover:bg-[#FAFAF8]"
-                        style={{ borderBottom: '1px solid #F0F0EC', color: '#162322' }}
+                        style={{ borderBottom: '1px solid #F0F0EC', color: '#141414' }}
                       >
                         <input
                           type="checkbox"
@@ -268,7 +268,7 @@ export default function BroadcastModal({
               {sending && (
                 <div
                   className="rounded-lg p-3 text-[12px] flex items-center justify-between"
-                  style={{ background: '#EAF3E9', color: '#173B32' }}
+                  style={{ background: '#EAF3E9', color: '#141414' }}
                 >
                   <span>
                     Enviando… {results.length}/{selected.size}
@@ -277,7 +277,7 @@ export default function BroadcastModal({
                   <button
                     onClick={stopSending}
                     className="flex items-center gap-1 font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: '#173B32', color: '#EFE3C2' }}
+                    style={{ background: '#141414', color: '#D6F23C' }}
                   >
                     <Square size={11} /> Parar
                   </button>
@@ -295,7 +295,7 @@ export default function BroadcastModal({
             <button
               onClick={onClose}
               className="text-[12px] font-bold px-4 py-2 rounded-lg"
-              style={{ background: '#173B32', color: '#EFE3C2' }}
+              style={{ background: '#141414', color: '#D6F23C' }}
             >
               Fechar
             </button>
@@ -305,7 +305,7 @@ export default function BroadcastModal({
                 onClick={onClose}
                 disabled={sending}
                 className="text-[12px] font-semibold px-4 py-2 rounded-lg disabled:opacity-40"
-                style={{ color: '#6B8585' }}
+                style={{ color: '#6E6E6E' }}
               >
                 Cancelar
               </button>
@@ -313,7 +313,7 @@ export default function BroadcastModal({
                 onClick={startSending}
                 disabled={sending || selected.size === 0 || !text.trim()}
                 className="flex items-center gap-1.5 text-[12px] font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-                style={{ background: '#173B32', color: '#EFE3C2' }}
+                style={{ background: '#141414', color: '#D6F23C' }}
               >
                 <Send size={13} />
                 Iniciar disparo
