@@ -190,11 +190,11 @@ function MetricCard({
         </span>
       </div>
       <p
-        className="font-bold leading-none tabular-nums"
+        className="font-bold leading-none tabular-nums whitespace-nowrap"
         style={{
           color: tone,
           letterSpacing: '-0.02em',
-          fontSize: 'clamp(1.875rem, 3.4vw, 2.5rem)',
+          fontSize: 'clamp(1.25rem, 2.4vw, 1.75rem)',
         }}
       >
         {value}
