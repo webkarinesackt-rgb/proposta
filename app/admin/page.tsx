@@ -77,9 +77,10 @@ function isExpired(iso: string) {
 
 /* ── stat card ───────────────────────────────────────── */
 
-/** Célula do painel-razão (fundo petróleo). O numeral usa a serifa do
- *  cabeçalho ("Olá, Karine.") pra amarrar o indicador à assinatura da
- *  página — em vez dos três cards brancos iguais de antes. */
+/** Célula do painel-razão (fundo petróleo). Número em sans-bold — serifa
+ *  itálica fica bonita em título, mas os algarismos ficam com peso/largura
+ *  desiguais (ex: "1" bem mais fino que "8"), o que lê como desproporcional
+ *  num numeral de estatística. Sans tabular resolve. */
 function Stat({
   value,
   label,
@@ -99,12 +100,9 @@ function Stat({
       }}
     >
       <p
-        className="leading-none"
+        className="leading-none font-bold tabular-nums tracking-tight"
         style={{
-          fontFamily: '"ivypresto-display", Georgia, serif',
-          fontStyle: 'italic',
-          fontWeight: 300,
-          fontSize: 'clamp(2.1rem, 4.4vw, 3rem)',
+          fontSize: 'clamp(2rem, 4.2vw, 2.8rem)',
           color: highlight ? T.accentBright : '#FFFFFF',
         }}
       >

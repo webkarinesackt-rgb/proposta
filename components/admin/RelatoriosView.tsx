@@ -190,10 +190,11 @@ function MetricCard({
         </span>
       </div>
       <p
-        className="font-bold leading-none tracking-tight"
+        className="font-bold leading-none tabular-nums"
         style={{
           color: tone,
-          fontSize: 'clamp(2rem, 4vw, 2.6rem)',
+          letterSpacing: '-0.02em',
+          fontSize: 'clamp(1.875rem, 3.4vw, 2.5rem)',
         }}
       >
         {value}
@@ -218,8 +219,8 @@ function ConversionCard({
   sub: string
   color: string
 }) {
-  const size = 84
-  const r = 33
+  const size = 96
+  const r = 37
   const c = 2 * Math.PI * r
   const pct = value ?? 0
   const offset = c * (1 - Math.min(100, Math.max(0, pct)) / 100)
@@ -260,7 +261,10 @@ function ConversionCard({
             )}
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-bold tabular-nums" style={{ color: value != null ? color : T.textDim, fontSize: 17 }}>
+            <span
+              className="font-bold tabular-nums"
+              style={{ color: value != null ? color : T.textDim, fontSize: 26, letterSpacing: '-0.02em' }}
+            >
               {value != null ? `${value}%` : '—'}
             </span>
           </div>
@@ -351,8 +355,22 @@ export default function RelatoriosView() {
   // Tudo deriva de `proposals`. Antes: 4 loops + 2 sort + 2 map em todo
   // render (até em hover de slice de pizza). Agora roda só quando proposals muda.
   const stats = useMemo(() => {
-    const propValue = (p: Proposal) =>
-      p.selected_plans.reduce((s, pl) => s + (Number(pl.price_cash) || 0), 0)
+    // Uma proposta pode trazer 2 planos ALTERNATIVOS (o cliente escolhe um,
+    // não os dois) — nunca somar. Pra valor "de intenção" (pipeline/perdido),
+    // usa o plano marcado como recomendado (mesma convenção do CSV de
+    // Propostas); pra valor ACEITO de verdade, prioriza o que está
+    // registrado em Fechados (closedProjects), que é o que ela confirma na
+    // mão — só cai pro plano recomendado se a proposta aceita não tiver
+    // linha em Fechados.
+    const closedValueByProposal = new Map<string, number>()
+    for (const cp of closedProjects) {
+      if (cp.proposal_id && cp.value > 0) closedValueByProposal.set(cp.proposal_id, cp.value)
+    }
+    const planValue = (p: Proposal) => {
+      const rec = p.selected_plans.find((pl) => pl.is_recommended) || p.selected_plans[0]
+      return Number(rec?.price_cash) || 0
+    }
+    const acceptedValue = (p: Proposal) => closedValueByProposal.get(p.id) ?? planValue(p)
 
     const byType = new Map<ProjectType, number>()
     const byStatus = new Map<ProposalStatus, number>()
@@ -369,9 +387,10 @@ export default function RelatoriosView() {
     for (const p of proposals) {
       byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
       byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
-      const v = propValue(p)
+      const isAccepted = p.status === 'accepted'
+      const v = isAccepted ? acceptedValue(p) : planValue(p)
       if (v > 0) dealsWithValue.push({ p, v })
-      if (p.status === 'accepted') { totalAccepted += v; acceptedCount++; closedCount++ }
+      if (isAccepted) { totalAccepted += v; acceptedCount++; closedCount++ }
       else if (p.status === 'sent' || p.status === 'viewed') {
         totalSent += v
         if (p.valid_until) {
@@ -389,7 +408,7 @@ export default function RelatoriosView() {
       }
       // faturamento por mês = mês em que a proposta virou aceita (updated_at),
       // não o mês em que foi criada.
-      if (p.status === 'accepted' && v > 0) {
+      if (isAccepted && v > 0) {
         const ad = new Date(p.updated_at || p.created_at || Date.now())
         const akey = `${ad.getFullYear()}-${String(ad.getMonth() + 1).padStart(2, '0')}`
         revenueByMonth.set(akey, (revenueByMonth.get(akey) || 0) + v)
@@ -431,7 +450,7 @@ export default function RelatoriosView() {
       avgTicket: acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0,
       topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
     }
-  }, [proposals])
+  }, [proposals, closedProjects])
 
   const {
     totalAccepted, totalSent, totalLost,

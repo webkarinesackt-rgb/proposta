@@ -107,13 +107,11 @@ function OverviewCard({
         </span>
       </div>
       <p
-        className="leading-none"
+        className="leading-none font-bold tabular-nums"
         style={{
-          fontFamily: '"ivypresto-display", Georgia, serif',
-          fontStyle: 'italic',
-          fontWeight: 500,
+          letterSpacing: '-0.02em',
           color: tone,
-          fontSize: 'clamp(1.9rem, 3.2vw, 2.35rem)',
+          fontSize: 'clamp(1.875rem, 3.4vw, 2.5rem)',
         }}
       >
         {value}
