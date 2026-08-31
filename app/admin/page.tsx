@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
+import { ymKey, currentYm } from '@/lib/dates'
 import { Proposal, ProposalStatus, ProjectType } from '@/lib/types'
 import { waServer } from '@/lib/waServer'
 import { useToast } from '@/lib/useToast'
@@ -590,8 +591,7 @@ export default function AdminDashboard() {
       if (!created || isNaN(created.getTime())) return false
       const t = created.getTime()
       if (specificMonth) {
-        const ym = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`
-        if (ym !== specificMonth) return false
+        if (ymKey(created) !== specificMonth) return false
       } else if (period === 'week' && t < startOfWeek) {
         return false
       } else if (period === 'last_week' && (t < startOfLastWeek || t >= startOfWeek)) {
@@ -621,8 +621,7 @@ export default function AdminDashboard() {
   // tecla digitada na busca), recriando Date()/strings à toa pra cada
   // proposta em 2 filtros separados.
   const stats = useMemo(() => {
-    const now = new Date()
-    const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const thisYm = currentYm()
     return {
       // "Enviadas este mês" (mesma definição da Visão geral) em vez do
       // total histórico — mais útil no dia a dia que um número que só cresce.

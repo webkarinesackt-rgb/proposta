@@ -55,3 +55,16 @@ export function formatMoney(
   const value = convertFromBRL(amountBRL, currency, rate)
   return `${currencySymbol(currency)} ${formatNumber(value, decimals)}`
 }
+
+/** BRL compacto pra telas internas (dashboard/relatórios): "R$ 46,2k" acima
+ *  de mil, "R$ 850" abaixo — não confundir com `formatMoney` (multi-moeda,
+ *  usado na proposta que o cliente vê). */
+export function formatMoneyCompact(v: number): string {
+  if (v >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
+  return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+}
+
+/** Percentual arredondado de a/b, 0 quando b é 0 (evita NaN/Infinity). */
+export function pct(a: number, b: number): number {
+  return b > 0 ? Math.round((a / b) * 100) : 0
+}

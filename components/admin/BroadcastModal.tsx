@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { X, Search, Send, Square, AlertTriangle, Check, XCircle } from 'lucide-react'
-import { waServer, WaChat } from '@/lib/waServer'
+import { waServer, WaChat, isRealChat } from '@/lib/waServer'
 
 const MAX_RECIPIENTS = 40
 const MIN_DELAY_MS = 8000
@@ -54,7 +54,7 @@ export default function BroadcastModal({
   const candidates = useMemo(() => {
     const q = search.trim().toLowerCase()
     return chats
-      .filter((c) => !c.archived && !c.isGroup && !(c.tags || []).includes('pessoal'))
+      .filter(isRealChat)
       .filter((c) => !q || c.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [chats, search])

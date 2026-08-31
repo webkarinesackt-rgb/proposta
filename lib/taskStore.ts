@@ -1,5 +1,6 @@
 // Lembretes/tarefas com dono e data — mesmo projeto Supabase do resto do CRM.
 import { supabase } from './supabase'
+import { isTableMissing, missingColName } from './supabaseTableHelpers'
 
 /** Uma tarefa/lembrete. */
 export interface Task {
@@ -21,18 +22,6 @@ export class TaskTableMissingError extends Error {
     super('A tabela tasks ainda não existe no Supabase.')
     this.name = 'TaskTableMissingError'
   }
-}
-
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  return error.code === 'PGRST205' || (error.message || '').includes('Could not find the table')
-}
-
-function missingColName(error: { code?: string; message?: string } | null): string | null {
-  if (!error) return null
-  if (error.code !== 'PGRST204' && error.code !== '42703') return null
-  const m = (error.message || '').match(/'([^']+)' column/)
-  return m ? m[1] : null
 }
 
 type Row = Task

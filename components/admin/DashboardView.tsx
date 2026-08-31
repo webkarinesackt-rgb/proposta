@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { waServer, WaDashboard, WaSeriesPoint } from '@/lib/waServer'
 import { proposalStore } from '@/lib/proposalStore'
 import { taskStore, Task, TaskTableMissingError } from '@/lib/taskStore'
+import { currentYm } from '@/lib/dates'
 import {
   Inbox,
   MessageSquare,
@@ -473,8 +474,7 @@ export default function DashboardView() {
     proposalStore
       .getAll()
       .then((ps) => {
-        const now = new Date()
-        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const ym = currentYm()
         const weekEnd = Date.now() + 7 * 86400 * 1000
         let enviadas = 0,
           aceitas = 0,

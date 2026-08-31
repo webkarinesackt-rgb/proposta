@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { isTableMissing } from './supabaseTableHelpers'
 
 export type KbSection = 'processo' | 'script'
 
@@ -19,11 +20,6 @@ export class KbTableMissingError extends Error {
     super('A tabela kb_entries ainda não existe no Supabase.')
     this.name = 'KbTableMissingError'
   }
-}
-
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  return error.code === 'PGRST205' || (error.message || '').includes('Could not find the table')
 }
 
 type Row = Omit<KbEntry, 'sort'> & { sort: number | string }

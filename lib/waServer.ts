@@ -98,6 +98,14 @@ export type LeadStatusId = (typeof LEAD_STATUSES)[number]['id']
 export const STATUS_META: Record<string, { label: string; color: string; bg: string }> =
   Object.fromEntries(LEAD_STATUSES.map((s) => [s.id, s]))
 
+/** Filtro básico de "conversa real" (não grupo, não arquivada, não
+ *  marcada 'pessoal') usado onde não há necessidade dos toggles
+ *  configuráveis do LeadsView (includeGroups/includePessoal) nem das
+ *  condições extras específicas de "sem resposta" do Dashboard. */
+export function isRealChat(c: WaChat): boolean {
+  return !c.archived && !c.isGroup && !(c.tags || []).includes('pessoal')
+}
+
 export interface WaQuoted {
   text: string
   type: string

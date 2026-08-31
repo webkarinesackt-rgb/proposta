@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Activity, Send, Filter, Compass } from 'lucide-react'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProjectType, ProposalStatus } from '@/lib/types'
-import { waServer, WaChat, LEAD_STATUSES } from '@/lib/waServer'
+import { waServer, WaChat, LEAD_STATUSES, isRealChat } from '@/lib/waServer'
 import { closedProjectsStore, ClosedProject } from '@/lib/closedProjectsStore'
+import { ymKey } from '@/lib/dates'
+import { formatMoneyCompact, pct } from '@/lib/format'
 
 /* ── tokens ──────────────────────────────────────────── */
 
@@ -39,11 +41,6 @@ const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }>
   accepted: { label: 'Aceitas',      color: '#16A34A' },
   rejected: { label: 'Rejeitadas',   color: '#DC2626' },
   expired:  { label: 'Expiradas',    color: '#A3A3A3' },
-}
-
-function fmtBRL(v: number) {
-  if (v >= 1000) return 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
-  return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
 }
 
 /* ── PieChart (SVG puro) ─────────────────────────────── */
@@ -100,7 +97,7 @@ function PieChart({ slices, size = 180 }: { slices: Slice[]; size?: number }) {
             stroke="#FFFFFF"
             strokeWidth={1.5}
           >
-            <title>{`${s.label}: ${s.value} (${Math.round((s.value / total) * 100)}%)`}</title>
+            <title>{`${s.label}: ${s.value} (${pct(s.value, total)}%)`}</title>
           </path>
         )
         start = end
@@ -144,7 +141,7 @@ function PieLegend({ slices }: { slices: Slice[] }) {
             {s.value}
             {total > 0 && (
               <span style={{ color: T.textDim }}>
-                {' '}({Math.round((s.value / total) * 100)}%)
+                {' '}({pct(s.value, total)}%)
               </span>
             )}
           </span>
@@ -222,8 +219,8 @@ function ConversionCard({
   const size = 96
   const r = 37
   const c = 2 * Math.PI * r
-  const pct = value ?? 0
-  const offset = c * (1 - Math.min(100, Math.max(0, pct)) / 100)
+  const pctValue = value ?? 0
+  const offset = c * (1 - Math.min(100, Math.max(0, pctValue)) / 100)
   return (
     <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
       <div className="flex items-center justify-between mb-4">
@@ -308,8 +305,7 @@ export default function RelatoriosView() {
       if (!created || isNaN(created.getTime())) return false
       const t = created.getTime()
       if (specificMonth) {
-        const ym = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`
-        return ym === specificMonth
+        return ymKey(created) === specificMonth
       }
       if (period === 'week') return t >= startOfWeek
       if (period === 'last_week') return t >= startOfLastWeek && t < startOfWeek
@@ -341,9 +337,7 @@ export default function RelatoriosView() {
   // wa-server (leads reais), não das propostas. Mesmo filtro do LeadsView:
   // fora grupo, arquivada e etiqueta 'pessoal'.
   const chatStats = useMemo(() => {
-    const real = chats.filter(
-      (c) => !c.archived && !c.isGroup && !(c.tags || []).includes('pessoal'),
-    )
+    const real = chats.filter(isRealChat)
     // funil = situação atual das conversas ATIVAS (janela de dias) — sem isso,
     // anos de contatos parados em "Lead" dominam o gráfico e escondem o resto.
     const cutoff = funnelDays > 0 ? Date.now() / 1000 - funnelDays * 86400 : 0
@@ -383,7 +377,7 @@ export default function RelatoriosView() {
         source,
         leads: v.leads,
         converted: v.converted,
-        rate: v.leads > 0 ? Math.round((v.converted / v.leads) * 100) : 0,
+        rate: pct(v.converted, v.leads),
         revenue: revenueBySource.get(source) || 0,
       }))
       .sort((a, b) => b.leads - a.leads)
@@ -445,15 +439,13 @@ export default function RelatoriosView() {
         totalLost += v
       }
       if (p.created_at) {
-        const d = new Date(p.created_at)
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        const key = ymKey(new Date(p.created_at))
         byMonth.set(key, (byMonth.get(key) || 0) + 1)
       }
       // faturamento por mês = mês em que a proposta virou aceita (updated_at),
       // não o mês em que foi criada.
       if (isAccepted && v > 0) {
-        const ad = new Date(p.updated_at || p.created_at || Date.now())
-        const akey = `${ad.getFullYear()}-${String(ad.getMonth() + 1).padStart(2, '0')}`
+        const akey = ymKey(new Date(p.updated_at || p.created_at || Date.now()))
         revenueByMonth.set(akey, (revenueByMonth.get(akey) || 0) + v)
       }
     }
@@ -468,7 +460,7 @@ export default function RelatoriosView() {
     const today = new Date()
     for (let i = 5; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const key = ymKey(d)
       months.push({
         key,
         label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
@@ -492,7 +484,7 @@ export default function RelatoriosView() {
       // aceitas sobre TUDO que já foi enviado (não só o que já teve desfecho
       // final) — "22 de 24 fechadas" dava 92% e parecia errado porque
       // ignorava as ~170 que ainda estão só "enviada"/"visualizada".
-      conversionRate: sentEverCount > 0 ? Math.round((acceptedCount / sentEverCount) * 100) : 0,
+      conversionRate: pct(acceptedCount, sentEverCount),
       avgTicket: acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0,
       topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
     }
@@ -649,28 +641,28 @@ export default function RelatoriosView() {
               />
               <MetricCard
                 label="Ticket médio aceito"
-                value={acceptedCount > 0 ? fmtBRL(avgTicket) : '—'}
+                value={acceptedCount > 0 ? formatMoneyCompact(avgTicket) : '—'}
                 icon={<Send size={15} />}
                 accent="#0284C7"
                 sub={acceptedCount > 0 ? `${acceptedCount} aceita${acceptedCount > 1 ? 's' : ''}` : 'nenhuma aceita'}
               />
               <MetricCard
                 label="Faturamento aceito"
-                value={fmtBRL(totalAccepted)}
+                value={formatMoneyCompact(totalAccepted)}
                 icon={<Activity size={15} />}
                 accent="#16A34A"
                 sub="soma das aceitas"
               />
               <MetricCard
                 label="Pipeline pendente"
-                value={fmtBRL(totalSent)}
+                value={formatMoneyCompact(totalSent)}
                 icon={<Send size={15} />}
                 accent="#141414"
                 sub="enviadas / visualizadas"
               />
               <MetricCard
                 label="Valor perdido"
-                value={fmtBRL(totalLost)}
+                value={formatMoneyCompact(totalLost)}
                 icon={<Activity size={15} />}
                 accent="#DC2626"
                 sub="rejeitadas + expiradas"
@@ -740,14 +732,14 @@ export default function RelatoriosView() {
                           background: m.revenue > 0 ? '#16A34A' : 'transparent',
                           border: m.revenue === 0 ? `1px dashed ${T.border}` : 'none',
                         }}
-                        title={`${m.label}: ${fmtBRL(m.revenue)}`}
+                        title={`${m.label}: ${formatMoneyCompact(m.revenue)}`}
                       />
                     </div>
                     <span
                       className="text-[10px] font-semibold tabular-nums"
                       style={{ color: T.textPrimary }}
                     >
-                      {m.revenue > 0 ? fmtBRL(m.revenue) : '—'}
+                      {m.revenue > 0 ? formatMoneyCompact(m.revenue) : '—'}
                     </span>
                     <span className="text-[9px] uppercase" style={{ color: T.textDim }}>
                       {m.label}
@@ -799,7 +791,7 @@ export default function RelatoriosView() {
                             </span>
                           </div>
                           <p className="text-[14px] font-bold tabular-nums" style={{ color: T.textPrimary }}>
-                            {fmtBRL(v)}
+                            {formatMoneyCompact(v)}
                           </p>
                         </a>
                       )
@@ -916,9 +908,7 @@ export default function RelatoriosView() {
                 <div className="flex flex-col gap-2.5">
                   {chatStats.funnel.map((s) => {
                     const max = chatStats.funnelMax
-                    const pct = chatStats.funnelTotal > 0
-                      ? Math.round((s.count / chatStats.funnelTotal) * 100)
-                      : 0
+                    const stagePct = pct(s.count, chatStats.funnelTotal)
                     return (
                       <div key={s.label} className="flex items-center gap-3">
                         <span
@@ -946,7 +936,7 @@ export default function RelatoriosView() {
                         >
                           {s.count}{' '}
                           <span className="font-normal" style={{ color: T.textDim }}>
-                            ({pct}%)
+                            ({stagePct}%)
                           </span>
                         </span>
                       </div>
@@ -1021,7 +1011,7 @@ export default function RelatoriosView() {
                             {r.rate}%
                           </td>
                           <td className="py-2.5 text-right tabular-nums font-bold" style={{ color: T.textPrimary }}>
-                            {r.revenue > 0 ? fmtBRL(r.revenue) : '—'}
+                            {r.revenue > 0 ? formatMoneyCompact(r.revenue) : '—'}
                           </td>
                         </tr>
                       ))}

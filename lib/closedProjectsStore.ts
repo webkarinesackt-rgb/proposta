@@ -1,5 +1,6 @@
 // Mesmo projeto Supabase do resto do CRM (propostas, inbox, leads).
 import { supabase } from './supabase'
+import { isTableMissing, missingColName } from './supabaseTableHelpers'
 
 export type ContractStatus = 'negociacao' | 'fechado' | 'cancelado'
 export type PaymentMethod =
@@ -41,29 +42,6 @@ export class TableMissingError extends Error {
     super('A tabela closed_projects ainda não existe no Supabase.')
     this.name = 'TableMissingError'
   }
-}
-
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  // PGRST205 = tabela não encontrada. NÃO usar substring com o nome da tabela:
-  // o erro de "coluna faltando" (PGRST204) também cita 'closed_projects' e
-  // era confundido com tabela inexistente (mostrava o painel de setup à toa).
-  return (
-    error.code === 'PGRST205' ||
-    (error.message || '').includes('Could not find the table')
-  )
-}
-
-// Se o erro for "coluna X não existe ainda" (ex: 'urgency'/'contract_done'
-// antes de rodar o ALTER), retorna o nome da coluna. Assim o app remove esse
-// campo e tenta de novo — não quebra enquanto a coluna nova não existe.
-function missingColName(
-  error: { code?: string; message?: string } | null,
-): string | null {
-  if (!error) return null
-  if (error.code !== 'PGRST204' && error.code !== '42703') return null
-  const m = (error.message || '').match(/'([^']+)' column/)
-  return m ? m[1] : null
 }
 
 type Row = Omit<ClosedProject, 'value'> & { value: number | string }
