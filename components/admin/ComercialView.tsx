@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket } from 'lucide-react'
+import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket, Send } from 'lucide-react'
 import { kbStore, KbEntry, KbSection, KbTableMissingError } from '@/lib/kbStore'
 import { useToast } from '@/lib/useToast'
+import BroadcastModal from './BroadcastModal'
 
 export default function ComercialView() {
   const [entries, setEntries] = useState<KbEntry[]>([])
@@ -13,6 +14,7 @@ export default function ComercialView() {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<KbEntry | null>(null)
   const [creating, setCreating] = useState(false)
+  const [broadcastText, setBroadcastText] = useState<string | null>(null)
   const { show: showToast, Toast } = useToast()
 
   useEffect(() => {
@@ -204,6 +206,7 @@ export default function ComercialView() {
                       onEdit={() => setEditing(e)}
                       onRemove={() => remove(e.id)}
                       onCopied={() => showToast('Script copiado ✓')}
+                      onBroadcast={() => setBroadcastText(e.content)}
                     />
                   ))}
                 </div>
@@ -223,6 +226,10 @@ export default function ComercialView() {
           }}
           onSave={save}
         />
+      )}
+
+      {broadcastText !== null && (
+        <BroadcastModal initialText={broadcastText} onClose={() => setBroadcastText(null)} />
       )}
     </div>
   )
@@ -269,11 +276,13 @@ function ScriptCard({
   onEdit,
   onRemove,
   onCopied,
+  onBroadcast,
 }: {
   entry: KbEntry
   onEdit: () => void
   onRemove: () => void
   onCopied: () => void
+  onBroadcast: () => void
 }) {
   const [copied, setCopied] = useState(false)
   function copy() {
@@ -307,17 +316,28 @@ function ScriptCard({
       >
         {entry.content || '—'}
       </p>
-      <button
-        onClick={copy}
-        className="mt-3 self-start flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-        style={{
-          background: copied ? '#DCF3E4' : '#173B32',
-          color: copied ? '#137A3F' : '#EFE3C2',
-        }}
-      >
-        {copied ? <Check size={12} /> : <Copy size={12} />}
-        {copied ? 'Copiado!' : 'Copiar'}
-      </button>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={copy}
+          className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+          style={{
+            background: copied ? '#DCF3E4' : '#173B32',
+            color: copied ? '#137A3F' : '#EFE3C2',
+          }}
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? 'Copiado!' : 'Copiar'}
+        </button>
+        <button
+          onClick={onBroadcast}
+          title="Enviar esse script pra vários contatos de uma vez"
+          className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+          style={{ background: '#FFFFFF', color: '#173B32', border: '1px solid #E6E6E1' }}
+        >
+          <Send size={12} />
+          Disparar
+        </button>
+      </div>
     </div>
   )
 }
