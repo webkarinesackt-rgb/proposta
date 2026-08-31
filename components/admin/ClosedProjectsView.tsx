@@ -235,7 +235,7 @@ export default function ClosedProjectsView() {
   }, [periodFiltered])
 
   return (
-    <div className="flex flex-col h-full" style={{ background: '#F7F7F4' }}>
+    <div className="flex flex-col h-full" style={{ background: '#EDEDEA' }}>
       <Toast />
       {/* header */}
       <div className="px-5 md:px-8 pt-6 pb-4">
