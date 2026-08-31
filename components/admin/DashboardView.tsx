@@ -398,15 +398,19 @@ export default function DashboardView() {
   useEffect(() => {
     let alive = true
     let iv: ReturnType<typeof setInterval> | null = null
+    let reqId = 0
     async function load() {
       if (document.hidden) return // não puxa em background
+      const myReq = ++reqId
       try {
         const [d, s, cs] = await Promise.all([
           waServer.dashboard(period),
           waServer.dashboardSeries(period),
           waServer.chats(),
         ])
-        if (alive) {
+        // em rede lenta, uma chamada anterior pode responder depois da mais
+        // recente — só aplica se essa ainda for a última chamada em curso.
+        if (alive && myReq === reqId) {
           setData(d)
           setSeries(s.series || [])
           // 'sem resposta' correto: mesma regra do inbox (fora grupos,
@@ -443,7 +447,7 @@ export default function DashboardView() {
           setServerOff(false)
         }
       } catch {
-        if (alive) setServerOff(true)
+        if (alive && myReq === reqId) setServerOff(true)
       }
     }
     function start() {
