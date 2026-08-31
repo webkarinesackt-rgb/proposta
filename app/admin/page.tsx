@@ -614,8 +614,24 @@ export default function AdminDashboard() {
   })
 
   const stats = {
-    total: proposals.length,
-    draft: proposals.filter((p) => p.status === 'draft').length,
+    // "Enviadas este mês" (mesma definição da Visão geral) em vez do total
+    // histórico — mais útil no dia a dia que um número que só cresce.
+    sentThisMonth: proposals.filter((p) => {
+      if (p.status === 'draft') return false
+      const ym = (p.created_at || '').slice(0, 7)
+      const now = new Date()
+      const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      return ym === thisYm
+    }).length,
+    // aceitas ESTE MÊS (pela data em que virou aceita, updated_at) — faz
+    // par com "Enviadas este mês" (funil: quanto entrou x quanto fechou).
+    acceptedThisMonth: proposals.filter((p) => {
+      if (p.status !== 'accepted') return false
+      const ym = (p.updated_at || p.created_at || '').slice(0, 7)
+      const now = new Date()
+      const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      return ym === thisYm
+    }).length,
     // card de destaque: quem já ABRIU a proposta mas ainda não decidiu —
     // é quem mais vale a pena chamar agora (mais acionável que só contar
     // quantas foram enviadas).
@@ -834,12 +850,12 @@ export default function AdminDashboard() {
 
         {/* stats */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <Stat icon={<FileText size={15} />} value={stats.total} label="Total" />
+          <Stat icon={<Send size={15} />} value={stats.sentThisMonth} label="Enviadas este mês" />
           <Stat
-            icon={<Clock size={15} />}
-            value={stats.draft}
-            label="Rascunhos"
-            onClick={() => setFilter('draft')}
+            icon={<CheckCircle2 size={15} />}
+            value={stats.acceptedThisMonth}
+            label="Aceitas este mês"
+            onClick={() => setFilter('accepted')}
           />
           <Stat
             icon={<Eye size={15} />}
