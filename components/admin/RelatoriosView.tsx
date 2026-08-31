@@ -285,6 +285,7 @@ export default function RelatoriosView() {
     const byType = new Map<ProjectType, number>()
     const byStatus = new Map<ProposalStatus, number>()
     const byMonth = new Map<string, number>()
+    const revenueByMonth = new Map<string, number>()
     let totalAccepted = 0, totalSent = 0, totalLost = 0
     let acceptedCount = 0, closedCount = 0
 
@@ -314,6 +315,13 @@ export default function RelatoriosView() {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         byMonth.set(key, (byMonth.get(key) || 0) + 1)
       }
+      // faturamento por mês = mês em que a proposta virou aceita (updated_at),
+      // não o mês em que foi criada.
+      if (p.status === 'accepted' && v > 0) {
+        const ad = new Date(p.updated_at || p.created_at || Date.now())
+        const akey = `${ad.getFullYear()}-${String(ad.getMonth() + 1).padStart(2, '0')}`
+        revenueByMonth.set(akey, (revenueByMonth.get(akey) || 0) + v)
+      }
     }
 
     const topDeals = dealsWithValue.sort((a, b) => b.v - a.v).slice(0, 5)
@@ -322,7 +330,7 @@ export default function RelatoriosView() {
       .sort((a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime())
       .slice(0, 8)
 
-    const months: { key: string; label: string; count: number }[] = []
+    const months: { key: string; label: string; count: number; revenue: number }[] = []
     const today = new Date()
     for (let i = 5; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
@@ -331,9 +339,11 @@ export default function RelatoriosView() {
         key,
         label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
         count: byMonth.get(key) || 0,
+        revenue: revenueByMonth.get(key) || 0,
       })
     }
     const maxMonthly = Math.max(1, ...months.map((m) => m.count))
+    const maxMonthlyRevenue = Math.max(1, ...months.map((m) => m.revenue))
 
     const typeSlices: Slice[] = (Object.keys(TYPE_META) as ProjectType[])
       .map((t) => ({ label: TYPE_META[t].label, value: byType.get(t) || 0, color: TYPE_META[t].color }))
@@ -347,14 +357,14 @@ export default function RelatoriosView() {
       acceptedCount, closedCount,
       conversionRate: closedCount > 0 ? Math.round((acceptedCount / closedCount) * 100) : 0,
       avgTicket: acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0,
-      topDeals, expiringSoon, months, maxMonthly, typeSlices, statusSlices,
+      topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
     }
   }, [proposals])
 
   const {
     totalAccepted, totalSent, totalLost,
     acceptedCount, closedCount, conversionRate, avgTicket,
-    topDeals, expiringSoon, months, maxMonthly, typeSlices, statusSlices,
+    topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
   } = stats
 
   return (
@@ -522,6 +532,49 @@ export default function RelatoriosView() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* ── Bar chart: faturamento aceito por mês ── */}
+            <div
+              className="rounded-2xl p-5 mb-3"
+              style={{ background: T.card, border: `1px solid ${T.border}` }}
+            >
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.14em] mb-4"
+                style={{ color: T.textDim }}
+              >
+                Faturamento aceito — últimos 6 meses
+              </p>
+              <div className="flex items-end gap-3" style={{ height: 100 }}>
+                {months.map((m) => (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="flex-1 w-full flex items-end">
+                      <div
+                        className="w-full rounded-t transition-all"
+                        style={{
+                          height: `${(m.revenue / maxMonthlyRevenue) * 100}%`,
+                          minHeight: m.revenue > 0 ? 4 : 0,
+                          background: m.revenue > 0 ? '#2F6B4F' : 'transparent',
+                          border: m.revenue === 0 ? `1px dashed ${T.border}` : 'none',
+                        }}
+                        title={`${m.label}: ${fmtBRL(m.revenue)}`}
+                      />
+                    </div>
+                    <span
+                      className="text-[10px] font-semibold tabular-nums"
+                      style={{ color: T.textPrimary }}
+                    >
+                      {m.revenue > 0 ? fmtBRL(m.revenue) : '—'}
+                    </span>
+                    <span className="text-[9px] uppercase" style={{ color: T.textDim }}>
+                      {m.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] mt-4" style={{ color: T.textDim }}>
+                Conta pelo mês em que a proposta virou aceita, não pelo mês de criação.
+              </p>
             </div>
 
             {/* ── Top 5 maiores propostas + Vencendo em breve ── */}
