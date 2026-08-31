@@ -286,6 +286,38 @@ export default function RelatoriosView() {
   const [closedProjects, setClosedProjects] = useState<ClosedProject[]>([])
   const [chatsError, setChatsError] = useState(false)
   const [funnelDays, setFunnelDays] = useState(30)
+  // filtro por período (created_at) — mesmo padrão da tela de Propostas
+  const [period, setPeriod] = useState<'all' | 'week' | 'last_week' | 'month' | 'last_month'>('all')
+  const [specificMonth, setSpecificMonth] = useState('')
+
+  const filteredProposals = useMemo(() => {
+    if (!specificMonth && period === 'all') return proposals
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime()
+    const startOfWeek = (() => {
+      const d = new Date(now)
+      const day = (d.getDay() + 6) % 7
+      d.setDate(d.getDate() - day)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime()
+    })()
+    const startOfLastWeek = startOfWeek - 7 * 86400 * 1000
+    return proposals.filter((p) => {
+      const created = p.created_at ? new Date(p.created_at) : null
+      if (!created || isNaN(created.getTime())) return false
+      const t = created.getTime()
+      if (specificMonth) {
+        const ym = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`
+        return ym === specificMonth
+      }
+      if (period === 'week') return t >= startOfWeek
+      if (period === 'last_week') return t >= startOfLastWeek && t < startOfWeek
+      if (period === 'month') return t >= startOfMonth
+      if (period === 'last_month') return t >= startOfLastMonth && t < startOfMonth
+      return true
+    })
+  }, [proposals, period, specificMonth])
 
   useEffect(() => {
     proposalStore
@@ -377,16 +409,17 @@ export default function RelatoriosView() {
     const byMonth = new Map<string, number>()
     const revenueByMonth = new Map<string, number>()
     let totalAccepted = 0, totalSent = 0, totalLost = 0
-    let acceptedCount = 0, closedCount = 0
+    let acceptedCount = 0, closedCount = 0, sentEverCount = 0
 
     const dealsWithValue: { p: Proposal; v: number }[] = []
     const now = Date.now()
     const in14d = now + 14 * 86400_000
     const expCandidates: Proposal[] = []
 
-    for (const p of proposals) {
+    for (const p of filteredProposals) {
       byType.set(p.project_type, (byType.get(p.project_type) || 0) + 1)
       byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1)
+      if (p.status !== 'draft') sentEverCount++
       const isAccepted = p.status === 'accepted'
       const v = isAccepted ? acceptedValue(p) : planValue(p)
       if (v > 0) dealsWithValue.push({ p, v })
@@ -445,16 +478,19 @@ export default function RelatoriosView() {
 
     return {
       totalAccepted, totalSent, totalLost,
-      acceptedCount, closedCount,
-      conversionRate: closedCount > 0 ? Math.round((acceptedCount / closedCount) * 100) : 0,
+      acceptedCount, closedCount, sentEverCount,
+      // aceitas sobre TUDO que já foi enviado (não só o que já teve desfecho
+      // final) — "22 de 24 fechadas" dava 92% e parecia errado porque
+      // ignorava as ~170 que ainda estão só "enviada"/"visualizada".
+      conversionRate: sentEverCount > 0 ? Math.round((acceptedCount / sentEverCount) * 100) : 0,
       avgTicket: acceptedCount > 0 ? Math.round(totalAccepted / acceptedCount) : 0,
       topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
     }
-  }, [proposals, closedProjects])
+  }, [filteredProposals, closedProjects])
 
   const {
     totalAccepted, totalSent, totalLost,
-    acceptedCount, closedCount, conversionRate, avgTicket,
+    acceptedCount, closedCount, sentEverCount, conversionRate, avgTicket,
     topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
   } = stats
 
@@ -501,12 +537,59 @@ export default function RelatoriosView() {
           </div>
         ) : (
           <>
+            {/* filtro por período */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: T.textDim }}>
+                Período:
+              </span>
+              {([
+                { value: 'all', label: 'Todo período' },
+                { value: 'week', label: 'Esta semana' },
+                { value: 'last_week', label: 'Semana passada' },
+                { value: 'month', label: 'Este mês' },
+                { value: 'last_month', label: 'Mês passado' },
+              ] as const).map((opt) => {
+                const active = !specificMonth && period === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setPeriod(opt.value)
+                      setSpecificMonth('')
+                    }}
+                    className="text-[11px] font-bold px-3 py-1.5 rounded-full transition-all"
+                    style={{
+                      background: active ? T.accent : T.card,
+                      color: active ? T.accentBright : T.textMuted,
+                      border: `1px solid ${active ? T.accent : T.border}`,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+              <input
+                type="month"
+                value={specificMonth}
+                onChange={(e) => {
+                  setSpecificMonth(e.target.value)
+                  if (e.target.value) setPeriod('all')
+                }}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-full outline-none"
+                style={{
+                  background: specificMonth ? T.accent : T.card,
+                  color: specificMonth ? T.accentBright : T.textMuted,
+                  border: `1px solid ${specificMonth ? T.accent : T.border}`,
+                }}
+              />
+            </div>
+
             <p
               className="text-[11px] font-bold uppercase tracking-[0.14em] mb-3"
               style={{ color: T.textDim }}
             >
-              Histórico completo · {proposals.length} proposta
-              {proposals.length !== 1 ? 's' : ''}
+              {specificMonth || period !== 'all' ? 'Nesse período' : 'Histórico completo'} · {filteredProposals.length} proposta
+              {filteredProposals.length !== 1 ? 's' : ''}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -550,9 +633,9 @@ export default function RelatoriosView() {
             {/* ── 5 KPIs de performance ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
               <ConversionCard
-                value={closedCount > 0 ? conversionRate : null}
+                value={sentEverCount > 0 ? conversionRate : null}
                 color={conversionRate >= 30 ? '#2F6B4F' : conversionRate >= 15 ? '#B08A3E' : '#9C5A48'}
-                sub={closedCount > 0 ? `${acceptedCount} de ${closedCount} fechadas` : 'sem ciclo fechado ainda'}
+                sub={sentEverCount > 0 ? `${acceptedCount} de ${sentEverCount} enviadas` : 'nenhuma enviada ainda'}
               />
               <MetricCard
                 label="Ticket médio aceito"

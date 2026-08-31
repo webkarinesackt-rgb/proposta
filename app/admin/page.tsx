@@ -77,40 +77,51 @@ function isExpired(iso: string) {
 
 /* ── stat card ───────────────────────────────────────── */
 
-/** Célula do painel-razão (fundo petróleo). Número em sans-bold — serifa
- *  itálica fica bonita em título, mas os algarismos ficam com peso/largura
- *  desiguais (ex: "1" bem mais fino que "8"), o que lê como desproporcional
- *  num numeral de estatística. Sans tabular resolve. */
+/** Card de estatística leve — 3 lado a lado, no lugar do antigo painel
+ *  preto sólido (pesado demais). Mesma linguagem dos cards da Visão geral:
+ *  badge de ícone, seta no canto, número sans-bold tabular. */
 function Stat({
+  icon,
   value,
   label,
   highlight,
-  divider,
+  onClick,
 }: {
+  icon: React.ReactNode
   value: number
   label: string
   highlight?: boolean
-  divider?: boolean
+  onClick?: () => void
 }) {
   return (
     <div
-      className="px-5 sm:px-7 py-5 sm:py-6"
+      onClick={onClick}
+      className="rounded-2xl p-5 transition-all"
       style={{
-        borderLeft: divider ? '1px solid rgba(255,255,255,0.09)' : undefined,
+        background: highlight ? T.accentBright : T.card,
+        boxShadow: '0 4px 16px rgba(20,20,20,0.06), 0 1px 3px rgba(20,20,20,0.04)',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
+      <span
+        className="w-8 h-8 rounded-full flex items-center justify-center mb-3"
+        style={{ background: highlight ? 'rgba(20,20,20,0.1)' : T.bgSubtle, color: '#141414' }}
+      >
+        {icon}
+      </span>
       <p
-        className="leading-none font-bold tabular-nums tracking-tight"
+        className="leading-none font-bold tabular-nums"
         style={{
-          fontSize: 'clamp(2rem, 4.2vw, 2.8rem)',
-          color: highlight ? T.accentBright : '#FFFFFF',
+          letterSpacing: '-0.03em',
+          fontSize: 'clamp(1.9rem, 3.6vw, 2.6rem)',
+          color: '#141414',
         }}
       >
         {value}
       </p>
       <p
-        className="text-[10px] font-semibold uppercase tracking-[0.16em] mt-2.5"
-        style={{ color: 'rgba(200,216,212,0.62)' }}
+        className="text-[10px] font-bold uppercase tracking-wider mt-2"
+        style={{ color: highlight ? 'rgba(20,20,20,0.7)' : T.textDim }}
       >
         {label}
       </p>
@@ -820,18 +831,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* stats */}
-        <div
-          className="rounded-[26px] overflow-hidden mb-5"
-          style={{
-            background: T.accent,
-            boxShadow: '0 20px 40px -24px rgba(13,56,57,0.55)',
-          }}
-        >
-          <div className="grid grid-cols-3">
-            <Stat value={stats.total} label="Total" />
-            <Stat value={stats.draft} label="Rascunhos" divider />
-            <Stat value={stats.sent} label="Enviadas" highlight divider />
-          </div>
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <Stat icon={<FileText size={15} />} value={stats.total} label="Total" />
+          <Stat
+            icon={<Clock size={15} />}
+            value={stats.draft}
+            label="Rascunhos"
+            onClick={() => setFilter('draft')}
+          />
+          <Stat icon={<Send size={15} />} value={stats.sent} label="Enviadas" highlight />
         </div>
 
         {/* busca */}
