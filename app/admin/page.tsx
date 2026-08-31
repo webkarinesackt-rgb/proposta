@@ -86,13 +86,17 @@ function Stat({
   label,
   highlight,
   onClick,
+  tone,
 }: {
   icon: React.ReactNode
   value: number
   label: string
   highlight?: boolean
   onClick?: () => void
+  /** cor de destaque leve (ícone + número), sem preencher o card inteiro */
+  tone?: string
 }) {
+  const ink = highlight ? '#141414' : tone ?? '#141414'
   return (
     <div
       onClick={onClick}
@@ -105,7 +109,7 @@ function Stat({
     >
       <span
         className="w-8 h-8 rounded-full flex items-center justify-center mb-3"
-        style={{ background: highlight ? 'rgba(20,20,20,0.1)' : T.bgSubtle, color: '#141414' }}
+        style={{ background: highlight ? 'rgba(20,20,20,0.1)' : tone ? tone + '1C' : T.bgSubtle, color: ink }}
       >
         {icon}
       </span>
@@ -114,7 +118,7 @@ function Stat({
         style={{
           letterSpacing: '-0.03em',
           fontSize: 'clamp(1.9rem, 3.6vw, 2.6rem)',
-          color: '#141414',
+          color: ink,
         }}
       >
         {value}
@@ -856,6 +860,7 @@ export default function AdminDashboard() {
             value={stats.acceptedThisMonth}
             label="Aceitas este mês"
             onClick={() => setFilter('accepted')}
+            tone="#16A34A"
           />
           <Stat
             icon={<Eye size={15} />}
