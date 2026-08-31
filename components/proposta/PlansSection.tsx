@@ -3,15 +3,93 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Clock, Check, ArrowRight } from 'lucide-react'
-import { Plan, ProjectType, Currency } from '@/lib/types'
+import { Plan, ProjectType, Currency, PageItem } from '@/lib/types'
 import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
 
 interface PlansSectionProps {
   plans: Plan[]
+  items?: PageItem[]
   onAccept: (planId: string) => void
   projectType?: ProjectType
   currency?: Currency
   exchangeRate?: number
+}
+
+/* ── bloco de Orçamento: serviços somados (nome · escopo · valor + total) ── */
+function OrcamentoBlock({
+  items,
+  plan,
+  onAccept,
+  currency,
+  exchangeRate,
+}: {
+  items: PageItem[]
+  plan?: Plan
+  onAccept: (id: string) => void
+  currency: Currency
+  exchangeRate: number
+}) {
+  const symbol = currencySymbol(currency)
+  const money = (v: number) => `${symbol} ${formatNumber(convertFromBRL(v, currency, exchangeRate))}`
+  const total = items.reduce((s, it) => s + (typeof it.price === 'number' ? it.price : 0), 0)
+  const count = plan?.price_installments_count || 0
+  const parcela = plan?.price_installment_value || 0
+  return (
+    <div className="max-w-2xl mx-auto px-4">
+      <div
+        className="overflow-hidden"
+        style={{ borderRadius: 28, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+      >
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          {items.map((it) => (
+            <div key={it.id} className="px-6 py-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-bold" style={{ color: 'var(--text-primary)', fontSize: 16 }}>
+                  {it.name || 'Serviço'}
+                </p>
+                {it.subtitle && (
+                  <p className="mt-1 leading-snug" style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                    {it.subtitle}
+                  </p>
+                )}
+              </div>
+              <p className="font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)', fontSize: 15 }}>
+                {money(typeof it.price === 'number' ? it.price : 0)}
+              </p>
+            </div>
+          ))}
+        </div>
+        {/* total */}
+        <div
+          className="px-6 py-5 flex items-center justify-between"
+          style={{ background: 'rgba(214,242,60,0.08)', borderTop: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          <div>
+            <p className="uppercase tracking-wider font-bold" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+              Total
+            </p>
+            {count > 0 && parcela > 0 && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
+                ou {count}× de {money(parcela)}
+              </p>
+            )}
+          </div>
+          <p className="font-bold" style={{ color: 'var(--text-primary)', fontSize: 28 }}>
+            {money(total)}
+          </p>
+        </div>
+      </div>
+      {plan && (
+        <button
+          onClick={() => onAccept(plan.id)}
+          className="mt-5 w-full flex items-center justify-center gap-2 font-bold transition-transform hover:-translate-y-0.5"
+          style={{ background: '#D6F23C', color: '#141414', borderRadius: 16, padding: '16px 24px', fontSize: 15 }}
+        >
+          Aceitar proposta <ArrowRight size={18} />
+        </button>
+      )}
+    </div>
+  )
 }
 
 function PlanCard({
@@ -381,11 +459,13 @@ function PlanCard({
 
 export function PlansSection({
   plans,
+  items,
   onAccept,
   projectType,
   currency = 'BRL',
   exchangeRate = 1,
 }: PlansSectionProps) {
+  const isOrcamento = projectType === 'orcamento' && !!items && items.length > 0
   const isCustom = projectType === 'custom'
   // Para custom: cada card horizontal (escopo/preço lado a lado), empilhados.
   const isSingle = plans.length === 1 || isCustom
@@ -447,6 +527,15 @@ export function PlansSection({
         className="max-w-6xl mx-auto px-4"
         style={{ paddingBottom: '2rem' }}
       >
+        {isOrcamento ? (
+          <OrcamentoBlock
+            items={items!}
+            plan={plans[0]}
+            onAccept={onAccept}
+            currency={currency}
+            exchangeRate={exchangeRate}
+          />
+        ) : (
         <div className={`grid gap-4 items-start md:items-end ${gridCols}`}>
           {plans.map((plan, i) => (
             <PlanCard
@@ -460,6 +549,7 @@ export function PlansSection({
             />
           ))}
         </div>
+        )}
       </div>
     </section>
   )

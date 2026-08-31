@@ -241,12 +241,37 @@ const PACOTE_PLAN: Plan = {
   features: ['Página de vendas', 'Página de obrigado'],
 }
 
+// Orçamento: proposta somada por serviços. O "plano" é só o container do
+// total (preço = soma dos itens); os serviços com nome/escopo/valor ficam em
+// page_items. price_cash é ajustado no editor conforme a soma.
+const ORCAMENTO_PLAN: Plan = {
+  id: pid(1),
+  name: 'Investimento',
+  tagline: 'Serviços incluídos',
+  description: 'Escopo montado sob medida — cada serviço com seu valor.',
+  delivery_days: 15,
+  price_cash: 0,
+  price_installments_count: 6,
+  price_installment_value: 0,
+  highlight_phrase: 'Tudo o que a sua marca precisa',
+  is_recommended: true,
+  features: [],
+}
+
+/** Itens-exemplo pra começar um Orçamento (a Karine edita/remove). */
+export const DEFAULT_ORCAMENTO_ITEMS: { id: string; name: string; subtitle: string; price: number }[] = [
+  { id: 'oi1', name: 'Link da bio', subtitle: '', price: 650 },
+  { id: 'oi2', name: 'Key visual', subtitle: '', price: 500 },
+  { id: 'oi3', name: 'Página de vendas', subtitle: '', price: 1800 },
+]
+
 export function getPlansForScope(
   type: string,
   lpConfig?: LpConfig,
   sitePages?: SitePages
 ): Plan[] {
   if (type === 'pacote') return [{ ...PACOTE_PLAN, features: [...PACOTE_PLAN.features] }]
+  if (type === 'orcamento') return [{ ...ORCAMENTO_PLAN }]
   if (type === 'landing_page') {
     switch (lpConfig) {
       case 'sem_copy_com_copy': return [LP_START, LP_PERSUASIVO]

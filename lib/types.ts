@@ -4,6 +4,7 @@ export type ProjectType =
   | 'mensal'
   | 'posicionamento'
   | 'pacote'
+  | 'orcamento'
   | 'custom'
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired'
 export type Currency = 'BRL' | 'EUR' | 'USD'

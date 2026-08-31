@@ -6,12 +6,13 @@ import { mockProposal } from '@/lib/mockData'
 import { proposalStore } from '@/lib/proposalStore'
 import {
   getPlansForScope,
+  DEFAULT_ORCAMENTO_ITEMS,
   LP_CONFIGS,
   SITE_PAGES,
   LpConfig,
   SitePages,
 } from '@/lib/scopeTemplates'
-import { Plan, Proposal, ProjectType, Currency } from '@/lib/types'
+import { Plan, Proposal, ProjectType, Currency, PageItem } from '@/lib/types'
 import {
   CURRENCIES,
   CURRENCY_OPTIONS,
@@ -75,6 +76,7 @@ const SCOPE_TYPES: { value: ProjectType; label: string; desc: string }[] = [
   { value: 'mensal',         label: 'Mensal',                desc: 'Gestão recorrente' },
   { value: 'posicionamento', label: 'Posicionamento online', desc: 'Estratégia, identidade e presença digital' },
   { value: 'pacote',         label: 'Pacote',                desc: 'Vários serviços num preço único (ex: Vendas + Obrigado)' },
+  { value: 'orcamento',      label: 'Orçamento',             desc: 'Serviços somados — cada um com valor e escopo' },
   { value: 'custom',         label: 'Custom',                desc: 'Escopo personalizado' },
 ]
 
@@ -367,6 +369,14 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
   const [plans, setPlans] = useState<Plan[]>(
     initial?.selected_plans ?? getPlansForScope('landing_page', 'sem_copy_com_copy')
   )
+  // itens do Orçamento (serviços somados): nome + escopo (subtitle) + valor
+  const [pageItems, setPageItems] = useState<PageItem[]>(
+    (initial?.page_items as PageItem[]) ?? []
+  )
+  const orcamentoTotal = pageItems.reduce(
+    (s, it) => s + (typeof it.price === 'number' ? it.price : 0),
+    0
+  )
   const [photoUrl, setPhotoUrl] = useState(
     initial?.agency_settings.photo_url ?? mockProposal.agency_settings.photo_url
   )
@@ -376,6 +386,26 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
   function handleScopeType(type: ProjectType) {
     setForm(f => ({ ...f, project_type: type }))
     setPlans(getPlansForScope(type, lpConfig, sitePages))
+    // orçamento: se ainda não tem itens, começa com o exemplo pra editar
+    if (type === 'orcamento' && pageItems.length === 0) {
+      setPageItems(DEFAULT_ORCAMENTO_ITEMS.map(i => ({ ...i })))
+    }
+  }
+
+  // ── itens do Orçamento ──
+  function addItem() {
+    setPageItems(prev => [
+      ...prev,
+      { id: `oi_${Date.now()}`, name: '', subtitle: '', price: 0 },
+    ])
+  }
+  function updateItem(id: string, field: keyof PageItem, value: string | number) {
+    setPageItems(prev =>
+      prev.map(it => (it.id === id ? { ...it, [field]: value } : it))
+    )
+  }
+  function removeItem(id: string) {
+    setPageItems(prev => prev.filter(it => it.id !== id))
   }
 
   function handleLpConfig(cfg: LpConfig) {
@@ -444,13 +474,28 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
 
   function buildProposal(): Proposal {
     const base = initial ?? mockProposal
+    // no Orçamento, o preço do plano-total = soma dos itens (com juros 3,99%)
+    const finalPlans =
+      form.project_type === 'orcamento' && plans[0]
+        ? [
+            {
+              ...plans[0],
+              price_cash: orcamentoTotal,
+              price_installment_value: installmentValue(
+                orcamentoTotal,
+                plans[0].price_installments_count || 0
+              ),
+            },
+          ]
+        : plans
     return {
       ...base,
       ...form,
       id: initial?.id ?? '',
       slug: initial?.slug ?? '',
       valid_until: new Date(form.valid_until + 'T23:59:00').toISOString(),
-      selected_plans: plans,
+      selected_plans: finalPlans,
+      page_items: form.project_type === 'orcamento' ? pageItems : (base.page_items ?? []),
       status: initial?.status ?? 'draft',
       agency_settings: {
         ...base.agency_settings,
@@ -731,33 +776,123 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
             </p>
           </div>
 
-          <div className="space-y-3">
-            {plans.map((plan, i) => (
-              <PlanEditor
-                key={plan.id}
-                plan={plan}
-                index={i}
-                onChange={updatePlan}
-                onToggleRecommended={setRecommended}
-                onRemove={form.project_type === 'custom' && plans.length > 1 ? removePlan : undefined}
-                expandedScope={form.project_type === 'custom'}
-                currency={form.currency}
-                exchangeRate={form.exchange_rate}
-                onCurrencyChange={handleCurrency}
-              />
-            ))}
-          </div>
+          {form.project_type === 'orcamento' ? (
+            /* ── editor de Orçamento: serviços somados ── */
+            <div className="space-y-3">
+              <p className={LABEL}>Serviços do orçamento (nome · escopo · valor)</p>
+              {pageItems.map((it) => (
+                <div key={it.id} className="rounded-xl border border-[#E6E6E1] bg-[#FAFAF8] p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className={INPUT}
+                      placeholder="Serviço (ex: Página de vendas)"
+                      value={it.name}
+                      onChange={(e) => updateItem(it.id, 'name', e.target.value)}
+                    />
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-[12px] text-[#9B9B9B]">R$</span>
+                      <input
+                        className={INPUT + ' w-24'}
+                        type="number"
+                        value={typeof it.price === 'number' ? it.price : 0}
+                        onChange={(e) => updateItem(it.id, 'price', Number(e.target.value))}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(it.id)}
+                      title="Remover serviço"
+                      className="flex-shrink-0 p-2 rounded-lg hover:bg-[#F7EDE9]"
+                      style={{ color: '#9C5A48' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <textarea
+                    className={INPUT}
+                    rows={2}
+                    placeholder="Escopo — o que inclui esse serviço"
+                    value={it.subtitle}
+                    onChange={(e) => updateItem(it.id, 'subtitle', e.target.value)}
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addItem}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-[12px] font-semibold transition-colors hover:bg-[#F4FAF8]"
+                style={{ borderColor: '#141414', color: '#141414', background: '#FAFAF8' }}
+              >
+                <Plus size={14} /> Adicionar serviço
+              </button>
+              <div
+                className="rounded-xl p-4 flex items-center justify-between"
+                style={{ background: '#141414' }}
+              >
+                <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: '#D6F23C' }}>
+                  Total
+                </span>
+                <span className="text-[22px] font-bold text-white">
+                  {formatMoney(orcamentoTotal, form.currency, form.exchange_rate)}
+                </span>
+              </div>
+              <Field label="Nº de parcelas (sobre o total, com juros 3,99% a.m.)">
+                <input
+                  className={INPUT}
+                  type="number"
+                  min="1"
+                  value={plans[0]?.price_installments_count ?? 6}
+                  onChange={(e) =>
+                    setPlans((prev) =>
+                      prev.map((p, i) =>
+                        i === 0 ? { ...p, price_installments_count: Number(e.target.value) } : p
+                      )
+                    )
+                  }
+                />
+              </Field>
+              {plans[0] && plans[0].price_installments_count > 0 && orcamentoTotal > 0 && (
+                <p className="text-[11px] text-[#9B9B9B]">
+                  {plans[0].price_installments_count}× de{' '}
+                  {formatMoney(
+                    installmentValue(orcamentoTotal, plans[0].price_installments_count),
+                    form.currency,
+                    form.exchange_rate
+                  )}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {plans.map((plan, i) => (
+                  <PlanEditor
+                    key={plan.id}
+                    plan={plan}
+                    index={i}
+                    onChange={updatePlan}
+                    onToggleRecommended={setRecommended}
+                    onRemove={form.project_type === 'custom' && plans.length > 1 ? removePlan : undefined}
+                    expandedScope={form.project_type === 'custom'}
+                    currency={form.currency}
+                    exchangeRate={form.exchange_rate}
+                    onCurrencyChange={handleCurrency}
+                  />
+                ))}
+              </div>
 
-          {form.project_type === 'custom' && plans.length < 3 && (
-            <button
-              type="button"
-              onClick={addPlan}
-              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-[12px] font-semibold transition-colors hover:bg-[#F4FAF8]"
-              style={{ borderColor: '#141414', color: '#141414', background: '#FAFAF8' }}
-            >
-              <Plus size={14} />
-              Adicionar outro plano
-            </button>
+              {form.project_type === 'custom' && plans.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addPlan}
+                  className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-[12px] font-semibold transition-colors hover:bg-[#F4FAF8]"
+                  style={{ borderColor: '#141414', color: '#141414', background: '#FAFAF8' }}
+                >
+                  <Plus size={14} />
+                  Adicionar outro plano
+                </button>
+              )}
+            </>
           )}
         </SectionCard>
       </div>

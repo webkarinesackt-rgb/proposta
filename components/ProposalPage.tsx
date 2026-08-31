@@ -113,6 +113,7 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
       <div ref={plansRef}>
         <PlansSection
           plans={proposal.selected_plans}
+          items={proposal.page_items}
           onAccept={(planId) => handleAccept(planId)}
           projectType={proposal.project_type}
           currency={proposal.currency}
