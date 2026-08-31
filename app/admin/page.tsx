@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProposalStatus, ProjectType } from '@/lib/types'
@@ -617,30 +617,29 @@ export default function AdminDashboard() {
     return hay.includes(q)
   })
 
-  const stats = {
-    // "Enviadas este mês" (mesma definição da Visão geral) em vez do total
-    // histórico — mais útil no dia a dia que um número que só cresce.
-    sentThisMonth: proposals.filter((p) => {
-      if (p.status === 'draft') return false
-      const ym = (p.created_at || '').slice(0, 7)
-      const now = new Date()
-      const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      return ym === thisYm
-    }).length,
-    // aceitas ESTE MÊS (pela data em que virou aceita, updated_at) — faz
-    // par com "Enviadas este mês" (funil: quanto entrou x quanto fechou).
-    acceptedThisMonth: proposals.filter((p) => {
-      if (p.status !== 'accepted') return false
-      const ym = (p.updated_at || p.created_at || '').slice(0, 7)
-      const now = new Date()
-      const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      return ym === thisYm
-    }).length,
-    // card de destaque: quem já ABRIU a proposta mas ainda não decidiu —
-    // é quem mais vale a pena chamar agora (mais acionável que só contar
-    // quantas foram enviadas).
-    viewed: proposals.filter((p) => p.status === 'viewed').length,
-  }
+  // memoizado: antes recalculava em toda renderização (inclusive a cada
+  // tecla digitada na busca), recriando Date()/strings à toa pra cada
+  // proposta em 2 filtros separados.
+  const stats = useMemo(() => {
+    const now = new Date()
+    const thisYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    return {
+      // "Enviadas este mês" (mesma definição da Visão geral) em vez do
+      // total histórico — mais útil no dia a dia que um número que só cresce.
+      sentThisMonth: proposals.filter(
+        (p) => p.status !== 'draft' && (p.created_at || '').slice(0, 7) === thisYm,
+      ).length,
+      // aceitas ESTE MÊS (pela data em que virou aceita, updated_at) — faz
+      // par com "Enviadas este mês" (funil: quanto entrou x quanto fechou).
+      acceptedThisMonth: proposals.filter(
+        (p) => p.status === 'accepted' && (p.updated_at || p.created_at || '').slice(0, 7) === thisYm,
+      ).length,
+      // card de destaque: quem já ABRIU a proposta mas ainda não decidiu —
+      // é quem mais vale a pena chamar agora (mais acionável que só contar
+      // quantas foram enviadas).
+      viewed: proposals.filter((p) => p.status === 'viewed').length,
+    }
+  }, [proposals])
 
   async function handleDelete(id: string) {
     if (!confirm('Deletar esta proposta?')) return

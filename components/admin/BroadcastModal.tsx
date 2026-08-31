@@ -77,7 +77,10 @@ export default function BroadcastModal({
     setSending(true)
     setResults([])
     stopRef.current = false
-    const list = candidates.filter((c) => selected.has(c.id))
+    // deriva de `chats` (não de `candidates`, que é filtrado pela busca) —
+    // se ela mudar o texto da busca depois de selecionar, a lista de quem
+    // vai receber não pode encolher/sumir silenciosamente.
+    const list = chats.filter((c) => selected.has(c.id))
     for (let i = 0; i < list.length; i++) {
       if (stopRef.current || !aliveRef.current) break
       const chat = list[i]
