@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Proposal } from '@/lib/types'
+import { proposalStore } from '@/lib/proposalStore'
 import { HeroSection } from './cliente/HeroSection'
 import { DepoimentosSection } from './cliente/DepoimentosSection'
 import { QuemSection } from './cliente/QuemSection'
@@ -36,6 +37,17 @@ export function ProposalPage({ proposal }: ProposalPageProps) {
   const plansRef = useRef<HTMLDivElement>(null)
   const casesRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
+
+  // Marca como "vista" quando o cliente realmente abre a página (roda só
+  // no navegador, depois de hidratar — bots de preview de link em geral
+  // não executam JS, então não disparam isso à toa). Só sai de "enviada"
+  // pra "vista"; não mexe se já foi aceita/recusada/etc.
+  useEffect(() => {
+    if (proposal.id && proposal.status === 'sent') {
+      proposalStore.updateStatus(proposal.id, 'viewed').catch(() => {})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const scrollToPlans = () => {
     plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
