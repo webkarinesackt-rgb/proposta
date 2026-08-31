@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Send } from 'lucide-react'
+import { Activity, Send, Filter, Compass } from 'lucide-react'
 import { proposalStore } from '@/lib/proposalStore'
 import { Proposal, ProjectType, ProposalStatus } from '@/lib/types'
+import { waServer, WaChat, LEAD_STATUSES } from '@/lib/waServer'
+import { closedProjectsStore, ClosedProject } from '@/lib/closedProjectsStore'
 
 /* ── tokens ──────────────────────────────────────────── */
 
@@ -204,6 +206,10 @@ function MetricCard({
 export default function RelatoriosView() {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
+  const [chats, setChats] = useState<WaChat[]>([])
+  const [closedProjects, setClosedProjects] = useState<ClosedProject[]>([])
+  const [chatsError, setChatsError] = useState(false)
+  const [funnelDays, setFunnelDays] = useState(30)
 
   useEffect(() => {
     proposalStore
@@ -213,7 +219,62 @@ export default function RelatoriosView() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+    waServer
+      .chats()
+      .then(setChats)
+      .catch(() => setChatsError(true))
+    closedProjectsStore
+      .getAll()
+      .then(setClosedProjects)
+      .catch(() => {})
   }, [])
+
+  // Funil (situação atual) + desempenho por origem — derivam dos chats do
+  // wa-server (leads reais), não das propostas. Mesmo filtro do LeadsView:
+  // fora grupo, arquivada e etiqueta 'pessoal'.
+  const chatStats = useMemo(() => {
+    const real = chats.filter(
+      (c) => !c.archived && !c.isGroup && !(c.tags || []).includes('pessoal'),
+    )
+    // funil = situação atual das conversas ATIVAS (janela de dias) — sem isso,
+    // anos de contatos parados em "Lead" dominam o gráfico e escondem o resto.
+    const cutoff = funnelDays > 0 ? Date.now() / 1000 - funnelDays * 86400 : 0
+    const activeReal = real.filter((c) => c.lastTime >= cutoff)
+    const byStage = new Map<string, number>()
+    for (const c of activeReal) byStage.set(c.status, (byStage.get(c.status) || 0) + 1)
+    const funnel = LEAD_STATUSES.map((s) => ({
+      label: s.label,
+      count: byStage.get(s.id) || 0,
+      color: s.color,
+    }))
+
+    // origem = atribuição de receita por canal, então usa o histórico TODO
+    // (uma venda de 6 meses atrás não pode sumir só porque a conversa esfriou).
+    const revenueBySource = new Map<string, number>()
+    for (const cp of closedProjects) {
+      const src = cp.source || 'Não informado'
+      revenueBySource.set(src, (revenueBySource.get(src) || 0) + (cp.value || 0))
+    }
+    const bySource = new Map<string, { leads: number; converted: number }>()
+    for (const c of real) {
+      const src = c.source || 'Não informado'
+      const cur = bySource.get(src) || { leads: 0, converted: 0 }
+      cur.leads++
+      if (c.status === 'ACEITA' || c.status === 'FECHADO') cur.converted++
+      bySource.set(src, cur)
+    }
+    const sourceRows = Array.from(bySource.entries())
+      .map(([source, v]) => ({
+        source,
+        leads: v.leads,
+        converted: v.converted,
+        rate: v.leads > 0 ? Math.round((v.converted / v.leads) * 100) : 0,
+        revenue: revenueBySource.get(source) || 0,
+      }))
+      .sort((a, b) => b.leads - a.leads)
+
+    return { funnel, funnelTotal: activeReal.length, sourceRows }
+  }, [chats, closedProjects, funnelDays])
 
   // Tudo deriva de `proposals`. Antes: 4 loops + 2 sort + 2 map em todo
   // render (até em hover de slice de pizza). Agora roda só quando proposals muda.
@@ -562,6 +623,180 @@ export default function RelatoriosView() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* ── Funil (situação atual) — leads reais do WhatsApp por etapa ── */}
+            <div
+              className="rounded-2xl p-5 mt-3"
+              style={{ background: T.card, border: `1px solid ${T.border}` }}
+            >
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <p
+                  className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em]"
+                  style={{ color: T.textDim }}
+                >
+                  <Filter size={12} />
+                  Funil — situação atual dos leads
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px]" style={{ color: T.textMuted }}>
+                    {chatStats.funnelTotal} conversas ativas
+                  </span>
+                  <div
+                    className="flex items-center gap-1 p-0.5 rounded-full"
+                    style={{ background: T.bgSubtle, border: `1px solid ${T.border}` }}
+                    title="Só conversas mexidas nos últimos X dias — evita que contatos parados há anos dominem o gráfico"
+                  >
+                    {([
+                      { d: 7, label: '7d' },
+                      { d: 30, label: '30d' },
+                      { d: 90, label: '90d' },
+                      { d: 0, label: 'Tudo' },
+                    ] as const).map((o) => (
+                      <button
+                        key={o.d}
+                        onClick={() => setFunnelDays(o.d)}
+                        className="text-[10px] font-bold px-2 py-1 rounded-full transition-all"
+                        style={{
+                          background: funnelDays === o.d ? T.accent : 'transparent',
+                          color: funnelDays === o.d ? T.accentBright : T.textMuted,
+                        }}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {chatsError ? (
+                <p className="text-[12px]" style={{ color: T.textDim }}>
+                  Servidor do WhatsApp offline no momento — sem dados de funil pra mostrar.
+                </p>
+              ) : chatStats.funnelTotal === 0 ? (
+                <p className="text-[12px]" style={{ color: T.textDim }}>
+                  Carregando…
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {chatStats.funnel.map((s) => {
+                    const max = Math.max(1, ...chatStats.funnel.map((x) => x.count))
+                    const pct = chatStats.funnelTotal > 0
+                      ? Math.round((s.count / chatStats.funnelTotal) * 100)
+                      : 0
+                    return (
+                      <div key={s.label} className="flex items-center gap-3">
+                        <span
+                          className="text-[11px] font-semibold flex-shrink-0"
+                          style={{ color: T.textPrimary, width: 132 }}
+                        >
+                          {s.label}
+                        </span>
+                        <div
+                          className="flex-1 h-5 rounded-md overflow-hidden"
+                          style={{ background: T.bgSubtle }}
+                        >
+                          <div
+                            className="h-full rounded-md transition-all"
+                            style={{
+                              width: `${(s.count / max) * 100}%`,
+                              background: s.color,
+                              minWidth: s.count > 0 ? 6 : 0,
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="text-[11px] font-bold tabular-nums flex-shrink-0 text-right"
+                          style={{ color: T.textPrimary, width: 78 }}
+                        >
+                          {s.count}{' '}
+                          <span className="font-normal" style={{ color: T.textDim }}>
+                            ({pct}%)
+                          </span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-[10px] mt-4" style={{ color: T.textDim }}>
+                Foto do agora, não histórico — mostra onde as conversas estão hoje,
+                não quantas passaram por cada etapa ao longo do tempo.
+              </p>
+            </div>
+
+            {/* ── Desempenho por origem/canal ── */}
+            <div
+              className="rounded-2xl p-5 mt-3"
+              style={{ background: T.card, border: `1px solid ${T.border}` }}
+            >
+              <p
+                className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] mb-4"
+                style={{ color: T.textDim }}
+              >
+                <Compass size={12} />
+                Desempenho por origem
+              </p>
+              {chatsError ? (
+                <p className="text-[12px]" style={{ color: T.textDim }}>
+                  Servidor do WhatsApp offline no momento — sem dados de origem pra mostrar.
+                </p>
+              ) : chatStats.sourceRows.length === 0 ? (
+                <p className="text-[12px]" style={{ color: T.textDim }}>
+                  Carregando…
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]" style={{ minWidth: 480 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                        <th className="text-left font-bold uppercase tracking-wider py-2" style={{ color: T.textDim, fontSize: 10 }}>
+                          Origem
+                        </th>
+                        <th className="text-right font-bold uppercase tracking-wider py-2" style={{ color: T.textDim, fontSize: 10 }}>
+                          Leads
+                        </th>
+                        <th className="text-right font-bold uppercase tracking-wider py-2" style={{ color: T.textDim, fontSize: 10 }}>
+                          Convertidos
+                        </th>
+                        <th className="text-right font-bold uppercase tracking-wider py-2" style={{ color: T.textDim, fontSize: 10 }}>
+                          Taxa
+                        </th>
+                        <th className="text-right font-bold uppercase tracking-wider py-2" style={{ color: T.textDim, fontSize: 10 }}>
+                          Receita fechada
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chatStats.sourceRows.map((r) => (
+                        <tr key={r.source} style={{ borderBottom: `1px solid ${T.border}` }}>
+                          <td className="py-2.5 font-semibold" style={{ color: T.textPrimary }}>
+                            {r.source}
+                          </td>
+                          <td className="py-2.5 text-right tabular-nums" style={{ color: T.textPrimary }}>
+                            {r.leads}
+                          </td>
+                          <td className="py-2.5 text-right tabular-nums" style={{ color: T.textMuted }}>
+                            {r.converted}
+                          </td>
+                          <td
+                            className="py-2.5 text-right tabular-nums font-bold"
+                            style={{ color: r.rate >= 15 ? '#2F6B4F' : T.textMuted }}
+                          >
+                            {r.rate}%
+                          </td>
+                          <td className="py-2.5 text-right tabular-nums font-bold" style={{ color: T.textPrimary }}>
+                            {r.revenue > 0 ? fmtBRL(r.revenue) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-[10px] mt-3" style={{ color: T.textDim }}>
+                &quot;Convertidos&quot; conta conversas em Proposta aceita/Fechado; receita
+                vem do que está registrado em Fechados por origem.
+              </p>
             </div>
           </>
         )}
