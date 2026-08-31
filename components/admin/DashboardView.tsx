@@ -21,14 +21,14 @@ import {
 /* ── tokens ──────────────────────────────────────────── */
 
 const T = {
-  textPrimary: '#162322',
-  textMuted: '#6B8585',
-  textDim: '#8AA09A',
-  border: '#E6E6E1',
+  textPrimary: '#141414',
+  textMuted: '#6E6E6E',
+  textDim: '#9B9B9B',
+  border: '#E8E8E5',
   card: '#FFFFFF',
-  bgSubtle: '#FAFAF8',
-  accent: '#173B32',
-  accentBright: '#EFE3C2',
+  bgSubtle: '#F2F2F0',
+  accent: '#141414',
+  accentBright: '#D6F23C',
 }
 
 const PERIODS = [
@@ -76,48 +76,46 @@ function OverviewCard({
   onClick?: () => void
   urgent?: boolean
 }) {
-  const tone = urgent ? '#B45309' : T.textPrimary
+  const ink = '#141414'
   return (
     <div
       onClick={onClick}
       className="relative rounded-2xl p-5 transition-all"
       style={{
-        background: T.card,
-        border: `1px solid ${urgent ? 'rgba(180,83,9,0.22)' : T.border}`,
+        background: urgent ? T.accentBright : T.card,
+        border: urgent ? 'none' : `1px solid ${T.border}`,
         cursor: onClick ? 'pointer' : 'default',
       }}
     >
       <div className="flex items-center justify-between mb-4">
         <span
           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{
-            background: T.bgSubtle,
-            color: tone,
-            boxShadow: urgent ? 'inset 0 0 0 1.5px rgba(180,83,9,0.3)' : 'none',
-          }}
+          style={{ background: urgent ? 'rgba(20,20,20,0.1)' : T.bgSubtle, color: ink }}
         >
           {icon}
         </span>
         <span
-          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-right"
-          style={{ color: T.textDim }}
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: urgent ? '#FFFFFF' : T.bgSubtle, color: ink }}
         >
-          {label}
-          <ArrowUpRight size={11} />
+          <ArrowUpRight size={13} />
         </span>
       </div>
       <p
         className="leading-none font-bold tabular-nums"
         style={{
-          letterSpacing: '-0.02em',
-          color: tone,
+          letterSpacing: '-0.03em',
+          color: ink,
           fontSize: 'clamp(1.875rem, 3.4vw, 2.5rem)',
         }}
       >
         {value}
       </p>
+      <p className="text-[11px] font-bold uppercase tracking-wider mt-2.5" style={{ color: ink, opacity: urgent ? 0.75 : 1 }}>
+        {label}
+      </p>
       {sub && (
-        <p className="text-[11px] mt-1.5" style={{ color: T.textDim }}>
+        <p className="text-[11px] mt-1" style={{ color: urgent ? 'rgba(20,20,20,0.62)' : T.textDim }}>
           {sub}
         </p>
       )}
@@ -488,12 +486,13 @@ export default function DashboardView() {
     <div className="flex-1 min-h-0 overflow-y-auto thin-scroll">
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-8 pb-20">
         <h1
-          className="leading-none tracking-tight mb-2"
+          className="leading-none mb-2"
           style={{
-            fontFamily: '"ivypresto-display", Georgia, serif',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: 'clamp(2rem, 4.5vw, 2.8rem)',
+            fontFamily: 'var(--font-inter), Inter, sans-serif',
+            fontStyle: 'normal',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            fontSize: 'clamp(1.75rem, 4vw, 2.4rem)',
             color: T.textPrimary,
           }}
         >
