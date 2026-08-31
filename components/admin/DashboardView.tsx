@@ -8,12 +8,10 @@ import { taskStore, Task, TaskTableMissingError } from '@/lib/taskStore'
 import {
   Inbox,
   MessageSquare,
-  AlertCircle,
   Send,
   Clock,
   Timer,
   Activity,
-  ArrowRight,
   ArrowUpRight,
   Plus,
   Trash2,
@@ -197,60 +195,6 @@ function Sparkline({ series }: { series: WaSeriesPoint[] }) {
 
 const TASK_OWNERS = ['Karine', 'Tainá']
 
-function TaskSetupBanner({ onRetry }: { onRetry: () => void }) {
-  const sql = `create table if not exists public.tasks (
-  id uuid primary key default gen_random_uuid(),
-  title text not null default '',
-  due_date date,
-  owner text default '',
-  done boolean not null default false,
-  linked_chat_id text,
-  linked_chat_name text default '',
-  notes text default '',
-  created_at timestamptz not null default now()
-);
-notify pgrst, 'reload schema';`
-  const [copied, setCopied] = useState(false)
-  return (
-    <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
-      <p className="text-[13px] font-bold" style={{ color: T.textPrimary }}>
-        Falta um passo único pra ativar as tarefas (30 segundos)
-      </p>
-      <p className="text-[12px] mt-1.5 leading-relaxed" style={{ color: T.textMuted }}>
-        Copie o comando abaixo, cole no <b>SQL Editor</b> do Supabase e clique em
-        &quot;Run&quot;. Depois clique em &quot;Já criei&quot;.
-      </p>
-      <pre
-        className="text-[10px] mt-3 p-3 rounded-lg overflow-x-auto"
-        style={{ background: T.accent, color: T.accentBright }}
-      >
-        {sql}
-      </pre>
-      <div className="flex items-center gap-2 mt-3">
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(sql).then(() => {
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
-            })
-          }}
-          className="text-[11px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: T.bgSubtle, color: T.textPrimary, border: `1px solid ${T.border}` }}
-        >
-          {copied ? 'Copiado!' : 'Copiar comando'}
-        </button>
-        <button
-          onClick={onRetry}
-          className="text-[11px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: T.accent, color: T.accentBright }}
-        >
-          Já criei
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function dueTone(dueDate: string): { label: string; color: string; bg: string } | null {
   if (!dueDate) return null
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -270,15 +214,20 @@ function TasksPanel() {
   const [dueDate, setDueDate] = useState('')
   const [owner, setOwner] = useState('')
 
-  function load() {
-    setLoading(true)
-    taskStore
-      .getAll()
-      .then((t) => { setTasks(t); setNeedsSetup(false) })
-      .catch((e) => { if (e instanceof TaskTableMissingError) setNeedsSetup(true) })
-      .finally(() => setLoading(false))
-  }
-  useEffect(load, [])
+  useEffect(() => {
+    async function load() {
+      try {
+        const t = await taskStore.getAll()
+        setTasks(t)
+        setNeedsSetup(false)
+      } catch (e) {
+        if (e instanceof TaskTableMissingError) setNeedsSetup(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
 
   async function addTask() {
     const t = title.trim()
@@ -314,10 +263,12 @@ function TasksPanel() {
 
   const open = useMemo(() => tasks.filter((t) => !t.done), [tasks])
 
-  if (needsSetup) return <TaskSetupBanner onRetry={load} />
+  // sem aviso de setup aqui na Visão geral — se a tabela ainda não existe,
+  // o painel simplesmente não aparece (fica limpo até ela rodar o SQL).
+  if (needsSetup) return null
 
   return (
-    <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+    <div className="rounded-2xl p-5 mb-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
       <div className="flex items-center justify-between mb-3">
         <p
           className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
@@ -610,10 +561,8 @@ export default function DashboardView() {
           />
         </div>
 
-        {/* tarefas/lembretes */}
-        <div className="mb-5">
-          <TasksPanel />
-        </div>
+        {/* tarefas/lembretes — não renderiza nada se a tabela não existir */}
+        <TasksPanel />
 
         {/* period tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
