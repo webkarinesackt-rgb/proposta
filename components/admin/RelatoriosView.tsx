@@ -169,24 +169,30 @@ function MetricCard({
   sub?: string
   accent?: string
 }) {
+  const tone = accent ?? T.textPrimary
   return (
     <div
       className="rounded-2xl p-5"
       style={{ background: T.card, border: `1px solid ${T.border}` }}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <span
-          className="text-[10px] font-bold uppercase tracking-[0.14em]"
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: tone + '1C', color: tone }}
+        >
+          {icon}
+        </span>
+        <span
+          className="text-[10px] font-bold uppercase tracking-wider text-right"
           style={{ color: T.textDim }}
         >
           {label}
         </span>
-        <span style={{ color: T.textDim }}>{icon}</span>
       </div>
       <p
         className="font-bold leading-none tracking-tight"
         style={{
-          color: accent ?? T.textPrimary,
+          color: tone,
           fontSize: 'clamp(2rem, 4vw, 2.6rem)',
         }}
       >
@@ -197,6 +203,72 @@ function MetricCard({
           {sub}
         </p>
       )}
+    </div>
+  )
+}
+
+/* ── gauge circular (taxa de conversão) ──────────────────── */
+
+function ConversionCard({
+  value,
+  sub,
+  color,
+}: {
+  value: number | null
+  sub: string
+  color: string
+}) {
+  const size = 84
+  const r = 33
+  const c = 2 * Math.PI * r
+  const pct = value ?? 0
+  const offset = c * (1 - Math.min(100, Math.max(0, pct)) / 100)
+  return (
+    <div className="rounded-2xl p-5" style={{ background: T.card, border: `1px solid ${T.border}` }}>
+      <div className="flex items-center justify-between mb-4">
+        <span
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: color + '1C', color }}
+        >
+          <Activity size={15} />
+        </span>
+        <span
+          className="text-[10px] font-bold uppercase tracking-wider text-right"
+          style={{ color: T.textDim }}
+        >
+          Taxa de conversão
+        </span>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={T.bgSubtle} strokeWidth={7} />
+            {value != null && (
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                fill="none"
+                stroke={color}
+                strokeWidth={7}
+                strokeLinecap="round"
+                strokeDasharray={c}
+                strokeDashoffset={offset}
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+              />
+            )}
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-bold tabular-nums" style={{ color: value != null ? color : T.textDim, fontSize: 17 }}>
+              {value != null ? `${value}%` : '—'}
+            </span>
+          </div>
+        </div>
+        <p className="text-[11px] leading-relaxed" style={{ color: T.textDim }}>
+          {sub}
+        </p>
+      </div>
     </div>
   )
 }
@@ -457,11 +529,9 @@ export default function RelatoriosView() {
 
             {/* ── 5 KPIs de performance ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
-              <MetricCard
-                label="Taxa de conversão"
-                value={closedCount > 0 ? `${conversionRate}%` : '—'}
-                icon={<Activity size={15} />}
-                accent={conversionRate >= 30 ? '#2F6B4F' : conversionRate >= 15 ? '#B08A3E' : '#9C5A48'}
+              <ConversionCard
+                value={closedCount > 0 ? conversionRate : null}
+                color={conversionRate >= 30 ? '#2F6B4F' : conversionRate >= 15 ? '#B08A3E' : '#9C5A48'}
                 sub={closedCount > 0 ? `${acceptedCount} de ${closedCount} fechadas` : 'sem ciclo fechado ainda'}
               />
               <MetricCard
