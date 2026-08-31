@@ -25,20 +25,20 @@ const T = {
 // Rampa categórica da marca: distinguível no gráfico, sem tom saturado.
 const TYPE_META: Record<ProjectType, { label: string; color: string }> = {
   landing_page:   { label: 'Landing Page',          color: '#141414' },
-  site_completo:  { label: 'Site Completo',         color: '#6E7A2E' },
-  mensal:         { label: 'Mensal',                color: '#B08A3E' },
-  posicionamento: { label: 'Posicionamento online', color: '#4E7F7A' },
-  custom:         { label: 'Custom',                color: '#9AA8A2' },
+  site_completo:  { label: 'Site Completo',         color: '#65A30D' },
+  mensal:         { label: 'Mensal',                color: '#CA8A04' },
+  posicionamento: { label: 'Posicionamento online', color: '#0284C7' },
+  custom:         { label: 'Custom',                color: '#A3A3A3' },
 }
 
 // Mesma paleta de status da tela de Propostas (derivada da marca).
 const STATUS_META_PROP: Record<ProposalStatus, { label: string; color: string }> = {
-  draft:    { label: 'Rascunho',     color: '#7A8985' },
+  draft:    { label: 'Rascunho',     color: '#9B9B9B' },
   sent:     { label: 'Enviadas',     color: '#141414' },
-  viewed:   { label: 'Visualizadas', color: '#6E7A2E' },
-  accepted: { label: 'Aceitas',      color: '#2F6B4F' },
-  rejected: { label: 'Rejeitadas',   color: '#9C5A48' },
-  expired:  { label: 'Expiradas',    color: '#9AA8A2' },
+  viewed:   { label: 'Visualizadas', color: '#65A30D' },
+  accepted: { label: 'Aceitas',      color: '#16A34A' },
+  rejected: { label: 'Rejeitadas',   color: '#DC2626' },
+  expired:  { label: 'Expiradas',    color: '#A3A3A3' },
 }
 
 function fmtBRL(v: number) {
@@ -634,21 +634,21 @@ export default function RelatoriosView() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
               <ConversionCard
                 value={sentEverCount > 0 ? conversionRate : null}
-                color={conversionRate >= 30 ? '#2F6B4F' : conversionRate >= 15 ? '#B08A3E' : '#9C5A48'}
+                color={conversionRate >= 30 ? '#16A34A' : conversionRate >= 15 ? '#CA8A04' : '#DC2626'}
                 sub={sentEverCount > 0 ? `${acceptedCount} de ${sentEverCount} enviadas` : 'nenhuma enviada ainda'}
               />
               <MetricCard
                 label="Ticket médio aceito"
                 value={acceptedCount > 0 ? fmtBRL(avgTicket) : '—'}
                 icon={<Send size={15} />}
-                accent="#4E7F7A"
+                accent="#0284C7"
                 sub={acceptedCount > 0 ? `${acceptedCount} aceita${acceptedCount > 1 ? 's' : ''}` : 'nenhuma aceita'}
               />
               <MetricCard
                 label="Faturamento aceito"
                 value={fmtBRL(totalAccepted)}
                 icon={<Activity size={15} />}
-                accent="#2F6B4F"
+                accent="#16A34A"
                 sub="soma das aceitas"
               />
               <MetricCard
@@ -662,7 +662,7 @@ export default function RelatoriosView() {
                 label="Valor perdido"
                 value={fmtBRL(totalLost)}
                 icon={<Activity size={15} />}
-                accent="#9C5A48"
+                accent="#DC2626"
                 sub="rejeitadas + expiradas"
               />
             </div>
@@ -727,7 +727,7 @@ export default function RelatoriosView() {
                         style={{
                           height: `${(m.revenue / maxMonthlyRevenue) * 100}%`,
                           minHeight: m.revenue > 0 ? 4 : 0,
-                          background: m.revenue > 0 ? '#2F6B4F' : 'transparent',
+                          background: m.revenue > 0 ? '#16A34A' : 'transparent',
                           border: m.revenue === 0 ? `1px dashed ${T.border}` : 'none',
                         }}
                         title={`${m.label}: ${fmtBRL(m.revenue)}`}
@@ -1006,7 +1006,7 @@ export default function RelatoriosView() {
                           </td>
                           <td
                             className="py-2.5 text-right tabular-nums font-bold"
-                            style={{ color: r.rate >= 15 ? '#2F6B4F' : T.textMuted }}
+                            style={{ color: r.rate >= 15 ? '#16A34A' : T.textMuted }}
                           >
                             {r.rate}%
                           </td>
