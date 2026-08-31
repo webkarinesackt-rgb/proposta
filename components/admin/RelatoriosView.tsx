@@ -348,8 +348,14 @@ export default function RelatoriosView() {
     // anos de contatos parados em "Lead" dominam o gráfico e escondem o resto.
     const cutoff = funnelDays > 0 ? Date.now() / 1000 - funnelDays * 86400 : 0
     const activeReal = real.filter((c) => c.lastTime >= cutoff)
+    const validStatus = new Set<string>(LEAD_STATUSES.map((s) => s.id))
     const byStage = new Map<string, number>()
-    for (const c of activeReal) byStage.set(c.status, (byStage.get(c.status) || 0) + 1)
+    for (const c of activeReal) {
+      // mesma regra do LeadsView: status vazio/desconhecido cai em "Lead",
+      // senão some do funil sem aparecer em nenhuma barra.
+      const key = validStatus.has(c.status) ? c.status : 'LEAD'
+      byStage.set(key, (byStage.get(key) || 0) + 1)
+    }
     const funnel = LEAD_STATUSES.map((s) => ({
       label: s.label,
       count: byStage.get(s.id) || 0,
@@ -360,6 +366,7 @@ export default function RelatoriosView() {
     // (uma venda de 6 meses atrás não pode sumir só porque a conversa esfriou).
     const revenueBySource = new Map<string, number>()
     for (const cp of closedProjects) {
+      if (cp.contract_status !== 'fechado') continue
       const src = cp.source || 'Não informado'
       revenueBySource.set(src, (revenueBySource.get(src) || 0) + (cp.value || 0))
     }
@@ -381,7 +388,8 @@ export default function RelatoriosView() {
       }))
       .sort((a, b) => b.leads - a.leads)
 
-    return { funnel, funnelTotal: activeReal.length, sourceRows }
+    const funnelMax = Math.max(1, ...funnel.map((x) => x.count))
+    return { funnel, funnelMax, funnelTotal: activeReal.length, sourceRows }
   }, [chats, closedProjects, funnelDays])
 
   // Tudo deriva de `proposals`. Antes: 4 loops + 2 sort + 2 map em todo
@@ -396,7 +404,9 @@ export default function RelatoriosView() {
     // linha em Fechados.
     const closedValueByProposal = new Map<string, number>()
     for (const cp of closedProjects) {
-      if (cp.proposal_id && cp.value > 0) closedValueByProposal.set(cp.proposal_id, cp.value)
+      if (cp.contract_status === 'fechado' && cp.proposal_id && cp.value > 0) {
+        closedValueByProposal.set(cp.proposal_id, cp.value)
+      }
     }
     const planValue = (p: Proposal) => {
       const rec = p.selected_plans.find((pl) => pl.is_recommended) || p.selected_plans[0]
@@ -409,7 +419,7 @@ export default function RelatoriosView() {
     const byMonth = new Map<string, number>()
     const revenueByMonth = new Map<string, number>()
     let totalAccepted = 0, totalSent = 0, totalLost = 0
-    let acceptedCount = 0, closedCount = 0, sentEverCount = 0
+    let acceptedCount = 0, sentEverCount = 0
 
     const dealsWithValue: { p: Proposal; v: number }[] = []
     const now = Date.now()
@@ -423,7 +433,7 @@ export default function RelatoriosView() {
       const isAccepted = p.status === 'accepted'
       const v = isAccepted ? acceptedValue(p) : planValue(p)
       if (v > 0) dealsWithValue.push({ p, v })
-      if (isAccepted) { totalAccepted += v; acceptedCount++; closedCount++ }
+      if (isAccepted) { totalAccepted += v; acceptedCount++ }
       else if (p.status === 'sent' || p.status === 'viewed') {
         totalSent += v
         if (p.valid_until) {
@@ -432,7 +442,7 @@ export default function RelatoriosView() {
         }
       }
       else if (p.status === 'rejected' || p.status === 'expired') {
-        totalLost += v; closedCount++
+        totalLost += v
       }
       if (p.created_at) {
         const d = new Date(p.created_at)
@@ -478,7 +488,7 @@ export default function RelatoriosView() {
 
     return {
       totalAccepted, totalSent, totalLost,
-      acceptedCount, closedCount, sentEverCount,
+      acceptedCount, sentEverCount,
       // aceitas sobre TUDO que já foi enviado (não só o que já teve desfecho
       // final) — "22 de 24 fechadas" dava 92% e parecia errado porque
       // ignorava as ~170 que ainda estão só "enviada"/"visualizada".
@@ -490,7 +500,7 @@ export default function RelatoriosView() {
 
   const {
     totalAccepted, totalSent, totalLost,
-    acceptedCount, closedCount, sentEverCount, conversionRate, avgTicket,
+    acceptedCount, sentEverCount, conversionRate, avgTicket,
     topDeals, expiringSoon, months, maxMonthly, maxMonthlyRevenue, typeSlices, statusSlices,
   } = stats
 
@@ -905,7 +915,7 @@ export default function RelatoriosView() {
               ) : (
                 <div className="flex flex-col gap-2.5">
                   {chatStats.funnel.map((s) => {
-                    const max = Math.max(1, ...chatStats.funnel.map((x) => x.count))
+                    const max = chatStats.funnelMax
                     const pct = chatStats.funnelTotal > 0
                       ? Math.round((s.count / chatStats.funnelTotal) * 100)
                       : 0
