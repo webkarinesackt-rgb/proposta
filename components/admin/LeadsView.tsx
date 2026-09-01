@@ -220,11 +220,13 @@ function LeadRow({
   onOpen,
   onSetStatus,
   onSetValue,
+  proposalSlug,
 }: {
   chat: WaChat
   onOpen: () => void
   onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
+  proposalSlug?: string
 }) {
   const [editingValue, setEditingValue] = useState(false)
   const [valueDraft, setValueDraft] = useState('')
@@ -282,6 +284,19 @@ function LeadRow({
           )}
           {chat.lastText || '—'}
         </p>
+        {proposalSlug && (
+          <a
+            href={`/p/${proposalSlug}`}
+            target="_blank"
+            rel="noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none mt-1"
+            style={{ background: '#DCF3E4', color: '#137A3F' }}
+            title="Proposta enviada — abrir"
+          >
+            📄 Proposta
+          </a>
+        )}
         {visibleTags(chat).length > 0 && (
           <div className="flex items-center gap-1 mt-1 flex-wrap">
             {visibleTags(chat).slice(0, 3).map((t) => (
@@ -368,6 +383,7 @@ function StatusGroup({
   onSetStatus,
   onSetValue,
   initialOpen = true,
+  proposalLinks,
 }: {
   status: (typeof LEAD_STATUSES)[number]
   chats: WaChat[]
@@ -375,6 +391,7 @@ function StatusGroup({
   onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
   initialOpen?: boolean
+  proposalLinks: Map<string, string>
 }) {
   const [open, setOpen] = useState(initialOpen)
   const [dragOver, setDragOver] = useState(false)
@@ -443,6 +460,7 @@ function StatusGroup({
               onOpen={() => onOpenChat(c.id)}
               onSetStatus={onSetStatus}
               onSetValue={onSetValue}
+              proposalSlug={proposalLinks.get(c.id)}
             />
           ))}
         </div>
@@ -465,6 +483,7 @@ function KanbanColumn({
   onDropChat,
   onSetStatus,
   onSetValue,
+  proposalLinks,
 }: {
   col: { id: string; label: string; color: string; bg: string }
   chats: WaChat[]
@@ -472,6 +491,7 @@ function KanbanColumn({
   onDropChat: (id: string) => void
   onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
+  proposalLinks: Map<string, string>
 }) {
   const [dragOver, setDragOver] = useState(false)
   const totalValue = chats.reduce((sum, c) => sum + (Number(c.value) || 0), 0)
@@ -548,6 +568,7 @@ function KanbanColumn({
               onOpen={() => onOpenChat(c.id)}
               onSetStatus={onSetStatus}
               onSetValue={onSetValue}
+              proposalSlug={proposalLinks.get(c.id)}
             />
           ))
         )}
@@ -597,11 +618,13 @@ function KanbanCard({
   onOpen,
   onSetStatus,
   onSetValue,
+  proposalSlug,
 }: {
   chat: WaChat
   onOpen: () => void
   onSetStatus: (id: string, status: string) => void
   onSetValue: (id: string, value: number) => void
+  proposalSlug?: string
 }) {
   const [editingValue, setEditingValue] = useState(false)
   const [valueDraft, setValueDraft] = useState('')
@@ -735,6 +758,19 @@ function KanbanCard({
             📍 {chat.source}
           </span>
         )}
+        {proposalSlug && (
+          <a
+            href={`/p/${proposalSlug}`}
+            target="_blank"
+            rel="noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5"
+            style={{ background: '#DCF3E4', color: '#137A3F' }}
+            title="Proposta enviada — abrir"
+          >
+            📄 Proposta
+          </a>
+        )}
         {visibleTags(chat).slice(0, 2).map((t) => (
           <span
             key={t}
@@ -811,6 +847,15 @@ export default function LeadsView() {
     },
     [propById, propByPhone]
   )
+  // chatId → slug da proposta (pra selo com link no card)
+  const proposalLinks = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of chats) {
+      const p = matchedProposal(c)
+      if (p?.slug) m.set(c.id, p.slug)
+    }
+    return m
+  }, [chats, matchedProposal])
 
   async function load() {
     try {
@@ -1503,6 +1548,7 @@ export default function LeadsView() {
                   onDropChat={(id) => handleDropToStatus(id, s.id)}
                   onSetStatus={handleSetStatus}
                   onSetValue={handleSetValue}
+                  proposalLinks={proposalLinks}
                 />,
               ]
               for (const v of VIRTUAL_COLS) {
@@ -1516,6 +1562,7 @@ export default function LeadsView() {
                       onDropChat={(id) => handleDropToVirtual(id, v.tag)}
                       onSetStatus={handleSetStatus}
                       onSetValue={handleSetValue}
+                      proposalLinks={proposalLinks}
                     />,
                   )
                 }
@@ -1531,6 +1578,7 @@ export default function LeadsView() {
                 onDropChat={(id) => handleDropToVirtual(id, v.tag)}
                 onSetStatus={handleSetStatus}
                 onSetValue={handleSetValue}
+                proposalLinks={proposalLinks}
               />
             ))}
           </div>
@@ -1550,6 +1598,7 @@ export default function LeadsView() {
                   ['LEAD', 'AGUARDANDO', 'PROPOSTA'].includes(s.id) ||
                   (byStatus[s.id] || []).length > 0
                 }
+                proposalLinks={proposalLinks}
               />
             ))}
           </div>
