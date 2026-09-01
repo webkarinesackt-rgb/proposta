@@ -1,5 +1,8 @@
 import { Proposal } from './types'
-import { supabase } from './supabase'
+// Operações do admin (getAll/get/save/remove/updateStatus) usam o cliente com
+// sessão. Visitante deslogado da página /p cai como 'anon' (marca "vista").
+// A leitura pública em /p usa o cliente anônimo direto (app/p/[slug]/page.tsx).
+import { supabase } from './supabaseAuthed'
 
 function slugify(input: string): string {
   return input
