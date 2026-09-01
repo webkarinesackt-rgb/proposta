@@ -1,16 +1,17 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket, Send } from 'lucide-react'
+import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket, Send, Calculator } from 'lucide-react'
 import { kbStore, KbEntry, KbSection, KbTableMissingError } from '@/lib/kbStore'
 import { useToast } from '@/lib/useToast'
 import BroadcastModal from './BroadcastModal'
+import BudgetTemplatesPanel from './BudgetTemplatesPanel'
 
 export default function ComercialView() {
   const [entries, setEntries] = useState<KbEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [needsSetup, setNeedsSetup] = useState(false)
-  const [section, setSection] = useState<KbSection>('processo')
+  const [section, setSection] = useState<KbSection | 'orcamento'>('processo')
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<KbEntry | null>(null)
   const [creating, setCreating] = useState(false)
@@ -92,6 +93,7 @@ export default function ComercialView() {
   }, [list])
 
   function startNew() {
+    if (section === 'orcamento') return
     setEditing({ id: '', section, category: '', title: '', content: '', sort: Date.now() })
     setCreating(true)
   }
@@ -113,13 +115,15 @@ export default function ComercialView() {
               Base de conhecimento do time: processos e prospecção.
             </p>
           </div>
-          <button
-            onClick={startNew}
-            className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
-            style={{ background: '#141414', color: '#D6F23C' }}
-          >
-            <Plus size={14} /> {section === 'processo' ? 'Novo processo' : 'Novo script'}
-          </button>
+          {section !== 'orcamento' && (
+            <button
+              onClick={startNew}
+              className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ background: '#141414', color: '#D6F23C' }}
+            >
+              <Plus size={14} /> {section === 'processo' ? 'Novo processo' : 'Novo script'}
+            </button>
+          )}
         </div>
 
         {/* sub-abas */}
@@ -127,6 +131,7 @@ export default function ComercialView() {
           {([
             { id: 'processo', label: 'Processos', icon: BookOpen },
             { id: 'script', label: 'Prospecção', icon: Rocket },
+            { id: 'orcamento', label: 'Orçamentos', icon: Calculator },
           ] as const).map((t) => {
             const active = section === t.id
             const Icon = t.icon
@@ -146,22 +151,26 @@ export default function ComercialView() {
               </button>
             )
           })}
-          <div className="relative ml-auto max-w-[280px] flex-1 min-w-[160px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A8B5B0' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar…"
-              className="w-full text-[13px] pl-9 pr-3 py-2 rounded-lg outline-none"
-              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
-            />
-          </div>
+          {section !== 'orcamento' && (
+            <div className="relative ml-auto max-w-[280px] flex-1 min-w-[160px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A8B5B0' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar…"
+                className="w-full text-[13px] pl-9 pr-3 py-2 rounded-lg outline-none"
+                style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* conteúdo */}
       <div className="flex-1 min-h-0 overflow-auto px-5 md:px-8 pb-8">
-        {needsSetup ? (
+        {section === 'orcamento' ? (
+          <BudgetTemplatesPanel />
+        ) : needsSetup ? (
           <SetupBanner onRetry={load} />
         ) : loading ? (
           <p className="text-[13px] text-center py-16" style={{ color: '#A8B5B0' }}>

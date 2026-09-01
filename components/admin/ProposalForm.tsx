@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { mockProposal } from '@/lib/mockData'
 import { proposalStore } from '@/lib/proposalStore'
@@ -13,6 +13,7 @@ import {
   SitePages,
 } from '@/lib/scopeTemplates'
 import { Plan, Proposal, ProjectType, Currency, PageItem } from '@/lib/types'
+import { budgetStore, BudgetTemplate } from '@/lib/budgetStore'
 import {
   CURRENCIES,
   CURRENCY_OPTIONS,
@@ -20,7 +21,7 @@ import {
   currencySymbol,
   formatMoney,
 } from '@/lib/format'
-import { Eye, Copy, Check, ArrowLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { Eye, Copy, Check, ArrowLeft, ChevronRight, Plus, Trash2, FileText, X } from 'lucide-react'
 import { ImageUpload } from './ImageUpload'
 
 /* ── style helpers ───────────────────────────────────── */
@@ -377,6 +378,7 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
     (s, it) => s + (typeof it.price === 'number' ? it.price : 0),
     0
   )
+  const [showBudgetPicker, setShowBudgetPicker] = useState(false)
   const [photoUrl, setPhotoUrl] = useState(
     initial?.agency_settings.photo_url ?? mockProposal.agency_settings.photo_url
   )
@@ -779,7 +781,17 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
           {form.project_type === 'orcamento' ? (
             /* ── editor de Orçamento: serviços somados ── */
             <div className="space-y-3">
-              <p className={LABEL}>Serviços do orçamento (nome · escopo · valor)</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className={LABEL + ' mb-0'}>Serviços do orçamento (nome · escopo · valor)</p>
+                <button
+                  type="button"
+                  onClick={() => setShowBudgetPicker(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg"
+                  style={{ background: '#141414', color: '#D6F23C' }}
+                >
+                  <FileText size={12} /> Puxar orçamento base
+                </button>
+              </div>
               {pageItems.map((it) => (
                 <div key={it.id} className="rounded-xl border border-[#E6E6E1] bg-[#FAFAF8] p-3 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
@@ -933,6 +945,93 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
               {mode === 'new' ? 'Salvar proposta' : 'Salvar alterações'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {showBudgetPicker && (
+        <BudgetPickerModal
+          onClose={() => setShowBudgetPicker(false)}
+          onPick={(items) => {
+            setPageItems(items.map((i) => ({ ...i })))
+            setShowBudgetPicker(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── modal: puxar orçamento base ─────────────────────── */
+
+function BudgetPickerModal({
+  onClose,
+  onPick,
+}: {
+  onClose: () => void
+  onPick: (items: PageItem[]) => void
+}) {
+  const [templates, setTemplates] = useState<BudgetTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [q, setQ] = useState('')
+
+  useEffect(() => {
+    budgetStore
+      .getAll()
+      .then(setTemplates)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const list = templates.filter((t) =>
+    !q.trim() ? true : [t.name, t.category].join(' ').toLowerCase().includes(q.trim().toLowerCase()),
+  )
+  const total = (t: BudgetTemplate) =>
+    t.items.reduce((s, i) => s + (Number(i.price) || 0), 0)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose} />
+      <div className="relative w-full max-w-[460px] rounded-2xl flex flex-col" style={{ background: '#FFFFFF', maxHeight: '82vh' }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E6E6E1' }}>
+          <span className="text-[14px] font-bold" style={{ color: '#141414' }}>Puxar orçamento base</span>
+          <button onClick={onClose} style={{ color: '#A8B5B0' }}><X size={16} /></button>
+        </div>
+        <div className="p-3">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar modelo…"
+            autoFocus
+            className="w-full text-[13px] px-3 py-2 rounded-lg outline-none"
+            style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
+          />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
+          {loading ? (
+            <p className="text-[12px] text-center py-8" style={{ color: '#A8B5B0' }}>Carregando…</p>
+          ) : list.length === 0 ? (
+            <p className="text-[12px] text-center py-8 px-4" style={{ color: '#A8B5B0' }}>
+              Nenhum orçamento base ainda. Crie em Comercial → Orçamentos.
+            </p>
+          ) : (
+            list.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onPick(t.items as PageItem[])}
+                className="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-2 transition-colors hover:bg-[#F4F3EF]"
+              >
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold truncate" style={{ color: '#141414' }}>{t.name || 'Sem nome'}</p>
+                  <p className="text-[11px] truncate" style={{ color: '#9B9B9B' }}>
+                    {t.category || 'Sem categoria'} · {t.items.length} serviço(s)
+                  </p>
+                </div>
+                <span className="text-[13px] font-bold whitespace-nowrap" style={{ color: '#141414' }}>
+                  {total(t).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
+                </span>
+              </button>
+            ))
+          )}
         </div>
       </div>
     </div>
