@@ -964,13 +964,8 @@ export default function InboxView() {
         }
         return
       }
-      // ? abre overlay de atalhos — SÓ quando não está digitando (senão engolia
-      // a interrogação no campo de mensagem, impedindo mandar "?" pro cliente)
-      if (e.key === '?' && !meta && !isTyping) {
-        e.preventDefault()
-        setShortcutsOpen((o) => !o)
-        return
-      }
+      // (Removido o atalho "?" — a Karine usa "?" pra mandar pergunta pro
+      // cliente; o overlay de atalhos não vale atrapalhar isso.)
       // Atalhos de navegação só quando NÃO está digitando
       if (isTyping) return
 
