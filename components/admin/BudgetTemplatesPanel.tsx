@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, X, Search, Pencil } from 'lucide-react'
+import { Plus, Trash2, X, Search, Pencil, Calculator, Copy, Check } from 'lucide-react'
 import {
   budgetStore,
   BudgetTemplate,
@@ -33,6 +33,7 @@ export default function BudgetTemplatesPanel() {
   const [needsSetup, setNeedsSetup] = useState(false)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<BudgetTemplate | null>(null)
+  const [showCalc, setShowCalc] = useState(false)
   const { show: showToast, Toast } = useToast()
 
   useEffect(() => {
@@ -116,8 +117,15 @@ export default function BudgetTemplatesPanel() {
           />
         </div>
         <button
+          onClick={() => setShowCalc(true)}
+          className="ml-auto flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-colors"
+          style={{ background: '#FFFFFF', color: '#141414', border: '1px solid #E6E6E1' }}
+        >
+          <Calculator size={14} /> Calculadora
+        </button>
+        <button
           onClick={() => setEditing({ id: '', name: '', category: 'Landing Page', items: [] })}
-          className="ml-auto flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
+          className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
           style={{ background: '#141414', color: '#D6F23C' }}
         >
           <Plus size={14} /> Novo orçamento base
@@ -190,6 +198,152 @@ export default function BudgetTemplatesPanel() {
           onSave={save}
         />
       )}
+      {showCalc && (
+        <CalculatorModal templates={templates} onClose={() => setShowCalc(false)} onCopied={() => showToast('Orçamento copiado ✓')} />
+      )}
+    </div>
+  )
+}
+
+/* ── calculadora de orçamento ─────────────────────────── */
+
+// juros de parcelamento no cartão (composto, tabela Price) — igual à proposta
+function installmentValue(cash: number, count: number, rate = 0.0399): number {
+  if (count <= 0) return 0
+  if (rate <= 0) return Math.round(cash / count)
+  const f = Math.pow(1 + rate, count)
+  return Math.round((cash * (rate * f)) / (f - 1))
+}
+
+function CalculatorModal({
+  templates,
+  onClose,
+  onCopied,
+}: {
+  templates: BudgetTemplate[]
+  onClose: () => void
+  onCopied: () => void
+}) {
+  const [items, setItems] = useState<BudgetItem[]>([
+    { id: 'c1', name: '', subtitle: '', price: 0 },
+  ])
+  const [parcelas, setParcelas] = useState(6)
+  const [copied, setCopied] = useState(false)
+  const total = items.reduce((s, i) => s + (Number(i.price) || 0), 0)
+  const parcela = installmentValue(total, parcelas)
+  const totalParcelado = parcela * parcelas
+
+  function upd(id: string, field: keyof BudgetItem, v: string | number) {
+    setItems((it) => it.map((x) => (x.id === id ? { ...x, [field]: v } : x)))
+  }
+  function loadTemplate(t: BudgetTemplate) {
+    setItems(t.items.length ? t.items.map((i) => ({ ...i })) : [{ id: 'c1', name: '', subtitle: '', price: 0 }])
+  }
+  function copyText() {
+    const lines = items
+      .filter((i) => i.name.trim() || i.price)
+      .map((i) => `• ${i.name || 'Serviço'} — ${fmtBRL(Number(i.price) || 0)}`)
+    const txt =
+      `*Orçamento*\n\n${lines.join('\n')}\n\n` +
+      `*Total: ${fmtBRL(total)}*` +
+      (parcelas > 0 && total > 0 ? `\nou ${parcelas}x de ${fmtBRL(parcela)} no cartão` : '')
+    navigator.clipboard.writeText(txt).then(() => {
+      setCopied(true)
+      onCopied()
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  const INPUT_STYLE = { background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose} />
+      <div className="relative w-full max-w-[520px] rounded-2xl flex flex-col" style={{ background: '#FFFFFF', maxHeight: '88vh' }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E6E6E1' }}>
+          <span className="text-[14px] font-bold flex items-center gap-1.5" style={{ color: '#141414' }}>
+            <Calculator size={15} /> Calculadora de orçamento
+          </span>
+          <button onClick={onClose} style={{ color: '#A8B5B0' }}><X size={16} /></button>
+        </div>
+        <div className="p-4 flex flex-col gap-3 overflow-y-auto">
+          {templates.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
+                Começar de um modelo (opcional)
+              </label>
+              <select
+                onChange={(e) => {
+                  const t = templates.find((x) => x.id === e.target.value)
+                  if (t) loadTemplate(t)
+                }}
+                defaultValue=""
+                className="w-full text-[13px] px-3 py-2 rounded-lg outline-none"
+                style={INPUT_STYLE}
+              >
+                <option value="">— escolher modelo —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.category})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {items.map((it) => (
+            <div key={it.id} className="flex items-center gap-2">
+              <input
+                value={it.name}
+                onChange={(e) => upd(it.id, 'name', e.target.value)}
+                placeholder="Serviço"
+                className="flex-1 text-[13px] px-3 py-2 rounded-lg outline-none"
+                style={INPUT_STYLE}
+              />
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-[12px]" style={{ color: '#9B9B9B' }}>R$</span>
+                <input
+                  type="number"
+                  value={it.price || ''}
+                  onChange={(e) => upd(it.id, 'price', Number(e.target.value))}
+                  className="w-24 text-[13px] px-2 py-2 rounded-lg outline-none"
+                  style={INPUT_STYLE}
+                />
+              </div>
+              <button onClick={() => setItems((x) => x.filter((y) => y.id !== it.id))} className="p-2 rounded-lg hover:bg-[#FBE0E0]" style={{ color: '#C86B6B' }}><Trash2 size={13} /></button>
+            </div>
+          ))}
+          <button
+            onClick={() => setItems((x) => [...x, { id: 'c' + Date.now(), name: '', subtitle: '', price: 0 }])}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed text-[12px] font-semibold"
+            style={{ borderColor: '#141414', color: '#141414', background: '#FAFAF8' }}
+          >
+            <Plus size={14} /> Adicionar serviço
+          </button>
+
+          <div className="flex items-center gap-2">
+            <label className="text-[12px]" style={{ color: '#6E6E6E' }}>Parcelas (cartão, 3,99% a.m.):</label>
+            <input type="number" min="1" value={parcelas} onChange={(e) => setParcelas(Math.max(1, Number(e.target.value) || 1))} className="w-16 text-[13px] px-2 py-1.5 rounded-lg outline-none" style={INPUT_STYLE} />
+          </div>
+
+          <div className="rounded-xl p-4" style={{ background: '#141414' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#D6F23C' }}>Total à vista</span>
+              <span className="text-[22px] font-bold text-white">{fmtBRL(total)}</span>
+            </div>
+            {parcelas > 0 && total > 0 && (
+              <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                <span className="text-[12px]" style={{ color: '#9B9B9B' }}>{parcelas}x no cartão</span>
+                <span className="text-[14px] font-bold text-white">{fmtBRL(parcela)} <span style={{ color: '#9B9B9B', fontWeight: 400 }}>({fmtBRL(totalParcelado)})</span></span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid #E6E6E1' }}>
+          <button onClick={onClose} className="text-[12px] font-semibold px-4 py-2 rounded-lg" style={{ color: '#6E6E6E' }}>Fechar</button>
+          <button onClick={copyText} className="flex items-center gap-1.5 text-[12px] font-bold px-4 py-2 rounded-lg" style={{ background: copied ? '#DCF3E4' : '#141414', color: copied ? '#137A3F' : '#D6F23C' }}>
+            {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copiado!' : 'Copiar orçamento'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
