@@ -1,5 +1,5 @@
 // Mesmo projeto Supabase do resto do CRM (propostas, inbox, leads).
-import { supabase } from './supabase'
+import { supabase } from './supabaseAuthed'
 import { isTableMissing, missingColName } from './supabaseTableHelpers'
 
 export type ContractStatus = 'negociacao' | 'fechado' | 'cancelado'

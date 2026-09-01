@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase } from './supabaseAuthed'
 import { isTableMissing } from './supabaseTableHelpers'
 
 export type PlanningKind = 'meta' | 'acao' | 'conteudo'

@@ -1,5 +1,5 @@
 // Lembretes/tarefas com dono e data — mesmo projeto Supabase do resto do CRM.
-import { supabase } from './supabase'
+import { supabase } from './supabaseAuthed'
 import { isTableMissing, missingColName } from './supabaseTableHelpers'
 
 /** Uma tarefa/lembrete. */
