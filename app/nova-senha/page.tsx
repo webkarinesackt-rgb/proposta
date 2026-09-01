@@ -34,7 +34,7 @@ export default function NovaSenhaPage() {
       setLoading(false)
       return
     }
-    router.push('/admin')
+    router.push('/admin/dashboard')
     router.refresh()
   }
 

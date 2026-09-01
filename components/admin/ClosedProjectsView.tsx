@@ -67,7 +67,7 @@ export default function ClosedProjectsView() {
   const [showPicker, setShowPicker] = useState(false)
   const [creatingId, setCreatingId] = useState<string | null>(null)
   // filtro por mês do fechamento (closed_date): 'all' | 'this' | 'last' | 'YYYY-MM'
-  const [period, setPeriod] = useState<'all' | 'this' | 'last'>('all')
+  const [period, setPeriod] = useState<'all' | 'this' | 'last'>('this')
   const [specificMonth, setSpecificMonth] = useState('')
   const { show: showToast, Toast } = useToast()
 

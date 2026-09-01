@@ -33,7 +33,7 @@ function LoginForm() {
       setLoading(false)
       return
     }
-    const next = sp.get('next') || '/admin'
+    const next = sp.get('next') || '/admin/dashboard'
     router.push(next)
     router.refresh()
   }

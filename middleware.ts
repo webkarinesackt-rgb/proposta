@@ -57,10 +57,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // logado entrando em /login → manda pro /admin
+  // logado entrando em /login → manda pro dashboard
   if (path === '/login' && user) {
     const url = req.nextUrl.clone()
-    url.pathname = '/admin'
+    url.pathname = '/admin/dashboard'
     return NextResponse.redirect(url)
   }
 
