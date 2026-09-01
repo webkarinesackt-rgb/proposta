@@ -188,6 +188,7 @@ export default function PlanningView() {
                         <div className="flex items-center gap-1 text-[11px]" style={{ color: '#9B9B9B' }}>
                           <span>meta:</span>
                           <input
+                            key={m.key + '-' + month}
                             type="number"
                             defaultValue={target || ''}
                             onBlur={(e) => {
