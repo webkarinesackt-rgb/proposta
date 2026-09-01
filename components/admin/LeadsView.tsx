@@ -1,10 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronDown, ChevronRight, Tag } from 'lucide-react'
 import { waServer, WaChat, LEAD_STATUSES, LEAD_SOURCES, STATUS_META } from '@/lib/waServer'
+import { proposalStore } from '@/lib/proposalStore'
+import { Proposal } from '@/lib/types'
+
+// últimos 8 dígitos do telefone — casa número ignorando +55/DDD/formatação
+function phoneKey(s: string): string {
+  const d = (s || '').replace(/\D/g, '')
+  return d.length >= 8 ? d.slice(-8) : ''
+}
 import { useToast } from '@/lib/useToast'
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -759,6 +767,8 @@ export default function LeadsView() {
   const [respFilter, setRespFilter] = useState<string | null>(null) // multi-atendimento
   const [sourceFilter, setSourceFilter] = useState<string | null>(null) // origem do lead
   const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
+  const [proposals, setProposals] = useState<Proposal[]>([]) // p/ casar contato↔proposta
+  const [proposalFilter, setProposalFilter] = useState<'all' | 'com' | 'sem'>('all')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'value' | 'name'>('recent')
   // janela de atividade: só mostra leads mexidos nos últimos N dias (0 = todos).
@@ -779,6 +789,28 @@ export default function LeadsView() {
     if (typeof window !== 'undefined') localStorage.setItem('fysi.leads.view', viewMode)
   }, [viewMode])
   const { show: showToast, Toast } = useToast()
+
+  // propostas: casa por telefone (client_whatsapp) OU por linkedProposalId
+  useEffect(() => {
+    proposalStore.getAll().then(setProposals).catch(() => {})
+  }, [])
+  const propByPhone = useMemo(() => {
+    const m = new Map<string, Proposal>()
+    for (const p of proposals) {
+      const k = phoneKey(p.client_whatsapp || '')
+      if (k && !m.has(k)) m.set(k, p)
+    }
+    return m
+  }, [proposals])
+  const propById = useMemo(() => new Map(proposals.map((p) => [p.id, p])), [proposals])
+  const matchedProposal = useCallback(
+    (c: WaChat): Proposal | null => {
+      if (c.linkedProposalId && propById.has(c.linkedProposalId)) return propById.get(c.linkedProposalId)!
+      const k = phoneKey(c.id.split('@')[0])
+      return (k && propByPhone.get(k)) || null
+    },
+    [propById, propByPhone]
+  )
 
   async function load() {
     try {
@@ -897,6 +929,10 @@ export default function LeadsView() {
         if (sourceFilter === '__none__' ? src !== '' : src !== sourceFilter) continue
       }
       if (onlyFollowups && !isFollowupDue(c)) continue
+      if (proposalFilter !== 'all') {
+        const has = !!matchedProposal(c)
+        if (proposalFilter === 'com' ? !has : has) continue
+      }
       // janela de atividade: no browse padrão mostra só leads recentes (rápido).
       // Busca e filtros explícitos (etiqueta/responsável/follow-up) veem tudo.
       // Exceção: cards em coluna por etiqueta (follow-up/alunos) sempre aparecem,
@@ -923,7 +959,7 @@ export default function LeadsView() {
       return (b.lastTime || 0) - (a.lastTime || 0)
     })
     return out
-  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, sourceFilter, onlyFollowups, search, sortBy, activityDays])
+  }, [chats, includeGroups, includePessoal, tagFilter, respFilter, sourceFilter, proposalFilter, matchedProposal, onlyFollowups, search, sortBy, activityDays])
 
   // contagem de leads por origem (pra ver de onde vem mais)
   const sourceCounts = useMemo(() => {
@@ -1271,6 +1307,34 @@ export default function LeadsView() {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* filtro: já tem proposta? (casa por telefone ou link) */}
+            <div
+              className="flex items-center gap-1 p-0.5 rounded-full"
+              style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+              title="Filtrar leads que já têm (ou não) proposta enviada"
+            >
+              {([
+                { v: 'all', label: 'Todas' },
+                { v: 'com', label: 'Com proposta' },
+                { v: 'sem', label: 'Sem proposta' },
+              ] as const).map((o) => {
+                const active = proposalFilter === o.v
+                return (
+                  <button
+                    key={o.v}
+                    onClick={() => setProposalFilter(o.v)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all"
+                    style={{
+                      background: active ? '#0D3839' : 'transparent',
+                      color: active ? '#F4F99D' : '#6B8585',
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
