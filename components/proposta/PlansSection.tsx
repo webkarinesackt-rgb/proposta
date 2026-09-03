@@ -390,7 +390,15 @@ function PriceBand({
     >
       <div>
         <Eyebrow color="var(--text-muted)" mb="0.75rem">Investimento</Eyebrow>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+        {/* valor alto entra pela parcela: ela vira o número grande e o total
+            à vista fica logo abaixo, em linha discreta. Sem parcelamento,
+            o total assume o destaque. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {hasInstallments && (
+            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-muted)', fontFamily: HELV }}>
+              {plan.price_installments_count}×
+            </span>
+          )}
           <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-muted)', fontFamily: HELV }}>{symbol}</span>
           <span
             style={{
@@ -402,13 +410,17 @@ function PriceBand({
               color: 'var(--text-primary)',
             }}
           >
-            {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
+            {formatNumber(
+              convertFromBRL(hasInstallments ? plan.price_installment_value : plan.price_cash, currency, exchangeRate)
+            )}
           </span>
+          {hasInstallments && (
+            <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>no cartão</span>
+          )}
         </div>
         {hasInstallments && (
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.7rem' }}>
-            ou {plan.price_installments_count}× de {symbol}{' '}
-            {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
+            ou {symbol} {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))} à vista
           </p>
         )}
       </div>
