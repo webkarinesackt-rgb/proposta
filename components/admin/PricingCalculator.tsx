@@ -18,6 +18,7 @@ import {
   PricingParams,
   orcar,
   margemDoPreco,
+  precoComMargem,
   fecharMes,
   roundUp100,
   custoPorVaga,
@@ -27,23 +28,28 @@ import {
 const PISO_LP = 1476.71
 
 const PARAMS_KEY = 'fysi.pricing.params'
-const CATALOG_KEY = 'fysi.pricing.catalog.v2'
+const CATALOG_KEY = 'fysi.pricing.catalog.v3'
+
+// quanto a copy da Karine agrega de esforço (vagas) por página, quando incluída
+const COPY_VAGAS = 0.25
 
 /* Catálogo de produtos: rótulo, quanto ocupa de vaga (esforço de estúdio)
    e o preço que a Karine costuma cobrar (referência de tabela).
+   `copy`: página que normalmente vem com a copy da Karine — o preço e as
+   vagas do catálogo são os COM copy; "sem copy" desconta.
    Itens "interno" são etapas de estúdio — não têm preço de venda avulso. */
-type CatItem = { key: string; label: string; vagas: number; preco?: number; interno?: boolean }
+type CatItem = { key: string; label: string; vagas: number; preco?: number; interno?: boolean; copy?: boolean }
 
 const DEFAULT_CATALOG: CatItem[] = [
-  { key: 'lp ate 7 dobras', label: 'Landing page até 7 dobras / one page', vagas: 1.0, preco: 2300 },
-  { key: 'lp mais dobras', label: 'Landing page +7 dobras', vagas: 1.3, preco: 2800 },
-  { key: 'pagina parceiros', label: 'Página de parceiros', vagas: 0.5, preco: 650 },
-  { key: 'pagina link bio', label: 'Página link na bio', vagas: 0.5, preco: 650 },
-  { key: 'pagina de proposta', label: 'Página de proposta', vagas: 0.4, preco: 300 },
+  { key: 'lp ate 10 dobras', label: 'Landing page até 10 dobras / one page', vagas: 1.0, preco: 2300, copy: true },
+  { key: 'lp mais dobras', label: 'Landing page +10 dobras', vagas: 1.3, preco: 2800, copy: true },
+  { key: 'pagina parceiros', label: 'Página de parceiros', vagas: 0.5, preco: 650, copy: true },
+  { key: 'pagina link bio', label: 'Página link na bio', vagas: 0.5, preco: 650, copy: true },
+  { key: 'pagina de proposta', label: 'Página de proposta', vagas: 0.4, preco: 300, copy: true },
   { key: 'pagina de obrigado', label: 'Página de obrigado', vagas: 0.3, preco: 350 },
-  { key: 'blog', label: 'Blog', vagas: 0.3, preco: 450 },
-  { key: 'home de site', label: 'Home de site', vagas: 1.0, preco: 2200 },
-  { key: 'pagina de site unica', label: 'Página de site (Sobre, Serviços)', vagas: 0.6, preco: 1500 },
+  { key: 'blog', label: 'Blog', vagas: 0.3, preco: 450, copy: true },
+  { key: 'home de site', label: 'Home de site', vagas: 1.0, preco: 2200, copy: true },
+  { key: 'pagina de site unica', label: 'Página de site (Sobre, Serviços)', vagas: 0.6, preco: 1500, copy: true },
   { key: 'pagina de site leve', label: 'Página leve (Contato)', vagas: 0.4, preco: 900 },
   { key: 'consultoria', label: 'Consultoria', vagas: 1.0 },
   { key: 'template reaproveitavel', label: 'Template reaproveitável', vagas: 0.8, interno: true },
@@ -166,7 +172,17 @@ function OrcarPanel({
   const [itens, setItens] = useState<ItemRow[]>([{ id: nid(), tipo: first, qtd: '1' }])
   const [custoDireto, setCustoDireto] = useState('350')
   const [precoNeg, setPrecoNeg] = useState('')
+  const [comCopy, setComCopy] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // sem copy: tira o esforço da copy (vagas) dos itens que normalmente vêm com ela
+  const pesosEff = useMemo(() => {
+    if (comCopy) return pesos
+    const out: Record<string, number> = {}
+    for (const [k, v] of Object.entries(pesos)) out[k] = catMap[k]?.copy ? Math.max(0, v - COPY_VAGAS) : v
+    return out
+  }, [pesos, comCopy, catMap])
 
   const r = useMemo(
     () =>
@@ -174,19 +190,31 @@ function OrcarPanel({
         itens.map((i) => ({ tipo: i.tipo, qtd: num(i.qtd) })),
         num(custoDireto),
         params,
-        pesos
+        pesosEff
       ),
-    [itens, custoDireto, params, pesos]
+    [itens, custoDireto, params, pesosEff]
   )
 
   const sugerido = r.precoAlvo != null ? roundUp100(r.precoAlvo) : null
 
-  // preço de tabela = soma dos preços que a Karine cobra por cada item
+  // preço de tabela = soma dos preços que a Karine cobra (sem copy desconta o prêmio da copy)
   const precoTabela = useMemo(
-    () => itens.reduce((a, i) => a + num(i.qtd) * (catMap[i.tipo]?.preco || 0), 0),
-    [itens, catMap]
+    () =>
+      itens.reduce((a, i) => {
+        const c = catMap[i.tipo]
+        const base = c?.preco || 0
+        const p = comCopy || !c?.copy ? base : Math.max(0, base - params.copyPremio)
+        return a + num(i.qtd) * p
+      }, 0),
+    [itens, catMap, comCopy, params.copyPremio]
   )
   const tabelaMargem = precoTabela > 0 ? margemDoPreco(precoTabela, r.custo, params).margem : null
+
+  // preço de revenda pro parceiro (margem menor, nunca abaixo do custo+imposto)
+  const parceiroRaw = precoComMargem(r.custo, params.margemParceiro, params)
+  const parceiro =
+    parceiroRaw != null ? Math.max(roundUp100(parceiroRaw), roundUp100(r.precoMinimo)) : null
+  const parceiroGanho = parceiro != null && precoTabela > 0 ? precoTabela - parceiro : null
 
   const precoNegVal = num(precoNeg)
   const teste = precoNeg.trim() ? margemDoPreco(precoNegVal, r.custo, params) : null
@@ -198,10 +226,12 @@ function OrcarPanel({
       .join('\n')
     const txt =
       `Precificação Fysi\n${linhas}\n` +
+      `\nCopy: ${comCopy ? 'incluída (Karine)' : 'cliente traz o texto'}` +
       `\nCusto do projeto: ${brl(r.custo)}` +
       `\nPreço mínimo (empata): ${brl(r.precoMinimo)}` +
       (precoTabela > 0 ? `\nSeu preço de tabela: ${brl(precoTabela)}` : '') +
       (sugerido != null ? `\nPreço sugerido (margem ${pct(params.margemAlvo)}): ${brl(sugerido)}` : '') +
+      (parceiro != null ? `\nPreço parceiro (revenda, margem ${pct(params.margemParceiro)}): ${brl(parceiro)}` : '') +
       `\nOcupação do mês: ${pct(r.ocupacaoDoMes)}`
     navigator.clipboard.writeText(txt).then(() => {
       setCopied(true)
@@ -213,12 +243,30 @@ function OrcarPanel({
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
       {/* entrada */}
       <div className="rounded-2xl p-4 md:p-5" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
-        <p className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: '#9B9B9B' }}>
-          Itens do projeto
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#9B9B9B' }}>
+            Itens do projeto
+          </p>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: '#F4F3EF', border: '1px solid #E6E6E1' }}>
+            {[
+              { v: true, l: 'Com copy' },
+              { v: false, l: 'Sem copy' },
+            ].map((o) => (
+              <button
+                key={String(o.v)}
+                onClick={() => setComCopy(o.v)}
+                title={o.v ? 'Copy da Karine incluída' : 'Cliente traz o texto'}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full transition-all"
+                style={{ background: comCopy === o.v ? '#141414' : 'transparent', color: comCopy === o.v ? '#D6F23C' : '#6E6E6E' }}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           {itens.map((it) => {
-            const peso = pesos[it.tipo] ?? 0
+            const peso = pesosEff[it.tipo] ?? 0
             const vagasItem = peso * num(it.qtd)
             return (
               <div key={it.id} className="flex items-center gap-2">
@@ -258,13 +306,41 @@ function OrcarPanel({
             )
           })}
         </div>
-        <button
-          onClick={() => setItens((xs) => [...xs, { id: nid(), tipo: first, qtd: '1' }])}
-          className="mt-3 flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-lg"
-          style={{ background: '#F4F3EF', color: '#141414', border: '1px solid #E6E6E1' }}
-        >
-          <Plus size={13} /> Adicionar item
-        </button>
+        <div className="relative mt-3">
+          <button
+            onClick={() => setShowAdd((s) => !s)}
+            className="flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-lg"
+            style={{ background: '#F4F3EF', color: '#141414', border: '1px solid #E6E6E1' }}
+          >
+            <Plus size={13} /> Adicionar item
+          </button>
+          {showAdd && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowAdd(false)} />
+              <div
+                className="absolute z-20 mt-1 w-[320px] max-h-[320px] overflow-auto rounded-xl p-1"
+                style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', boxShadow: '0 16px 40px -12px rgba(0,0,0,0.3)' }}
+              >
+                {catalog.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => {
+                      setItens((xs) => [...xs, { id: nid(), tipo: c.key, qtd: '1' }])
+                      setShowAdd(false)
+                    }}
+                    className="w-full text-left flex items-center justify-between gap-2 text-[12.5px] px-2.5 py-2 rounded-lg hover:bg-[#F4F3EF] transition-colors"
+                    style={{ color: '#141414' }}
+                  >
+                    <span className="truncate">{c.label}</span>
+                    <span className="text-[11px] flex-shrink-0 tabular-nums" style={{ color: '#9B9B9B' }}>
+                      {c.preco ? brl(c.preco) : `${c.vagas} vg`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="mt-5 pt-4" style={{ borderTop: '1px solid #F0F0EC' }}>
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
@@ -343,6 +419,33 @@ function OrcarPanel({
               margem {pct(params.margemAlvo)}
             </p>
           </div>
+        </div>
+
+        {/* preço de revenda pro parceiro */}
+        <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', borderLeft: '3px solid #D6F23C' }}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9B9B9B' }}>
+              Preço parceiro (revenda)
+            </p>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#F4F3EF', color: '#6E6E6E' }}>
+              margem {pct(params.margemParceiro)}
+            </span>
+          </div>
+          <p className="text-[24px] font-bold leading-tight mt-1" style={{ color: '#141414' }}>
+            {parceiro != null ? brl(parceiro) : '—'}
+          </p>
+          {parceiroGanho != null && (
+            <p className="text-[11px] mt-1 leading-relaxed" style={{ color: '#6E6E6E' }}>
+              {parceiroGanho > 0 ? (
+                <>
+                  Se o parceiro revender à sua tabela ({brl(precoTabela)}), ele ganha{' '}
+                  <b style={{ color: '#137A3F' }}>{brl(parceiroGanho)}</b>.
+                </>
+              ) : (
+                <>Sua tabela ({brl(precoTabela)}) não deixa margem pro parceiro nesse preço — suba a tabela ou reduza a margem-parceiro.</>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
@@ -632,6 +735,8 @@ function ParamsEditor({
         <ParamField label="Vagas por mês" value={params.vagasPorMes} onChange={(v) => setParams({ ...params, vagasPorMes: v })} />
         <ParamField label="Imposto (%)" value={params.imposto * 100} onChange={(v) => setParams({ ...params, imposto: v / 100 })} />
         <ParamField label="Margem-alvo (%)" value={params.margemAlvo * 100} onChange={(v) => setParams({ ...params, margemAlvo: v / 100 })} />
+        <ParamField label="Margem parceiro (%)" value={params.margemParceiro * 100} onChange={(v) => setParams({ ...params, margemParceiro: v / 100 })} />
+        <ParamField label="Valor da copy / página (R$)" value={params.copyPremio} onChange={(v) => setParams({ ...params, copyPremio: v })} />
       </div>
       <p className="text-[11px] mt-2" style={{ color: '#9B9B9B' }}>
         Custo por vaga: <b>{brl(custoPorVaga(params))}</b> · rateio do custo fixo por unidade de trabalho.

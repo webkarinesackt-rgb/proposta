@@ -14,6 +14,10 @@ export interface PricingParams {
   vagasPorMes: number
   imposto: number
   margemAlvo: number
+  // margem quando o job vem por um parceiro que revende (menor que a cheia)
+  margemParceiro: number
+  // quanto a copy da Karine agrega no preço de tabela, por página
+  copyPremio: number
 }
 
 export const DEFAULT_PARAMS: PricingParams = {
@@ -21,6 +25,8 @@ export const DEFAULT_PARAMS: PricingParams = {
   vagasPorMes: 15,
   imposto: 0.0747,
   margemAlvo: 0.3,
+  margemParceiro: 0.15,
+  copyPremio: 200,
 }
 
 export const DEFAULT_PESOS: Record<string, number> = {
@@ -104,6 +110,12 @@ export function fecharMes(linhas: LinhaMes[], p: PricingParams = DEFAULT_PARAMS)
     contribuicao,
     pecasParaEmpatar: contribuicao > 0 ? p.custoFixoMensal / contribuicao : Infinity,
   }
+}
+
+/** Preço pra uma margem qualquer (o imposto divide, não multiplica). null se inviável. */
+export function precoComMargem(custo: number, margem: number, p: PricingParams = DEFAULT_PARAMS) {
+  const denom = 1 - p.imposto - margem
+  return denom > 0.02 ? custo / denom : null
 }
 
 /** Arredonda pra cima no múltiplo de 100 mais próximo (colchão, nunca desconto). */
