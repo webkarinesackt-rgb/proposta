@@ -35,6 +35,21 @@ export interface Plan {
   /** formas de pagamento extras, uma por linha, além do à vista e do cartão
    *  (ex.: "2 pagamentos de R$ 4.500") */
   payment_options?: string[]
+  /** 2ª etapa: mensalidade contratada à parte do projeto, mostrada como bloco
+   *  próprio abaixo do investimento. NÃO usar payment_options pra isso — lá a
+   *  linha é lida como forma alternativa de pagar o projeto, não como serviço
+   *  novo. O valor do negócio nos relatórios segue sendo price_cash. */
+  recurring?: {
+    name: string
+    /** valor mensal, sempre em BRL (convertido no render como os demais) */
+    price_monthly: number
+    /** mínimo de meses de permanência; 0 ou ausente = sem mínimo */
+    min_months?: number
+    description?: string
+    /** mesma convenção de `features`: linha terminada em ':' abre um grupo */
+    features?: string[]
+    note?: string
+  }
 }
 
 export interface Case {

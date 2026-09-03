@@ -312,6 +312,60 @@ function PlanEditor({
                 onChange={e => onChange(plan.id, 'highlight_phrase', e.target.value)} />
             </Field>
           </div>
+
+          {/* ── etapa mensal (opcional): aparece como bloco próprio abaixo do
+               preço na proposta. Não é forma de pagamento do projeto. ── */}
+          <div className="mt-6 pt-5 border-t border-[#E6E6E1]">
+            {!plan.recurring ? (
+              <button
+                type="button"
+                onClick={() => onChange(plan.id, 'recurring', { name: 'Plano mensal', price_monthly: 0 })}
+                className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E6E6E1] hover:bg-[#F5F5F2]"
+              >
+                + Adicionar etapa mensal
+              </button>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">Etapa mensal</p>
+                  <button
+                    type="button"
+                    onClick={() => onChange(plan.id, 'recurring', undefined)}
+                    className="text-[11px] text-[#9B9B9B] hover:text-[#B45309]"
+                  >
+                    Remover
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Nome">
+                    <input className={INPUT} value={plan.recurring.name}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, name: e.target.value })} />
+                  </Field>
+                  <Field label="Valor por mês (R$)">
+                    <input className={INPUT} type="number" value={plan.recurring.price_monthly || ''}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, price_monthly: Number(e.target.value) || 0 })} />
+                  </Field>
+                  <Field label="Mínimo de meses">
+                    <input className={INPUT} type="number" value={plan.recurring.min_months || ''}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, min_months: Number(e.target.value) || 0 })} />
+                  </Field>
+                  <Field label="Descrição">
+                    <input className={INPUT} value={plan.recurring.description || ''}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, description: e.target.value })} />
+                  </Field>
+                  <Field label="O que entra (um por linha, termine com : para virar título)" span2>
+                    <textarea className={INPUT} rows={Math.max((plan.recurring.features?.length || 0) + 1, 4)}
+                      value={(plan.recurring.features || []).join('\n')}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, features: e.target.value.split('\n').filter(Boolean) })} />
+                  </Field>
+                  <Field label="Observação" span2>
+                    <input className={INPUT} value={plan.recurring.note || ''}
+                      onChange={e => onChange(plan.id, 'recurring', { ...plan.recurring, note: e.target.value })} />
+                  </Field>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -386,12 +440,17 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
 
   // when scope type changes, refresh plans with template
   function handleScopeType(type: ProjectType) {
-    setForm(f => ({ ...f, project_type: type }))
-    setPlans(getPlansForScope(type, lpConfig, sitePages))
     // orçamento: se ainda não tem itens, começa com o exemplo pra editar
     if (type === 'orcamento' && pageItems.length === 0) {
       setPageItems(DEFAULT_ORCAMENTO_ITEMS.map(i => ({ ...i })))
     }
+    // clicar no tipo JÁ ativo não pode resetar os planos: o template
+    // hardcoded apagaria em silêncio o que foi escrito à mão (escopo,
+    // etapa mensal, formas de pagamento). Trocar de tipo de verdade reseta,
+    // que é o comportamento esperado.
+    if (type === form.project_type) return
+    setForm(f => ({ ...f, project_type: type }))
+    setPlans(getPlansForScope(type, lpConfig, sitePages))
   }
 
   // ── itens do Orçamento ──
@@ -411,11 +470,13 @@ export default function ProposalForm({ initial, mode, prefill }: ProposalFormPro
   }
 
   function handleLpConfig(cfg: LpConfig) {
+    if (cfg === lpConfig) return // mesma config: não reseta os planos
     setLpConfig(cfg)
     setPlans(getPlansForScope('landing_page', cfg, sitePages))
   }
 
   function handleSitePages(pages: SitePages) {
+    if (pages === sitePages) return // mesma faixa: não reseta os planos
     setSitePages(pages)
     setPlans(getPlansForScope('site_completo', lpConfig, pages))
   }

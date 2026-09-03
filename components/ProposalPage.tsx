@@ -34,7 +34,7 @@ const CONTRATAR_URL = 'https://app.fysilabdigital.com.br/contratar'
 
 // Propostas que mostram o escopo como seção própria (etapas em colunas) com
 // um preço único abaixo, em vez do card do plano + card de preço.
-const SCOPE_SECTION_SLUGS = ['viaje-com-araya']
+const SCOPE_SECTION_SLUGS = ['viaje-com-araya', 'marya-cavalcanti-site']
 
 interface ProposalPageProps {
   proposal: Proposal

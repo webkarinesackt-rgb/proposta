@@ -244,7 +244,7 @@ function Chip({ children }: { children: ReactNode }) {
    em escada em relação à anterior — lê como linha do tempo, não tabela. */
 function ScopePhases({ groups }: { groups: ScopeGroup[] }) {
   // até 5 etapas cabem numa linha; acima disso quebra em linhas de 3
-  const cols = groups.length > 5 ? 3 : Math.max(groups.length, 1)
+  const cols = groups.length > 4 ? 3 : Math.max(groups.length, 1)
   return (
     <div className="scope-phases" style={{ '--cols': cols } as CSSProperties}>
       {groups.map((g, i) => {
@@ -536,6 +536,83 @@ function PriceBand({
   )
 }
 
+/* ── Etapa 2: mensalidade contratada à parte ──
+   Superfície plana com hairline, deliberadamente MENOR que o cartão de
+   investimento: são serviços que começam depois da entrega, não uma
+   alternativa de pagar o projeto. Vem sempre abaixo do preço, pra que o
+   botão de aceite não pareça contratar as duas coisas. */
+function RecurringBand({
+  recurring,
+  currency,
+  exchangeRate,
+}: {
+  recurring: NonNullable<Plan['recurring']>
+  currency: Currency
+  exchangeRate: number
+}) {
+  const symbol = currencySymbol(currency)
+  const grupos = parseScope(recurring.features || [])
+  return (
+    <div style={{ borderTop: HAIR, marginTop: '3.5rem', paddingTop: '2.5rem' }}>
+      <Eyebrow>Etapa 2 · contratada à parte</Eyebrow>
+
+      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3">
+        <h3
+          style={{
+            fontFamily: HELV,
+            fontWeight: 700,
+            fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+            lineHeight: 1.1,
+            letterSpacing: '-0.03em',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {recurring.name}
+        </h3>
+        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
+          <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+            {symbol} {formatNumber(convertFromBRL(recurring.price_monthly, currency, exchangeRate))}
+          </strong>{' '}
+          por mês
+          {recurring.min_months ? (
+            <>
+              <span aria-hidden style={{ opacity: 0.4, margin: '0 0.45rem' }}>·</span>
+              mínimo de {recurring.min_months} meses
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      {recurring.description && (
+        <p style={{ fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--text-secondary)', maxWidth: '52ch', marginTop: '1rem' }}>
+          {recurring.description}
+        </p>
+      )}
+
+      {grupos.length > 0 && (
+        <div className="grid gap-x-10 gap-y-7 sm:grid-cols-2" style={{ marginTop: '1.75rem' }}>
+          {grupos.map((g, i) => (
+            <div key={i}>
+              {g.title && <Eyebrow mb="0.7rem">{g.title}</Eyebrow>}
+              <div className="flex flex-wrap gap-1.5">
+                {g.items.map((it, ii) => (
+                  <Chip key={ii}>{it}</Chip>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {recurring.note && (
+        <p style={{ fontSize: '0.82rem', lineHeight: 1.7, color: 'var(--text-muted)', maxWidth: '60ch', marginTop: '1.75rem' }}>
+          {recurring.note}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* ── Plano único: escopo como seção própria, preço como desfecho ──
    Sem card. Cabeçalho (nome à esquerda, descrição e prazo à direita),
    páginas em tiles, etapas em colunas, escopo claro, e por fim um preço
@@ -568,7 +645,7 @@ function SinglePlanLayout({
       {/* ── cabeçalho: nome à esquerda, descrição e prazo à direita ── */}
       <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:items-end">
         <div>
-          <Eyebrow mb="1.25rem">Escopo do projeto</Eyebrow>
+          <Eyebrow mb="1.25rem">{plan.recurring ? 'Etapa 1 · o projeto' : 'Escopo do projeto'}</Eyebrow>
           <h3
             style={{
               fontFamily: HELV,
@@ -657,6 +734,11 @@ function SinglePlanLayout({
 
       {/* ── um preço só, logo abaixo ── */}
       <PriceBand plan={plan} onAccept={onAccept} currency={currency} exchangeRate={exchangeRate} />
+
+      {/* etapa 2 (mensalidade), quando a proposta tiver uma */}
+      {plan.recurring && (
+        <RecurringBand recurring={plan.recurring} currency={currency} exchangeRate={exchangeRate} />
+      )}
     </motion.div>
   )
 }
