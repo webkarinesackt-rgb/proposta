@@ -383,6 +383,11 @@ function PriceBand({
 }) {
   const symbol = currencySymbol(currency)
   const hasInstallments = plan.price_installments_count > 0 && plan.price_installment_value > 0
+  // "sem juros" só aparece quando a conta fecha de verdade: as parcelas
+  // somam o valor à vista (tolerância de 1 unidade pra arredondamento).
+  const semJuros =
+    hasInstallments &&
+    Math.abs(plan.price_installments_count * plan.price_installment_value - plan.price_cash) <= 1
   return (
     <div
       className="flex flex-col md:flex-row md:items-end md:justify-between gap-8"
@@ -403,7 +408,7 @@ function PriceBand({
               marginBottom: '0.5rem',
             }}
           >
-            {plan.price_installments_count}× no cartão
+            {plan.price_installments_count}× no cartão{semJuros ? ', sem juros' : ''}
           </p>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
