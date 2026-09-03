@@ -1,20 +1,25 @@
 'use client'
 
 import { motion, useReducedMotion } from 'framer-motion'
-import { MousePointerClick, Video, MoveVertical } from 'lucide-react'
+import {
+  MousePointerClick,
+  Video,
+  MoveVertical,
+  Monitor,
+  Tablet,
+  Smartphone,
+  MousePointer2,
+  ArrowUpDown,
+  Eye,
+  Flame,
+} from 'lucide-react'
 
 /* ── Seção "Mapa de calor incluso" (Microsoft Clarity) ──
-   Mostra que o site sai com o Clarity instalado: mapa de calor, gravação de
-   sessões e rolagem. À direita, uma ilustração animada de um wireframe com
-   manchas de calor pulsando nos pontos de clique. Respeita reduced-motion. */
-
-const HEAT = [
-  // pontos de calor no wireframe — posição (%) e tamanho (px) e atraso (s)
-  { left: '50%', top: '44%', size: 150, delay: 0 }, // botão principal
-  { left: '32%', top: '25%', size: 110, delay: 0.9 }, // título do hero
-  { left: '78%', top: '9%', size: 70, delay: 1.7 }, // item do menu
-  { left: '40%', top: '70%', size: 95, delay: 2.4 }, // card de conteúdo
-]
+   Mostra que o site sai com o Clarity instalado. À direita, um mock do
+   painel do Clarity: janela clara com a barra de modos (Toque/Rolar/Atenção,
+   dispositivos), abas Gravações/Mapas de calor, e uma página em wireframe
+   branco com o mapa de calor arco-íris (vermelho→amarelo→verde→azul) por
+   cima, pulsando. Respeita reduced-motion. */
 
 const BENEFITS = [
   { icon: MousePointerClick, title: 'Mapa de calor', text: 'Onde as pessoas clicam — e o que ignoram.' },
@@ -22,7 +27,33 @@ const BENEFITS = [
   { icon: MoveVertical, title: 'Profundidade de rolagem', text: 'Até onde cada visitante chega na página.' },
 ]
 
-function HeatBlob({ left, top, size, delay, still }: { left: string; top: string; size: number; delay: number; still: boolean }) {
+// gradiente clássico de mapa de calor: quente no centro, esfriando pra fora
+const HEAT_GRADIENT =
+  'radial-gradient(ellipse at center, rgba(255,32,32,0.92) 0%, rgba(255,120,0,0.85) 22%, rgba(255,230,0,0.7) 42%, rgba(70,220,90,0.45) 62%, rgba(40,130,255,0.3) 80%, transparent 95%)'
+
+// manchas de calor sobre a página (posição em %, tamanho em % da largura)
+const HEAT = [
+  { left: '22%', top: '46%', w: 34, h: 68, delay: 0 }, // coluna de conteúdo — o grande vermelho
+  { left: '52%', top: '22%', w: 26, h: 20, delay: 1.1 }, // barra de busca / CTA
+  { left: '74%', top: '13%', w: 14, h: 12, delay: 2.0 }, // item do menu
+  { left: '58%', top: '58%', w: 18, h: 16, delay: 2.8 }, // card de resultado
+]
+
+function HeatBlob({
+  left,
+  top,
+  w,
+  h,
+  delay,
+  still,
+}: {
+  left: string
+  top: string
+  w: number
+  h: number
+  delay: number
+  still: boolean
+}) {
   return (
     <motion.div
       aria-hidden
@@ -30,118 +61,159 @@ function HeatBlob({ left, top, size, delay, still }: { left: string; top: string
         position: 'absolute',
         left,
         top,
-        width: size,
-        height: size,
-        marginLeft: -size / 2,
-        marginTop: -size / 2,
+        width: `${w}%`,
+        paddingBottom: `${h}%`,
+        transform: 'translate(-50%, -50%)',
         borderRadius: '50%',
-        background:
-          'radial-gradient(circle, rgba(244,249,157,0.95) 0%, rgba(255,176,64,0.6) 32%, rgba(255,96,64,0.28) 58%, transparent 74%)',
-        filter: 'blur(7px)',
-        mixBlendMode: 'screen',
+        background: HEAT_GRADIENT,
+        filter: 'blur(10px)',
         pointerEvents: 'none',
       }}
-      initial={{ scale: 0.9, opacity: 0.8 }}
-      animate={still ? { scale: 1, opacity: 0.9 } : { scale: [0.85, 1.12, 0.85], opacity: [0.65, 1, 0.65] }}
-      transition={still ? { duration: 0 } : { duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay }}
+      initial={{ opacity: 0.9 }}
+      animate={still ? { opacity: 0.92 } : { opacity: [0.75, 1, 0.75] }}
+      transition={still ? { duration: 0 } : { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay }}
     />
   )
 }
 
-function Wireframe({ still }: { still: boolean }) {
-  const block = (w: string, h: number, extra?: React.CSSProperties) => (
-    <div style={{ width: w, height: h, borderRadius: 6, background: 'rgba(255,255,255,0.06)', ...extra }} />
-  )
+/* bloco cinza do wireframe (página clara) */
+function Block({ w, h, style }: { w: string; h: number; style?: React.CSSProperties }) {
+  return <div style={{ width: w, height: h, borderRadius: 4, background: 'rgba(15,40,70,0.10)', ...style }} />
+}
+
+function ClarityMock({ still }: { still: boolean }) {
+  const ink = '#1a3b6b'
   return (
     <div
       className="relative w-full overflow-hidden"
       style={{
-        aspectRatio: '4 / 3',
-        borderRadius: 20,
-        background: 'linear-gradient(170deg, #0B3334 0%, #071F20 100%)',
-        border: '1px solid rgba(184,212,208,0.14)',
+        borderRadius: 18,
+        background: '#F4F6F9',
+        border: '1px solid rgba(255,255,255,0.35)',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25)',
+        fontFamily: 'var(--font-inter), Inter, sans-serif',
       }}
     >
-      {/* barra do navegador */}
+      {/* ── barra de modos do Clarity ── */}
       <div
-        className="flex items-center gap-1.5"
-        style={{ padding: '10px 14px', borderBottom: '1px solid rgba(184,212,208,0.1)' }}
+        className="flex items-center gap-2 flex-wrap"
+        style={{ padding: '10px 12px', background: '#FFFFFF', borderBottom: '1px solid rgba(15,40,70,0.10)' }}
       >
-        {['#F87171', '#FBBF24', '#34D399'].map((c) => (
-          <span key={c} style={{ width: 8, height: 8, borderRadius: '50%', background: c, opacity: 0.7 }} />
-        ))}
-        <span
-          style={{
-            marginLeft: 10,
-            height: 8,
-            width: '38%',
-            borderRadius: 4,
-            background: 'rgba(255,255,255,0.06)',
-          }}
-        />
-      </div>
-
-      {/* esqueleto da página */}
-      <div className="absolute inset-0" style={{ top: 34, padding: '16px 18px' }}>
-        {/* menu */}
-        <div className="flex items-center justify-between" style={{ marginBottom: 22 }}>
-          {block('18%', 9)}
-          <div className="flex gap-3">
-            {block('34px', 7)}
-            {block('34px', 7)}
-            {block('34px', 7)}
-            {block('40px', 7, { background: 'rgba(244,249,157,0.35)' })}
-          </div>
-        </div>
-        {/* hero */}
-        {block('62%', 14, { marginBottom: 8 })}
-        {block('48%', 14, { marginBottom: 14 })}
-        {block('70%', 7, { marginBottom: 6 })}
-        {block('55%', 7, { marginBottom: 18 })}
-        {/* botão principal */}
-        <div style={{ width: '34%', height: 22, borderRadius: 999, background: 'rgba(244,249,157,0.5)', marginBottom: 26 }} />
-        {/* cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} style={{ height: 54, borderRadius: 8, background: 'rgba(255,255,255,0.05)' }} />
+        {/* dispositivos */}
+        <div className="flex" style={{ border: `1px solid ${ink}`, borderRadius: 6, overflow: 'hidden' }}>
+          {[Monitor, Tablet, Smartphone].map((Icon, i) => (
+            <span
+              key={i}
+              className="flex items-center justify-center"
+              style={{
+                width: 28,
+                height: 24,
+                background: i === 0 ? '#E8F0FB' : '#FFFFFF',
+                borderRight: i < 2 ? `1px solid ${ink}` : 'none',
+              }}
+            >
+              <Icon size={12} style={{ color: ink }} />
+            </span>
           ))}
         </div>
+        {/* modos */}
+        <div className="flex" style={{ border: `1px solid ${ink}`, borderRadius: 6, overflow: 'hidden' }}>
+          {[
+            { Icon: MousePointer2, label: 'Toque', active: true },
+            { Icon: ArrowUpDown, label: 'Rolar', active: false },
+            { Icon: Eye, label: 'Atenção', active: false },
+          ].map(({ Icon, label, active }, i) => (
+            <span
+              key={label}
+              className="flex items-center gap-1.5"
+              style={{
+                padding: '0 10px',
+                height: 24,
+                background: active ? '#E8F0FB' : '#FFFFFF',
+                borderRight: i < 2 ? `1px solid ${ink}` : 'none',
+                fontSize: '0.66rem',
+                fontWeight: 600,
+                color: ink,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Icon size={11} style={{ color: ink, fill: active ? ink : 'none' }} />
+              {label}
+            </span>
+          ))}
+        </div>
+        {/* abas Gravações / Mapas de calor */}
+        <div className="flex items-end gap-4 ml-auto" style={{ fontSize: '0.66rem', color: '#4a5568' }}>
+          <span className="flex items-center gap-1.5" style={{ paddingBottom: 4 }}>
+            <Video size={11} /> Gravações
+          </span>
+          <span
+            className="flex items-center gap-1.5"
+            style={{ paddingBottom: 4, borderBottom: '2px solid #8A7CF0', color: '#111827', fontWeight: 700 }}
+          >
+            <Flame size={11} /> Mapas de calor
+          </span>
+        </div>
       </div>
 
-      {/* manchas de calor */}
-      {HEAT.map((h, i) => (
-        <HeatBlob key={i} {...h} still={still} />
-      ))}
+      {/* ── página do cliente (wireframe claro) + mapa de calor por cima ── */}
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '4 / 3', background: '#FFFFFF' }}>
+        {/* header do site */}
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: '10px 14px', background: '#1E63C7' }}
+        >
+          <div style={{ width: '16%', height: 9, borderRadius: 4, background: 'rgba(255,255,255,0.9)' }} />
+          <div className="flex gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} style={{ width: 26, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.7)' }} />
+            ))}
+          </div>
+        </div>
+        {/* busca / hero */}
+        <div style={{ padding: '10px 14px', background: '#EEF3FA', borderBottom: '1px solid rgba(15,40,70,0.08)' }}>
+          <div className="flex gap-2 items-center">
+            <Block w="28%" h={14} style={{ background: '#FFFFFF', border: '1px solid rgba(15,40,70,0.15)' }} />
+            <Block w="22%" h={14} style={{ background: '#FFFFFF', border: '1px solid rgba(15,40,70,0.15)' }} />
+            <div style={{ width: '12%', height: 14, borderRadius: 4, background: '#1E63C7' }} />
+          </div>
+        </div>
+        {/* corpo: lista de resultados + sidebar */}
+        <div className="flex gap-3" style={{ padding: '10px 14px' }}>
+          <div className="flex-1 flex flex-col gap-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3"
+                style={{ padding: '7px 8px', borderRadius: 6, border: '1px solid rgba(15,40,70,0.10)', background: '#FFFFFF' }}
+              >
+                <Block w="12%" h={10} style={{ background: '#1E63C7', opacity: 0.85 }} />
+                <Block w="30%" h={7} />
+                <Block w="18%" h={7} />
+                <div style={{ marginLeft: 'auto', width: '16%', height: 12, borderRadius: 3, background: '#1E63C7' }} />
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:flex flex-col gap-2" style={{ width: '26%' }}>
+            <div style={{ height: 64, borderRadius: 6, background: '#FFE8A3' }} />
+            <Block w="100%" h={7} />
+            <Block w="80%" h={7} />
+            <Block w="90%" h={7} />
+            <div style={{ height: 40, borderRadius: 6, background: '#E3EDF9' }} />
+          </div>
+        </div>
 
-      {/* profundidade de rolagem — quente em cima, esfria pra baixo */}
-      <div
-        aria-hidden
-        className="absolute right-0 top-0 bottom-0"
-        style={{
-          width: 5,
-          background:
-            'linear-gradient(to bottom, rgba(244,249,157,0.85) 0%, rgba(255,176,64,0.55) 40%, rgba(139,183,175,0.25) 75%, transparent 100%)',
-        }}
-      />
+        {/* lavagem fria (azul) — o "frio" do mapa, por baixo do calor */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'rgba(60,140,255,0.16)' }}
+        />
 
-      {/* selo do Clarity */}
-      <div
-        className="absolute"
-        style={{
-          left: 14,
-          bottom: 12,
-          padding: '4px 9px',
-          borderRadius: 999,
-          background: 'rgba(7,31,32,0.85)',
-          border: '1px solid rgba(184,212,208,0.2)',
-          fontSize: '0.6rem',
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          color: 'var(--green-pastel)',
-          backdropFilter: 'blur(6px)',
-        }}
-      >
-        Microsoft Clarity
+        {/* manchas de calor */}
+        {HEAT.map((h, i) => (
+          <HeatBlob key={i} {...h} still={still} />
+        ))}
       </div>
     </div>
   )
@@ -221,14 +293,14 @@ export function ClaritySection() {
           </p>
         </motion.div>
 
-        {/* ilustração animada */}
+        {/* mock do painel do Clarity, animado */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
-          <Wireframe still={still} />
+          <ClarityMock still={still} />
         </motion.div>
       </div>
     </section>
