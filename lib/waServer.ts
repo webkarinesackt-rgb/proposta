@@ -71,6 +71,11 @@ export interface WaChatPatch {
 
 export const LEAD_SOURCES = [
   'Instagram',
+  'TikTok',
+  'Behance',
+  'Link na bio',
+  'Campanha Empreendedores',
+  'Campanha Advogados',
   'Facebook/Meta Ads',
   'Google Ads',
   'Tráfego pago',

@@ -309,7 +309,7 @@ export default function LeadDetailsPanel({
             value={source}
             onChange={(e) => setSource(e.target.value)}
             onBlur={() => source !== chat.source && patch({ source })}
-            placeholder="Ex.: Instagram"
+            placeholder="Ex.: Instagram, Campanha Advogados, Link na bio…"
             className={INPUT}
             style={INPUT_STYLE}
           />
@@ -317,7 +317,43 @@ export default function LeadDetailsPanel({
             {LEAD_SOURCES.map((s) => (
               <option key={s} value={s} />
             ))}
+            {/* etiquetas do próprio WhatsApp dessa conversa também viram sugestão */}
+            {tags
+              .filter((t) => !t.startsWith('resp:') && t !== 'followup' && !LEAD_SOURCES.includes(t as (typeof LEAD_SOURCES)[number]))
+              .map((t) => (
+                <option key={'tag-' + t} value={t} />
+              ))}
           </datalist>
+          {/* puxar a origem de uma etiqueta do WhatsApp com 1 clique */}
+          {(() => {
+            const etq = tags.filter(
+              (t) => !t.startsWith('resp:') && t !== 'followup' && t !== source,
+            )
+            if (etq.length === 0) return null
+            return (
+              <div className="mt-1.5">
+                <p className="text-[10px] mb-1" style={{ color: '#9B9B9B' }}>
+                  Puxar da etiqueta do WhatsApp:
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {etq.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setSource(t)
+                        patch({ source: t })
+                      }}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE' }}
+                      title="Usar essa etiqueta como origem"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </Field>
 
         {/* valor */}
