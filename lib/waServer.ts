@@ -183,6 +183,17 @@ export interface WaSearchHit {
   fromMe: boolean
 }
 
+// Cache de curta duração da lista de conversas. Sem isso, cada troca de aba
+// (Inbox → Leads → Dashboard → volta) rebaixava as 5000+ conversas do zero.
+// Com o cache, remontar uma aba em poucos segundos serve do cache (instantâneo)
+// e o SSE do Inbox segue atualizando em tempo real. TTL curto (8s) pra polls
+// ainda pegarem dados frescos; mutações invalidam na hora.
+let _chatsCache: { data: WaChat[]; ts: number } | null = null
+let _chatsInflight: Promise<WaChat[]> | null = null
+function invalidateChatsCache() {
+  _chatsCache = null
+}
+
 export const waServer = {
   base: WA,
 
@@ -213,13 +224,31 @@ export const waServer = {
     return r.json()
   },
 
-  async chats(): Promise<WaChat[]> {
-    const r = await waFetch('/chats')
-    const j = await r.json()
-    return j.chats || []
+  async chats(opts?: { maxAgeMs?: number }): Promise<WaChat[]> {
+    const maxAge = opts?.maxAgeMs ?? 8000
+    if (_chatsCache && Date.now() - _chatsCache.ts < maxAge) return _chatsCache.data
+    if (_chatsInflight) return _chatsInflight // dedup de chamadas simultâneas
+    _chatsInflight = (async () => {
+      try {
+        const r = await waFetch('/chats')
+        const j = await r.json()
+        const data: WaChat[] = j.chats || []
+        _chatsCache = { data, ts: Date.now() }
+        return data
+      } finally {
+        _chatsInflight = null
+      }
+    })()
+    return _chatsInflight
+  },
+
+  /** Força buscar a lista fresca (ignora o cache) e atualiza o cache. */
+  async chatsFresh(): Promise<WaChat[]> {
+    return this.chats({ maxAgeMs: 0 })
   },
 
   async addChat(number: string, name?: string): Promise<{ ok: boolean; jid?: string; error?: string }> {
+    invalidateChatsCache()
     const r = await waFetch('/chats/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -370,6 +399,7 @@ export const waServer = {
   },
 
   async setStatus(chatId: string, status: string) {
+    invalidateChatsCache()
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -379,6 +409,7 @@ export const waServer = {
   },
 
   async updateChat(chatId: string, patch: WaChatPatch) {
+    invalidateChatsCache()
     const r = await waFetch(`/chats/${encodeURIComponent(chatId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

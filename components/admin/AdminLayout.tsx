@@ -24,6 +24,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/admin'
   const [conn, setConn] = useState<string>('starting')
 
+  // Prefetch de todas as abas assim que o painel monta: sem isso, clicar
+  // numa aba baixava o chunk JS + payload RSC só no clique (a troca "travava"
+  // até baixar). Com prefetch, o código já está pronto quando ela clica.
+  useEffect(() => {
+    for (const tab of TABS) router.prefetch(tab.path)
+  }, [router])
+
   // monitora a conexão com o WhatsApp.
   // Pausa quando a aba não está visível (window/tab em background não
   // precisa fazer request a cada 6s — economiza bateria no celular e
