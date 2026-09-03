@@ -22,6 +22,16 @@ export interface Plan {
   highlight_phrase: string
   is_recommended?: boolean
   features: string[]
+  // Escopo claro (todos opcionais). `features` segue aceitando linhas
+  // terminadas em ':' como título de grupo (ex.: "Desenvolvimento:").
+  /** o que NÃO entra no projeto */
+  not_included?: string[]
+  /** o que o cliente precisa entregar pra começar */
+  client_delivers?: string[]
+  /** regra de prazo/revisões em texto (ex.: "o prazo começa com o material completo") */
+  terms_note?: string
+  /** 2ª etapa do prazo, além de delivery_days (ex.: "Projeto completo em 30 dias") */
+  delivery_full_label?: string
 }
 
 export interface Case {

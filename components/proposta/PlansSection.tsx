@@ -190,6 +190,12 @@ function SinglePlanCard({
           <Clock size={12} style={{ color: 'var(--teal)' }} />
           {plan.delivery_label?.trim() || 'Primeira versão em'}{' '}
           <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_days} dias úteis</strong>
+          {plan.delivery_full_label && (
+            <>
+              <span aria-hidden style={{ opacity: 0.4 }}>·</span>
+              <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_full_label}</strong>
+            </>
+          )}
         </p>
         </div>
 
@@ -235,6 +241,50 @@ function SinglePlanCard({
             })}
           </ul>
         </div>
+
+        {/* ── escopo claro: não incluso / você entrega / prazo e revisões (só quando existem) ── */}
+        {!!plan.not_included?.length && (
+          <div style={{ borderTop: hairline, padding: `clamp(1.5rem, 4vw, 2rem) ${PADX}` }}>
+            <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+              Não incluso
+            </p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {plan.not_included.map((t, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+                  {/* traço = fica de fora */}
+                  <span aria-hidden style={{ width: 10, height: 1, flexShrink: 0, background: 'var(--text-muted)', transform: 'translateY(-4px)' }} />
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!!plan.client_delivers?.length && (
+          <div style={{ borderTop: hairline, padding: `clamp(1.5rem, 4vw, 2rem) ${PADX}` }}>
+            <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.85rem' }}>
+              Você entrega
+            </p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {plan.client_delivers.map((t, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+                  {/* círculo vazado = vem do cliente */}
+                  <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, border: '1px solid var(--teal)', transform: 'translateY(-1px)' }} />
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {plan.terms_note && (
+          <div style={{ borderTop: hairline, padding: `clamp(1.5rem, 4vw, 2rem) ${PADX}` }}>
+            <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+              Prazo e revisões
+            </p>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '52ch' }}>{plan.terms_note}</p>
+          </div>
+        )}
 
         {/* ── investimento — o desfecho (divisória de largura cheia) ── */}
         <div style={{ borderTop: hairline, padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}` }}>
