@@ -96,6 +96,151 @@ function OrcamentoBlock({
   )
 }
 
+/* ── Escopo em módulos ──
+   Faz o parse das features em grupos (linha terminada em ':' = título).
+   O grupo de "páginas" vira tiles com contador; os demais viram painéis
+   lado a lado. O olho escaneia blocos, não uma coluna comprida de bullets. */
+type ScopeGroup = { title: string; items: string[] }
+
+function parseScope(features: string[]): ScopeGroup[] {
+  const groups: ScopeGroup[] = []
+  for (const raw of features) {
+    const t = raw.trim()
+    if (!t) continue
+    if (t.endsWith(':') && t.length > 1) {
+      groups.push({ title: t.slice(0, -1).trim(), items: [] })
+    } else {
+      if (!groups.length) groups.push({ title: '', items: [] })
+      groups[groups.length - 1].items.push(t)
+    }
+  }
+  return groups
+}
+
+/* "Home · Sobre · Atacama (17) · …" → tiles com nome + contador */
+function PageTiles({ line }: { line: string }) {
+  const tiles = line
+    .split('·')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => {
+      const m = s.match(/^(.*?)\s*\((\d+)\)\s*$/)
+      return m ? { name: m[1].trim(), count: Number(m[2]) } : { name: s, count: 0 }
+    })
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tiles.map((t) => (
+        <span
+          key={t.name}
+          className="inline-flex items-center gap-2"
+          style={{
+            padding: '0.5rem 0.85rem',
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(184,212,208,0.14)',
+            fontSize: '0.85rem',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {t.name}
+          {t.count > 0 && (
+            <span
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                padding: '0.1rem 0.45rem',
+                borderRadius: 999,
+                background: 'rgba(184,212,208,0.14)',
+                color: 'var(--green-pastel)',
+              }}
+            >
+              {t.count}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+const dot = (
+  <span
+    aria-hidden
+    style={{ width: 4, height: 4, borderRadius: '50%', flexShrink: 0, background: 'var(--teal)', transform: 'translateY(-2px)' }}
+  />
+)
+
+function ScopeGroups({ features }: { features: string[] }) {
+  const groups = parseScope(features)
+  const isPages = (g: ScopeGroup) => /p[áa]gina/i.test(g.title) && g.items.length === 1 && g.items[0].includes('·')
+  const pages = groups.find(isPages)
+  const rest = groups.filter((g) => g !== pages)
+  // plano simples sem grupos → lista chapada, largura cheia (compatível com propostas antigas)
+  const flat = rest.length === 1 && !rest[0].title
+
+  return (
+    <div className="flex flex-col" style={{ gap: '1.75rem' }}>
+      {pages && (
+        <div>
+          <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: '0.85rem' }}>
+            {pages.title}
+          </p>
+          <PageTiles line={pages.items[0]} />
+        </div>
+      )}
+
+      {flat ? (
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {rest[0].items.map((it, i) => (
+            <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+              {dot}
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{it}</span>
+            </li>
+          ))}
+        </ul>
+      ) : rest.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {rest.map((g, gi) => (
+            <div
+              key={gi}
+              style={{
+                padding: '1rem 1.15rem',
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(184,212,208,0.10)',
+              }}
+            >
+              {g.title && (
+                <p
+                  style={{
+                    fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
+                    fontStyle: 'italic',
+                    fontWeight: 300,
+                    fontSize: '1.1rem',
+                    lineHeight: 1.2,
+                    color: 'var(--text-primary)',
+                    marginBottom: '0.7rem',
+                  }}
+                >
+                  {g.title}
+                </p>
+              )}
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {g.items.map((it, ii) => (
+                  <li key={ii} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+                    {dot}
+                    <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{it}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /* ── Plano único: escopo primeiro, investimento depois ──
    Layout minimalista pra quando a proposta tem um só plano. Superfície plana,
    linhas finas, muito respiro — o cliente lê tudo o que recebe e o preço vem
@@ -201,45 +346,7 @@ function SinglePlanCard({
 
         {/* ── escopo (divisória de largura cheia) ── */}
         <div style={{ borderTop: hairline, padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}` }}>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            {plan.features.map((f, i) => {
-              const trimmed = f.trim()
-              const isHeading = trimmed.endsWith(':') && trimmed.length > 1
-              if (isHeading) {
-                return (
-                  <li
-                    key={i}
-                    style={{
-                      listStyle: 'none',
-                      marginTop: i === 0 ? 0 : '1rem',
-                      fontSize: '0.6rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.2em',
-                      textTransform: 'uppercase',
-                      color: 'var(--teal)',
-                    }}
-                  >
-                    {trimmed.slice(0, -1)}
-                  </li>
-                )
-              }
-              return (
-                <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-                  <span
-                    style={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: 'var(--teal)',
-                      transform: 'translateY(-2px)',
-                    }}
-                  />
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
-                </li>
-              )
-            })}
-          </ul>
+          <ScopeGroups features={plan.features} />
         </div>
 
         {/* ── escopo claro: não incluso / você entrega / prazo e revisões (só quando existem) ── */}
