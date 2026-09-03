@@ -783,8 +783,9 @@ function ParamsEditor({
               Capacidade: <b style={{ color: '#141414' }}>{capacidade.toFixed(2)} vg/mês</b>
             </span>
             <button
-              onClick={() => setParams({ ...params, vagasPorMes: Math.round(capacidade * 100) / 100 })}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+              onClick={() => capacidade > 0 && setParams({ ...params, vagasPorMes: Math.round(capacidade * 100) / 100 })}
+              disabled={capacidade <= 0}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-40"
               style={{ background: '#141414', color: '#D6F23C' }}
               title="Usar a capacidade calculada como vagas/mês"
             >
