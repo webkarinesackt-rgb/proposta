@@ -2,7 +2,18 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Check, ArrowRight } from 'lucide-react'
+import {
+  Clock,
+  Check,
+  ArrowRight,
+  PenTool,
+  Code2,
+  Gauge,
+  BarChart3,
+  ShieldCheck,
+  GraduationCap,
+  Sparkles,
+} from 'lucide-react'
 import { Plan, ProjectType, Currency, PageItem } from '@/lib/types'
 import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
 
@@ -117,6 +128,18 @@ function parseScope(features: string[]): ScopeGroup[] {
   return groups
 }
 
+/* ícone por grupo: diz o que é antes de a pessoa ler */
+function groupIcon(title: string) {
+  const t = title.toLowerCase()
+  if (/design|estrat/.test(t)) return PenTool
+  if (/desenvolv|c[óo]digo|wordpress/.test(t)) return Code2
+  if (/seo|performance|velocidade/.test(t)) return Gauge
+  if (/medi|analytics|dados|m[ée]trica/.test(t)) return BarChart3
+  if (/segur|backup/.test(t)) return ShieldCheck
+  if (/entrega|autonomia|suporte|treinamento/.test(t)) return GraduationCap
+  return Sparkles
+}
+
 /* "Home · Sobre · Atacama (17) · …" → tiles com nome + contador */
 function PageTiles({ line }: { line: string }) {
   const tiles = line
@@ -200,41 +223,69 @@ function ScopeGroups({ features }: { features: string[] }) {
         </ul>
       ) : rest.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rest.map((g, gi) => (
-            <div
-              key={gi}
-              style={{
-                padding: '1rem 1.15rem',
-                borderRadius: 14,
-                background: 'rgba(255,255,255,0.025)',
-                border: '1px solid rgba(184,212,208,0.10)',
-              }}
-            >
-              {g.title && (
-                <p
-                  style={{
-                    fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
-                    fontStyle: 'italic',
-                    fontWeight: 300,
-                    fontSize: '1.1rem',
-                    lineHeight: 1.2,
-                    color: 'var(--text-primary)',
-                    marginBottom: '0.7rem',
-                  }}
-                >
-                  {g.title}
-                </p>
-              )}
-              <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {g.items.map((it, ii) => (
-                  <li key={ii} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
-                    {dot}
-                    <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{it}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {rest.map((g, gi) => {
+            const Icon = groupIcon(g.title)
+            return (
+              <div
+                key={gi}
+                style={{
+                  padding: '1.1rem 1.15rem',
+                  borderRadius: 14,
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(184,212,208,0.10)',
+                }}
+              >
+                {/* ícone + título */}
+                <div className="flex items-center gap-3" style={{ marginBottom: '0.85rem' }}>
+                  <span
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: 'rgba(139,183,175,0.10)',
+                      border: '1px solid rgba(139,183,175,0.2)',
+                    }}
+                  >
+                    <Icon size={15} style={{ color: 'var(--green-pastel)' }} />
+                  </span>
+                  {g.title && (
+                    <p
+                      style={{
+                        fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
+                        fontStyle: 'italic',
+                        fontWeight: 300,
+                        fontSize: '1.1rem',
+                        lineHeight: 1.15,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {g.title}
+                    </p>
+                  )}
+                </div>
+                {/* itens como pílulas curtas — visual, não texto corrido */}
+                <div className="flex flex-wrap gap-1.5">
+                  {g.items.map((it, ii) => (
+                    <span
+                      key={ii}
+                      style={{
+                        padding: '0.32rem 0.65rem',
+                        borderRadius: 999,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(184,212,208,0.12)',
+                        fontSize: '0.76rem',
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {it}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : null}
     </div>
