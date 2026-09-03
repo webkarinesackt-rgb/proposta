@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   GraduationCap,
   Sparkles,
+  ChevronDown,
 } from 'lucide-react'
 import { Plan, ProjectType, Currency, PageItem } from '@/lib/types'
 import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
@@ -195,6 +196,15 @@ const dot = (
 
 function ScopeGroups({ features }: { features: string[] }) {
   const groups = parseScope(features)
+  // grupos colapsados por padrão — a pessoa abre só o que quiser (menos rolagem)
+  const [open, setOpen] = useState<Set<number>>(new Set())
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
   const isPages = (g: ScopeGroup) => /p[áa]gina/i.test(g.title) && g.items.length === 1 && g.items[0].includes('·')
   const pages = groups.find(isPages)
   const rest = groups.filter((g) => g !== pages)
@@ -222,67 +232,100 @@ function ScopeGroups({ features }: { features: string[] }) {
           ))}
         </ul>
       ) : rest.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        /* linhas planas (sem card dentro de card), colapsadas — abre no toque */
+        <div>
           {rest.map((g, gi) => {
             const Icon = groupIcon(g.title)
+            const isOpen = open.has(gi)
+            const preview = g.items.slice(0, 3).join(' · ')
+            const more = g.items.length - 3
             return (
               <div
                 key={gi}
                 style={{
-                  padding: '1.1rem 1.15rem',
-                  borderRadius: 14,
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid rgba(184,212,208,0.10)',
+                  borderTop: gi === 0 && !pages ? 'none' : '1px solid rgba(184,212,208,0.12)',
+                  padding: '0.85rem 0',
                 }}
               >
-                {/* ícone + título */}
-                <div className="flex items-center gap-3" style={{ marginBottom: '0.85rem' }}>
+                <button
+                  type="button"
+                  onClick={() => toggle(gi)}
+                  aria-expanded={isOpen}
+                  className="w-full flex items-center gap-3 text-left"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
                   <span
                     className="flex items-center justify-center flex-shrink-0"
                     style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
+                      width: 30,
+                      height: 30,
+                      borderRadius: 9,
                       background: 'rgba(139,183,175,0.10)',
                       border: '1px solid rgba(139,183,175,0.2)',
                     }}
                   >
-                    <Icon size={15} style={{ color: 'var(--green-pastel)' }} />
+                    <Icon size={13} style={{ color: 'var(--green-pastel)' }} />
                   </span>
-                  {g.title && (
-                    <p
+                  <span className="flex-1 min-w-0">
+                    <span
                       style={{
+                        display: 'block',
                         fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
                         fontStyle: 'italic',
                         fontWeight: 300,
-                        fontSize: '1.1rem',
+                        fontSize: '1.05rem',
                         lineHeight: 1.15,
                         color: 'var(--text-primary)',
                       }}
                     >
                       {g.title}
-                    </p>
-                  )}
-                </div>
-                {/* itens como pílulas curtas — visual, não texto corrido */}
-                <div className="flex flex-wrap gap-1.5">
-                  {g.items.map((it, ii) => (
-                    <span
-                      key={ii}
-                      style={{
-                        padding: '0.32rem 0.65rem',
-                        borderRadius: 999,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(184,212,208,0.12)',
-                        fontSize: '0.76rem',
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.3,
-                      }}
-                    >
-                      {it}
                     </span>
-                  ))}
-                </div>
+                    {!isOpen && (
+                      <span
+                        className="block truncate"
+                        style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: 2 }}
+                      >
+                        {preview}
+                        {more > 0 ? ` · +${more}` : ''}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown
+                    size={15}
+                    style={{
+                      color: 'var(--text-muted)',
+                      flexShrink: 0,
+                      transition: 'transform 0.25s ease',
+                      transform: isOpen ? 'rotate(180deg)' : 'none',
+                    }}
+                  />
+                </button>
+                {isOpen && (
+                  <motion.div
+                    className="flex flex-wrap gap-1.5"
+                    style={{ paddingTop: '0.75rem', paddingLeft: 42 }}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {g.items.map((it, ii) => (
+                      <span
+                        key={ii}
+                        style={{
+                          padding: '0.3rem 0.62rem',
+                          borderRadius: 999,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(184,212,208,0.12)',
+                          fontSize: '0.76rem',
+                          color: 'var(--text-secondary)',
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {it}
+                      </span>
+                    ))}
+                  </motion.div>
+                )}
               </div>
             )
           })}
