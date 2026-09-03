@@ -39,6 +39,26 @@ export const DEFAULT_PESOS: Record<string, number> = {
   'pagina duplicada': 0.0,
   'revisao de bloco': 0.5,
   'setup de conteudo ia': 0.25,
+  'material em pdf ate 8 pag': 0.8,
+  'adaptacao de modelo existente': 1.1,
+}
+
+// ── Capacidade calculada pela equipe (spec §2.1) ──────────────────────
+// vagasPorMes NÃO é digitado: sai da soma das páginas/semana × 4,33.
+export interface TeamMember {
+  nome: string
+  paginasPorSemana: number
+}
+export const SEMANAS_MES = 4.33
+export const DEFAULT_EQUIPE: TeamMember[] = [
+  { nome: 'Valéria', paginasPorSemana: 2.75 },
+  { nome: 'Andrei', paginasPorSemana: 0.75 },
+  // Karine fica em ZERO de propósito: o que ela produz é folga, não base.
+  { nome: 'Karine', paginasPorSemana: 0.0 },
+]
+/** Capacidade do mês em vagas, a partir da equipe. */
+export function vagasPorMes(equipe: TeamMember[] = DEFAULT_EQUIPE) {
+  return equipe.reduce((a, p) => a + (p.paginasPorSemana || 0), 0) * SEMANAS_MES
 }
 
 // custos diretos de referência (entrada é livre no orçamento)

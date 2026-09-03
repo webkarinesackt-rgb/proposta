@@ -16,6 +16,9 @@ import {
 import {
   DEFAULT_PARAMS,
   PricingParams,
+  DEFAULT_EQUIPE,
+  TeamMember,
+  vagasPorMes,
   orcar,
   margemDoPreco,
   precoComMargem,
@@ -28,7 +31,8 @@ import {
 const PISO_LP = 1476.71
 
 const PARAMS_KEY = 'fysi.pricing.params'
-const CATALOG_KEY = 'fysi.pricing.catalog.v3'
+const CATALOG_KEY = 'fysi.pricing.catalog.v4'
+const EQUIPE_KEY = 'fysi.pricing.equipe.v1'
 
 // quanto a copy da Karine agrega de esforço (vagas) por página, quando incluída
 const COPY_VAGAS = 0.25
@@ -40,18 +44,22 @@ const COPY_VAGAS = 0.25
    Itens "interno" são etapas de estúdio — não têm preço de venda avulso. */
 type CatItem = { key: string; label: string; vagas: number; preco?: number; interno?: boolean; copy?: boolean }
 
+// Preços calculados pelo modelo (margem 30%, arredondado) e esforço (vagas)
+// calibrado pelos preços reais da Karine — ver spec §10.
 const DEFAULT_CATALOG: CatItem[] = [
   { key: 'lp ate 10 dobras', label: 'Landing page até 10 dobras / one page', vagas: 1.0, preco: 2300, copy: true },
-  { key: 'lp mais dobras', label: 'Landing page +10 dobras', vagas: 1.3, preco: 2800, copy: true },
-  { key: 'pagina parceiros', label: 'Página de parceiros', vagas: 0.5, preco: 650, copy: true },
-  { key: 'pagina link bio', label: 'Página link na bio', vagas: 0.5, preco: 650, copy: true },
-  { key: 'pagina de proposta', label: 'Página de proposta', vagas: 0.4, preco: 300, copy: true },
-  { key: 'pagina de obrigado', label: 'Página de obrigado', vagas: 0.3, preco: 350 },
-  { key: 'blog', label: 'Blog', vagas: 0.3, preco: 450, copy: true },
+  { key: 'lp mais dobras', label: 'Landing page +10 dobras', vagas: 1.4, preco: 2900, copy: true },
+  { key: 'adaptacao de modelo existente', label: 'Adaptação de modelo (site que reusa)', vagas: 1.1, preco: 3500, copy: true },
   { key: 'home de site', label: 'Home de site', vagas: 1.0, preco: 2200, copy: true },
-  { key: 'pagina de site unica', label: 'Página de site (Sobre, Serviços)', vagas: 0.6, preco: 1500, copy: true },
-  { key: 'pagina de site leve', label: 'Página leve (Contato)', vagas: 0.4, preco: 900 },
-  { key: 'consultoria', label: 'Consultoria', vagas: 1.0 },
+  { key: 'pagina de site unica', label: 'Página de site (Sobre, Serviços)', vagas: 0.6, preco: 1000, copy: true },
+  { key: 'pagina parceiros', label: 'Página de parceiros', vagas: 0.5, preco: 900, copy: true },
+  { key: 'material em pdf ate 8 pag', label: 'Material PDF até 8 págs (cliente dá o texto)', vagas: 0.8, preco: 1400 },
+  { key: 'pagina link bio', label: 'Página link na bio', vagas: 0.4, preco: 650, copy: true },
+  { key: 'pagina de site leve', label: 'Página leve (Contato)', vagas: 0.4, preco: 700 },
+  { key: 'blog', label: 'Blog', vagas: 0.28, preco: 450, copy: true },
+  { key: 'pagina de obrigado', label: 'Página de obrigado', vagas: 0.22, preco: 350 },
+  { key: 'pagina de proposta', label: 'Página de proposta', vagas: 0.18, preco: 300, copy: true },
+  { key: 'consultoria', label: 'Consultoria (~1 vaga)', vagas: 1.0, preco: 1700 },
   { key: 'template reaproveitavel', label: 'Template reaproveitável', vagas: 0.8, interno: true },
   { key: 'pagina duplicada', label: 'Página duplicada (dev)', vagas: 0.0, interno: true },
   { key: 'revisao de bloco', label: 'Revisão de bloco', vagas: 0.5, interno: true },
@@ -78,6 +86,7 @@ export default function PricingCalculator() {
 
   const [params, setParams] = useState<PricingParams>(DEFAULT_PARAMS)
   const [catalog, setCatalog] = useState<CatItem[]>(DEFAULT_CATALOG)
+  const [equipe, setEquipe] = useState<TeamMember[]>(DEFAULT_EQUIPE)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -89,6 +98,11 @@ export default function PricingCalculator() {
         const parsed = JSON.parse(c)
         if (Array.isArray(parsed) && parsed.length) setCatalog(parsed)
       }
+      const e = localStorage.getItem(EQUIPE_KEY)
+      if (e) {
+        const parsed = JSON.parse(e)
+        if (Array.isArray(parsed) && parsed.length) setEquipe(parsed)
+      }
     } catch {}
     setLoaded(true)
   }, [])
@@ -97,8 +111,9 @@ export default function PricingCalculator() {
     try {
       localStorage.setItem(PARAMS_KEY, JSON.stringify(params))
       localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog))
+      localStorage.setItem(EQUIPE_KEY, JSON.stringify(equipe))
     } catch {}
-  }, [params, catalog, loaded])
+  }, [params, catalog, equipe, loaded])
 
   // mapa chave→vagas pra alimentar as fórmulas puras
   const pesos = useMemo(
@@ -107,9 +122,10 @@ export default function PricingCalculator() {
   )
 
   function resetAll() {
-    if (!confirm('Restaurar parâmetros e catálogo para o padrão?')) return
+    if (!confirm('Restaurar parâmetros, equipe e catálogo para o padrão?')) return
     setParams(DEFAULT_PARAMS)
     setCatalog(DEFAULT_CATALOG)
+    setEquipe(DEFAULT_EQUIPE)
   }
 
   return (
@@ -144,7 +160,7 @@ export default function PricingCalculator() {
       </div>
 
       {showParams && (
-        <ParamsEditor params={params} setParams={setParams} catalog={catalog} setCatalog={setCatalog} onReset={resetAll} />
+        <ParamsEditor params={params} setParams={setParams} catalog={catalog} setCatalog={setCatalog} equipe={equipe} setEquipe={setEquipe} onReset={resetAll} />
       )}
 
       {mode === 'orcar' ? (
@@ -672,6 +688,15 @@ function FecharMesPanel({ params }: { params: PricingParams }) {
             <span>Passou da capacidade do mês ({params.vagasPorMes} vagas). Reduza o escopo ou empurre entregas.</span>
           </div>
         )}
+        {Number.isFinite(f.pecasParaEmpatar) && f.pecasParaEmpatar / params.vagasPorMes > 0.75 && (
+          <div className="flex items-start gap-2 text-[12px] rounded-xl p-3" style={{ background: '#FBF4E0', color: '#8A5A00' }}>
+            <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+            <span>
+              O ponto de equilíbrio ocupa mais de 3/4 da capacidade ({(f.pecasParaEmpatar / params.vagasPorMes * 100).toFixed(0)}%). Sobra
+              pouco mês pra dar lucro — qualquer atraso come o resto.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -697,15 +722,20 @@ function ParamsEditor({
   setParams,
   catalog,
   setCatalog,
+  equipe,
+  setEquipe,
   onReset,
 }: {
   params: PricingParams
   setParams: (p: PricingParams) => void
   catalog: CatItem[]
   setCatalog: (c: CatItem[]) => void
+  equipe: TeamMember[]
+  setEquipe: (e: TeamMember[]) => void
   onReset: () => void
 }) {
   const [novo, setNovo] = useState('')
+  const capacidade = vagasPorMes(equipe)
 
   function upRow(key: string, patch: Partial<CatItem>) {
     setCatalog(catalog.map((c) => (c.key === key ? { ...c, ...patch } : c)))
@@ -741,6 +771,69 @@ function ParamsEditor({
       <p className="text-[11px] mt-2" style={{ color: '#9B9B9B' }}>
         Custo por vaga: <b>{brl(custoPorVaga(params))}</b> · rateio do custo fixo por unidade de trabalho.
       </p>
+
+      {/* Equipe → capacidade (vagas/mês é calculado, não digitado — spec §2.1) */}
+      <div className="mt-5 rounded-xl p-3" style={{ background: '#F4F3EF' }}>
+        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#9B9B9B' }}>
+            Equipe — páginas por semana (define a capacidade)
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px]" style={{ color: '#6E6E6E' }}>
+              Capacidade: <b style={{ color: '#141414' }}>{capacidade.toFixed(2)} vg/mês</b>
+            </span>
+            <button
+              onClick={() => setParams({ ...params, vagasPorMes: Math.round(capacidade * 100) / 100 })}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+              style={{ background: '#141414', color: '#D6F23C' }}
+              title="Usar a capacidade calculada como vagas/mês"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {equipe.map((m, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={m.nome}
+                onChange={(e) => setEquipe(equipe.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))}
+                className="flex-1 min-w-0 text-[12.5px] px-2.5 py-1.5 rounded-lg outline-none"
+                style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
+              />
+              <input
+                type="text"
+                inputMode="decimal"
+                value={String(m.paginasPorSemana)}
+                onChange={(e) => setEquipe(equipe.map((x, j) => (j === i ? { ...x, paginasPorSemana: num(e.target.value) } : x)))}
+                className="w-20 text-[12.5px] text-center px-2 py-1.5 rounded-lg outline-none tabular-nums"
+                style={{ background: '#FFFFFF', border: '1px solid #E6E6E1', color: '#141414' }}
+                title="Páginas por semana"
+              />
+              <span className="text-[10px] w-12 text-right" style={{ color: '#9B9B9B' }}>pág/sem</span>
+              <button
+                onClick={() => setEquipe(equipe.length > 1 ? equipe.filter((_, j) => j !== i) : equipe)}
+                className="p-1 rounded hover:bg-[#FBE0E0]"
+                style={{ color: '#C86B6B' }}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => setEquipe([...equipe, { nome: 'Novo', paginasPorSemana: 1 }])}
+          className="mt-2 flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+          style={{ background: '#FFFFFF', color: '#141414', border: '1px solid #E6E6E1' }}
+        >
+          <Plus size={12} /> Adicionar pessoa
+        </button>
+        <p className="text-[10px] mt-2 leading-relaxed" style={{ color: '#9B9B9B' }}>
+          Capacidade = soma das páginas/semana × 4,33. Karine fica em <b>zero</b> de propósito: o que ela produz é
+          folga, não base. Hoje o modelo usa <b>{params.vagasPorMes} vg/mês</b> — clique “Aplicar” pra usar a
+          capacidade da equipe.
+        </p>
+      </div>
 
       <p className="text-[11px] font-bold uppercase tracking-wider mt-5 mb-2" style={{ color: '#9B9B9B' }}>
         Catálogo — produto · vagas (esforço) · preço de tabela
