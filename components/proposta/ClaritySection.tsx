@@ -225,7 +225,7 @@ export function ClaritySection() {
 
   return (
     <section className="section relative" style={{ background: 'var(--bg-void)' }}>
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-10 md:gap-14 items-center">
         {/* texto */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -259,38 +259,31 @@ export function ClaritySection() {
           >
             Veja onde seus clientes clicam.
           </h2>
-          <p style={{ fontSize: '0.95rem', lineHeight: 1.75, color: 'var(--text-secondary)', maxWidth: '46ch' }}>
-            O site já sai com o Microsoft Clarity instalado: mapa de calor, gravação de sessões e
-            profundidade de rolagem — sem mensalidade. Você enxerga o que as pessoas fazem de verdade na
-            página e decide com dados, não com achismo.
+          {/* uma linha só — o mock é quem conta a história */}
+          <p style={{ fontSize: '0.95rem', lineHeight: 1.7, color: 'var(--text-secondary)', maxWidth: '34ch' }}>
+            Microsoft Clarity instalado no seu site. Sem mensalidade.
           </p>
 
-          <ul className="mt-8 flex flex-col gap-4">
-            {BENEFITS.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-start gap-3.5">
+          {/* benefícios: só ícone + nome */}
+          <ul className="mt-7 flex flex-col gap-3">
+            {BENEFITS.map(({ icon: Icon, title }) => (
+              <li key={title} className="flex items-center gap-3">
                 <span
                   className="flex items-center justify-center flex-shrink-0"
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 9,
                     background: 'rgba(139,183,175,0.08)',
                     border: '1px solid rgba(139,183,175,0.18)',
                   }}
                 >
-                  <Icon size={15} style={{ color: 'var(--green-pastel)' }} />
+                  <Icon size={14} style={{ color: 'var(--green-pastel)' }} />
                 </span>
-                <div>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</p>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.5 }}>{text}</p>
-                </div>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
               </li>
             ))}
           </ul>
-
-          <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '1.75rem' }}>
-            Instalado e configurado por nós. Zero custo mensal.
-          </p>
         </motion.div>
 
         {/* mock do painel do Clarity, animado */}
