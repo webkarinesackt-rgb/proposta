@@ -487,8 +487,25 @@ function SinglePlanCard({
           </div>
         )}
 
-        {/* ── investimento — o desfecho (divisória de largura cheia) ── */}
-        <div style={{ borderTop: hairline, padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}` }}>
+      </div>
+
+      {/* ── investimento — card separado e direto (escopo acima, preço aqui) ── */}
+      <div
+        style={{
+          marginTop: '1.25rem',
+          borderRadius: 24,
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(184,212,208,0.12)',
+          padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}`,
+        }}
+      >
+        {/* contexto em uma linha, pra não perder o fio */}
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+          {plan.name}
+          <span aria-hidden style={{ opacity: 0.4, margin: '0 0.5rem' }}>·</span>
+          {plan.delivery_label?.trim() || 'Primeira versão em'} {plan.delivery_days} dias úteis
+          {plan.delivery_full_label ? ` · ${plan.delivery_full_label}` : ''}
+        </p>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div>
             <p
@@ -576,7 +593,6 @@ function SinglePlanCard({
             {plan.highlight_phrase}
           </p>
         )}
-        </div>
       </div>
     </motion.div>
   )
