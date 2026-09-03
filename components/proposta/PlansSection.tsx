@@ -6,6 +6,10 @@ import { Clock, Check, ArrowRight } from 'lucide-react'
 import { Plan, ProjectType, Currency, PageItem } from '@/lib/types'
 import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
 
+// Títulos grandes em Helvetica (visual minimalista) — escopado neste componente
+// pra não mexer no display serifado do resto do app.
+const HELV = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
 interface PlansSectionProps {
   plans: Plan[]
   items?: PageItem[]
@@ -89,6 +93,237 @@ function OrcamentoBlock({
         </button>
       )}
     </div>
+  )
+}
+
+/* ── Plano único: escopo primeiro, investimento depois ──
+   Layout minimalista pra quando a proposta tem um só plano. Superfície plana,
+   linhas finas, muito respiro — o cliente lê tudo o que recebe e o preço vem
+   como desfecho, não como abertura. Sem glow, um acento só. */
+function SinglePlanCard({
+  plan,
+  onAccept,
+  currency = 'BRL',
+  exchangeRate = 1,
+}: {
+  plan: Plan
+  onAccept: (id: string) => void
+  currency?: Currency
+  exchangeRate?: number
+}) {
+  const symbol = currencySymbol(currency)
+  const hasInstallments = plan.price_installments_count > 0 && plan.price_installment_value > 0
+  const hairline = '1px solid rgba(184,212,208,0.12)'
+
+  return (
+    <motion.div
+      className="mx-auto"
+      style={{ maxWidth: 620 }}
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div
+        style={{
+          borderRadius: 24,
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(184,212,208,0.12)',
+          padding: 'clamp(1.75rem, 5vw, 3.5rem)',
+        }}
+      >
+        {/* nome — título grande em Helvetica */}
+        <h3
+          style={{
+            fontFamily: HELV,
+            fontWeight: 700,
+            fontSize: 'clamp(2.25rem, 5vw, 3.25rem)',
+            lineHeight: 1.0,
+            letterSpacing: '-0.035em',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {plan.name}
+          <sup style={{ fontSize: '0.36em', color: 'var(--teal)', fontWeight: 500, verticalAlign: 'super' }}>™</sup>
+        </h3>
+
+        {/* tagline — uma linha discreta, sem pílula */}
+        {plan.tagline && (
+          <p
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: 'var(--teal)',
+              marginTop: '0.85rem',
+            }}
+          >
+            {plan.tagline}
+          </p>
+        )}
+
+        {/* descrição */}
+        {plan.description && (
+          <p
+            style={{
+              fontSize: '0.9rem',
+              lineHeight: 1.8,
+              color: 'var(--text-secondary)',
+              marginTop: '1.5rem',
+              maxWidth: '48ch',
+            }}
+          >
+            {plan.description}
+          </p>
+        )}
+
+        {/* prazo — linha discreta */}
+        <p
+          className="inline-flex items-center gap-2"
+          style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1.5rem' }}
+        >
+          <Clock size={12} style={{ color: 'var(--teal)' }} />
+          {plan.delivery_label?.trim() || 'Primeira versão em'}{' '}
+          <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_days} dias úteis</strong>
+        </p>
+
+        {/* escopo */}
+        <div style={{ borderTop: hairline, marginTop: '2.25rem', paddingTop: '2.25rem' }}>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {plan.features.map((f, i) => {
+              const trimmed = f.trim()
+              const isHeading = trimmed.endsWith(':') && trimmed.length > 1
+              if (isHeading) {
+                return (
+                  <li
+                    key={i}
+                    style={{
+                      listStyle: 'none',
+                      marginTop: i === 0 ? 0 : '1rem',
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.2em',
+                      textTransform: 'uppercase',
+                      color: 'var(--teal)',
+                    }}
+                  >
+                    {trimmed.slice(0, -1)}
+                  </li>
+                )
+              }
+              return (
+                <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+                  <span
+                    style={{
+                      width: 4,
+                      height: 4,
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: 'var(--teal)',
+                      transform: 'translateY(-2px)',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+
+        {/* investimento — o desfecho */}
+        <div
+          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6"
+          style={{ borderTop: hairline, marginTop: '2.25rem', paddingTop: '2.25rem' }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: '0.58rem',
+                fontWeight: 600,
+                letterSpacing: '0.25em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                marginBottom: '0.6rem',
+              }}
+            >
+              Investimento
+            </p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+              <span
+                style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  color: 'var(--text-muted)',
+                  fontFamily: HELV,
+                }}
+              >
+                {symbol}
+              </span>
+              <span
+                style={{
+                  fontFamily: HELV,
+                  fontWeight: 700,
+                  fontSize: 'clamp(2.75rem, 6.5vw, 4rem)',
+                  lineHeight: 1,
+                  letterSpacing: '-0.045em',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
+              </span>
+            </div>
+            {hasInstallments && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.6rem' }}>
+                ou {plan.price_installments_count}× de {symbol}{' '}
+                {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
+              </p>
+            )}
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => onAccept(plan.id)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.55rem',
+              padding: '0.95rem 1.9rem',
+              borderRadius: 999,
+              background: 'var(--green-pastel)',
+              color: '#071F20',
+              border: 'none',
+              fontFamily: 'var(--font-inter)',
+              fontWeight: 700,
+              fontSize: '0.74rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              transition: 'transform 0.25s ease, opacity 0.25s ease',
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.opacity = '0.92'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'none'
+              e.currentTarget.style.opacity = '1'
+            }}
+          >
+            Aceitar proposta
+            <ArrowRight size={15} />
+          </button>
+        </div>
+
+        {plan.highlight_phrase && (
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1.5rem', textAlign: 'center' }}>
+            {plan.highlight_phrase}
+          </p>
+        )}
+      </div>
+    </motion.div>
   )
 }
 
@@ -469,6 +704,8 @@ export function PlansSection({
   const isCustom = projectType === 'custom'
   // Para custom: cada card horizontal (escopo/preço lado a lado), empilhados.
   const isSingle = plans.length === 1 || isCustom
+  // Plano único "normal" (não orçamento, não custom) → layout dedicado minimalista.
+  const single = plans.length === 1 && !isOrcamento && !isCustom
   const gridCols = isCustom
     ? 'grid-cols-1 max-w-5xl mx-auto'
     : plans.length === 3
@@ -490,13 +727,18 @@ export function PlansSection({
           zIndex: 0,
         }}
       />
-      {/* Section header */}
-      <div className="max-w-6xl mx-auto px-4 text-center" style={{ marginBottom: '3.5rem' }}>
+      {/* Section header — título grande em Helvetica, minimalista */}
+      <div
+        className={`max-w-6xl mx-auto px-4 ${single ? 'text-left md:px-6' : 'text-center'}`}
+        style={{ marginBottom: single ? '2.5rem' : '3.5rem', maxWidth: single ? 660 : undefined }}
+      >
         <motion.h1
-          className="font-bold mb-5"
           style={{
-            fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
-            lineHeight: 1.15,
+            fontFamily: HELV,
+            fontWeight: 700,
+            fontSize: single ? 'clamp(2.5rem, 6vw, 4rem)' : 'clamp(2.25rem, 5vw, 3.5rem)',
+            lineHeight: 1.02,
+            letterSpacing: '-0.03em',
             color: 'var(--text-primary)',
           }}
           initial={{ opacity: 0, y: 20 }}
@@ -504,22 +746,21 @@ export function PlansSection({
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
         >
-          Um investimento que{' '}
-          <span className="text-gradient-teal font-display italic">traz resultados.</span>
+          {single ? 'O investimento' : 'Um investimento que traz resultados'}
         </motion.h1>
 
         <motion.p
-          className="text-lg max-w-xl mx-auto mb-10"
-          style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}
+          className={`${single ? '' : 'mx-auto'} text-lg`}
+          style={{ color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '38ch', marginTop: '1.25rem' }}
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          Seu projeto precisa de um visual que passe credibilidade e gere resultado.
-          Escolha o plano ideal para o seu momento.
+          {single
+            ? 'Tudo o que está incluído no seu projeto — e o investimento pra tirar do papel.'
+            : 'Seu projeto precisa de um visual que passe credibilidade e gere resultado. Escolha o plano ideal para o seu momento.'}
         </motion.p>
-
       </div>
 
       {/* Cards grid */}
@@ -530,6 +771,13 @@ export function PlansSection({
         {isOrcamento ? (
           <OrcamentoBlock
             items={items!}
+            plan={plans[0]}
+            onAccept={onAccept}
+            currency={currency}
+            exchangeRate={exchangeRate}
+          />
+        ) : single ? (
+          <SinglePlanCard
             plan={plans[0]}
             onAccept={onAccept}
             currency={currency}
