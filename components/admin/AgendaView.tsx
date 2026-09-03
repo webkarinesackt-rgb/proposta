@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Calendar, MapPin, RefreshCw, Settings, X, Video } from 'lucide-react'
 
 const TZ = 'America/Sao_Paulo'
-const DEFAULT_URL =
-  'https://calendar.google.com/calendar/ical/webkarinesackt%40gmail.com/public/basic.ics'
 
 interface AgEvent {
   title: string
@@ -71,9 +69,10 @@ export default function AgendaView() {
     try {
       saved = localStorage.getItem('fysi.agenda.url') || ''
     } catch {}
-    const u = saved || DEFAULT_URL
-    setUrl(u)
-    setDraftUrl(u)
+    setUrl(saved)
+    setDraftUrl(saved)
+    // sem link salvo → não busca nada (evita abrir já com erro); mostra o setup
+    if (!saved) setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -144,7 +143,18 @@ export default function AgendaView() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto px-5 md:px-8 pb-8">
-        {loading ? (
+        {!url ? (
+          <div className="max-w-[560px] rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
+            <p className="text-[15px] font-bold" style={{ color: '#141414' }}>Conecte seu Google Agenda</p>
+            <p className="text-[13px] mt-1.5" style={{ color: '#6E6E6E' }}>
+              Cole o endereço secreto (iCal) da sua agenda pra ver os compromissos aqui, com botão pra entrar nas chamadas.
+            </p>
+            <SetupHelp />
+            <button onClick={() => { setDraftUrl(''); setShowSettings(true) }} className="mt-4 text-[12px] font-bold px-4 py-2 rounded-lg" style={{ background: '#141414', color: '#D6F23C' }}>
+              Colar o link do calendário
+            </button>
+          </div>
+        ) : loading ? (
           <p className="text-[13px] text-center py-16" style={{ color: '#A8B5B0' }}>Carregando agenda…</p>
         ) : error ? (
           <div className="max-w-[560px] rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
