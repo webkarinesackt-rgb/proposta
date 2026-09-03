@@ -1,17 +1,20 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket, Send, Calculator } from 'lucide-react'
+import { Plus, Trash2, X, Search, Copy, Check, Pencil, BookOpen, Rocket, Send, Calculator, DollarSign } from 'lucide-react'
 import { kbStore, KbEntry, KbSection, KbTableMissingError } from '@/lib/kbStore'
 import { useToast } from '@/lib/useToast'
 import BroadcastModal from './BroadcastModal'
 import BudgetTemplatesPanel from './BudgetTemplatesPanel'
+import PricingCalculator from './PricingCalculator'
 
 export default function ComercialView() {
   const [entries, setEntries] = useState<KbEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [needsSetup, setNeedsSetup] = useState(false)
-  const [section, setSection] = useState<KbSection | 'orcamento'>('processo')
+  const [section, setSection] = useState<KbSection | 'orcamento' | 'precificacao'>('processo')
+  // processos e scripts usam a base de conhecimento; orçamento/precificação são ferramentas
+  const isKb = section === 'processo' || section === 'script'
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<KbEntry | null>(null)
   const [creating, setCreating] = useState(false)
@@ -93,7 +96,7 @@ export default function ComercialView() {
   }, [list])
 
   function startNew() {
-    if (section === 'orcamento') return
+    if (!isKb) return
     setEditing({ id: '', section, category: '', title: '', content: '', sort: Date.now() })
     setCreating(true)
   }
@@ -115,7 +118,7 @@ export default function ComercialView() {
               Base de conhecimento do time: processos e prospecção.
             </p>
           </div>
-          {section !== 'orcamento' && (
+          {isKb && (
             <button
               onClick={startNew}
               className="flex items-center gap-1.5 text-[12px] font-bold px-3.5 py-2 rounded-lg transition-opacity hover:opacity-90"
@@ -132,6 +135,7 @@ export default function ComercialView() {
             { id: 'processo', label: 'Processos', icon: BookOpen },
             { id: 'script', label: 'Prospecção', icon: Rocket },
             { id: 'orcamento', label: 'Orçamentos', icon: Calculator },
+            { id: 'precificacao', label: 'Precificação', icon: DollarSign },
           ] as const).map((t) => {
             const active = section === t.id
             const Icon = t.icon
@@ -151,7 +155,7 @@ export default function ComercialView() {
               </button>
             )
           })}
-          {section !== 'orcamento' && (
+          {isKb && (
             <div className="relative ml-auto max-w-[280px] flex-1 min-w-[160px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A8B5B0' }} />
               <input
@@ -168,7 +172,9 @@ export default function ComercialView() {
 
       {/* conteúdo */}
       <div className="flex-1 min-h-0 overflow-auto px-5 md:px-8 pb-8">
-        {section === 'orcamento' ? (
+        {section === 'precificacao' ? (
+          <PricingCalculator />
+        ) : section === 'orcamento' ? (
           <BudgetTemplatesPanel />
         ) : needsSetup ? (
           <SetupBanner onRetry={load} />
