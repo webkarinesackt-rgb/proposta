@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, MapPin, RefreshCw, Settings, X } from 'lucide-react'
+import { Calendar, MapPin, RefreshCw, Settings, X, Video } from 'lucide-react'
 
 const TZ = 'America/Sao_Paulo'
 const DEFAULT_URL =
@@ -13,6 +13,23 @@ interface AgEvent {
   end: string | null
   allDay: boolean
   location: string
+  url: string
+}
+
+// nome curto do serviço de chamada, pro rótulo do botão
+function callLabel(url: string) {
+  try {
+    const h = new URL(url).hostname
+    if (h.includes('meet.google')) return 'Google Meet'
+    if (h.includes('zoom')) return 'Zoom'
+    if (h.includes('teams')) return 'Teams'
+    if (h.includes('whereby')) return 'Whereby'
+    if (h.includes('jit.si')) return 'Jitsi'
+    if (h.includes('webex')) return 'Webex'
+    return 'Entrar na chamada'
+  } catch {
+    return 'Entrar na chamada'
+  }
 }
 
 function dayKey(iso: string) {
@@ -162,10 +179,21 @@ export default function AgendaView() {
                       <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ background: '#D6F23C' }} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold" style={{ color: '#141414' }}>{e.title}</p>
-                        {e.location && (
+                        {e.location && !/^https?:\/\//i.test(e.location) && (
                           <p className="text-[11px] mt-0.5 flex items-center gap-1 truncate" style={{ color: '#9B9B9B' }}>
                             <MapPin size={11} /> {e.location}
                           </p>
+                        )}
+                        {e.url && (
+                          <a
+                            href={e.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold mt-1.5 px-2.5 py-1 rounded-lg transition-opacity hover:opacity-90"
+                            style={{ background: '#141414', color: '#D6F23C' }}
+                          >
+                            <Video size={12} /> {callLabel(e.url)}
+                          </a>
                         )}
                       </div>
                     </div>

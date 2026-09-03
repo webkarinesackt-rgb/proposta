@@ -23,6 +23,30 @@ async function isAuthed(request: NextRequest): Promise<boolean> {
 // só calendários do Google (evita SSRF — o servidor não busca URL arbitrária)
 const ALLOWED_HOSTS = ['calendar.google.com']
 
+// serviços de chamada conhecidos — pega o link da reunião de dentro do evento
+const CONF_RE =
+  /https?:\/\/(?:[a-z0-9-]+\.)*(?:meet\.google\.com|zoom\.us|teams\.microsoft\.com|teams\.live\.com|whereby\.com|meet\.jit\.si|webex\.com|around\.co|gather\.town|chime\.aws|bluejeans\.com|8x8\.vc)\/[^\s"'<>]+/i
+
+/** Descobre o link da chamada: X-GOOGLE-CONFERENCE, location/description ou url. */
+function meetingLink(e: Record<string, unknown>): string {
+  const xg = e['X-GOOGLE-CONFERENCE']
+  const xgVal = typeof xg === 'string' ? xg : (xg as { val?: string })?.val
+  if (xgVal) return String(xgVal)
+
+  const loc = String(e.location || '')
+  const rawUrl = e.url
+  const url = typeof rawUrl === 'string' ? rawUrl : String((rawUrl as { val?: string })?.val || '')
+  const hay = `${loc}\n${String(e.description || '')}\n${url}`
+  const m = hay.match(CONF_RE)
+  if (m) return m[0]
+
+  const locT = loc.trim()
+  if (/^https?:\/\//i.test(locT)) return locT
+  const urlT = url.trim()
+  if (/^https?:\/\//i.test(urlT)) return urlT
+  return ''
+}
+
 export async function GET(request: NextRequest) {
   if (!(await isAuthed(request))) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -61,13 +85,14 @@ export async function GET(request: NextRequest) {
     const data = ical.sync.parseICS(text)
     const now = new Date()
     const horizon = new Date(Date.now() + 60 * 86400000) // próximos 60 dias
-    type Ev = { title: string; start: string; end: string | null; allDay: boolean; location: string }
+    type Ev = { title: string; start: string; end: string | null; allDay: boolean; location: string; url: string }
     const out: Ev[] = []
     for (const k of Object.keys(data)) {
       const e = data[k] as ical.VEvent
       if (!e || e.type !== 'VEVENT' || !e.start) continue
       const title = String(e.summary || '(sem título)')
       const location = String(e.location || '')
+      const url = meetingLink(e as unknown as Record<string, unknown>)
       const allDay = (e as { datetype?: string }).datetype === 'date'
       const durMs = e.end ? +new Date(e.end) - +new Date(e.start) : 0
       const exdates = Object.values((e as { exdate?: Record<string, Date> }).exdate || {}).map(
@@ -82,6 +107,7 @@ export async function GET(request: NextRequest) {
             end: durMs ? new Date(+d + durMs).toISOString() : null,
             allDay,
             location,
+            url,
           })
         }
       } else {
@@ -93,6 +119,7 @@ export async function GET(request: NextRequest) {
             end: e.end ? new Date(e.end).toISOString() : null,
             allDay,
             location,
+            url,
           })
         }
       }
