@@ -132,10 +132,11 @@ function SinglePlanCard({
           padding: 'clamp(1.75rem, 5vw, 3.5rem)',
         }}
       >
-        {/* nome — título grande em Helvetica */}
+        {/* nome — título grande em Helvetica (reto) */}
         <h3
           style={{
             fontFamily: HELV,
+            fontStyle: 'normal',
             fontWeight: 700,
             fontSize: 'clamp(2.25rem, 5vw, 3.25rem)',
             lineHeight: 1.0,
@@ -735,11 +736,12 @@ export function PlansSection({
       >
         <motion.h1
           style={{
-            fontFamily: HELV,
-            fontWeight: 700,
+            fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
+            fontStyle: 'italic',
+            fontWeight: 300,
             fontSize: single ? 'clamp(2.5rem, 6vw, 4rem)' : 'clamp(2.25rem, 5vw, 3.5rem)',
-            lineHeight: 1.02,
-            letterSpacing: '-0.03em',
+            lineHeight: 1.08,
+            letterSpacing: '-0.01em',
             color: 'var(--text-primary)',
           }}
           initial={{ opacity: 0, y: 20 }}

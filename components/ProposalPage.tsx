@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ReactLenis } from 'lenis/react'
 import { Proposal } from '@/lib/types'
 import { proposalStore } from '@/lib/proposalStore'
 import { HeroSection } from './cliente/HeroSection'
@@ -12,7 +13,6 @@ import { BannerEmocional } from './cliente/BannerEmocional'
 import { FAQSection } from './cliente/FAQSection'
 import { PlansSection } from './proposta/PlansSection'
 import { InfraSection } from './proposta/InfraSection'
-import { CTASection } from './proposta/CTASection'
 import { FasesSection } from './proposta/FasesSection'
 import { CasesCarousel } from './cliente/CasesCarousel'
 import { JackMarqueeSection } from './proposta/JackMarqueeSection'
@@ -28,6 +28,9 @@ const PORTFOLIO_IMAGES = [
   { id: '6', src: '/portfolio/imgi_203_24871a237912593.Y3JvcCwxNTQ0LDEyMDgsMCww.png',   alt: 'Projeto 6', rotation: 8   },
 ]
 
+// Aceitar a proposta leva direto pro fluxo de contratação (outro app).
+const CONTRATAR_URL = 'https://app.fysilabdigital.com.br/contratar'
+
 interface ProposalPageProps {
   proposal: Proposal
   initialTab?: 'cliente' | 'proposta'
@@ -40,7 +43,14 @@ interface ProposalPageProps {
 export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
   const plansRef = useRef<HTMLDivElement>(null)
   const casesRef = useRef<HTMLDivElement>(null)
-  const ctaRef = useRef<HTMLDivElement>(null)
+
+  // Scroll suave (Lenis) — só quando o cliente não pediu "reduzir movimento".
+  const [smooth, setSmooth] = useState(false)
+  useEffect(() => {
+    try {
+      setSmooth(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    } catch {}
+  }, [])
 
   // Marca como "vista" quando o cliente realmente abre a página (roda só
   // no navegador, depois de hidratar — bots de preview de link em geral
@@ -63,12 +73,9 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
     casesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const scrollToCta = () => {
-    ctaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   const handleAccept = (_planId?: string) => {
-    scrollToCta()
+    // vai direto pro fluxo de contratação
+    window.location.href = CONTRATAR_URL
   }
 
   const isExpired =
@@ -76,6 +83,9 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-void)' }}>
+      {smooth && (
+        <ReactLenis root options={{ lerp: 0.1, duration: 1.2, smoothWheel: true, touchMultiplier: 2 }} />
+      )}
       {isExpired && (
         <div
           className="w-full py-3 px-4 text-center text-sm font-semibold"
@@ -132,13 +142,6 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
           images={PORTFOLIO_IMAGES}
           features={[]}
         />
-        <div ref={ctaRef}>
-          <CTASection
-            contactWhatsapp={proposal.agency_settings.contact_whatsapp}
-            validUntil={proposal.valid_until}
-            onAccept={() => handleAccept()}
-          />
-        </div>
       </div>
 
       <QuemSection settings={proposal.agency_settings} />
