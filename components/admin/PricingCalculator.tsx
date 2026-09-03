@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import {
   DEFAULT_PARAMS,
-  DEFAULT_PESOS,
   PricingParams,
   orcar,
   margemDoPreco,
@@ -28,21 +27,30 @@ import {
 const PISO_LP = 1476.71
 
 const PARAMS_KEY = 'fysi.pricing.params'
-const PESOS_KEY = 'fysi.pricing.pesos'
+const CATALOG_KEY = 'fysi.pricing.catalog.v2'
 
-/* rótulos amigáveis pros tipos (a chave crua é o que a fórmula usa) */
-const TIPO_LABEL: Record<string, string> = {
-  'landing page': 'Landing page',
-  'home de site': 'Home de site',
-  'pagina de site unica': 'Página de site (única)',
-  'pagina de site leve': 'Página leve (contato/obrigado)',
-  blog: 'Blog',
-  'template reaproveitavel': 'Template reaproveitável',
-  'pagina duplicada': 'Página duplicada (dev)',
-  'revisao de bloco': 'Revisão de bloco',
-  'setup de conteudo ia': 'Setup de conteúdo IA',
-}
-const tipoLabel = (k: string) => TIPO_LABEL[k] || k
+/* Catálogo de produtos: rótulo, quanto ocupa de vaga (esforço de estúdio)
+   e o preço que a Karine costuma cobrar (referência de tabela).
+   Itens "interno" são etapas de estúdio — não têm preço de venda avulso. */
+type CatItem = { key: string; label: string; vagas: number; preco?: number; interno?: boolean }
+
+const DEFAULT_CATALOG: CatItem[] = [
+  { key: 'lp ate 7 dobras', label: 'Landing page até 7 dobras / one page', vagas: 1.0, preco: 2300 },
+  { key: 'lp mais dobras', label: 'Landing page +7 dobras', vagas: 1.3, preco: 2800 },
+  { key: 'pagina parceiros', label: 'Página de parceiros', vagas: 0.5, preco: 650 },
+  { key: 'pagina link bio', label: 'Página link na bio', vagas: 0.5, preco: 650 },
+  { key: 'pagina de proposta', label: 'Página de proposta', vagas: 0.4, preco: 300 },
+  { key: 'pagina de obrigado', label: 'Página de obrigado', vagas: 0.3, preco: 350 },
+  { key: 'blog', label: 'Blog', vagas: 0.3, preco: 450 },
+  { key: 'home de site', label: 'Home de site', vagas: 1.0, preco: 2200 },
+  { key: 'pagina de site unica', label: 'Página de site (Sobre, Serviços)', vagas: 0.6, preco: 1500 },
+  { key: 'pagina de site leve', label: 'Página leve (Contato)', vagas: 0.4, preco: 900 },
+  { key: 'consultoria', label: 'Consultoria', vagas: 1.0 },
+  { key: 'template reaproveitavel', label: 'Template reaproveitável', vagas: 0.8, interno: true },
+  { key: 'pagina duplicada', label: 'Página duplicada (dev)', vagas: 0.0, interno: true },
+  { key: 'revisao de bloco', label: 'Revisão de bloco', vagas: 0.5, interno: true },
+  { key: 'setup de conteudo ia', label: 'Setup de conteúdo IA', vagas: 0.25, interno: true },
+]
 
 const brl = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -62,17 +70,19 @@ export default function PricingCalculator() {
   const [mode, setMode] = useState<'orcar' | 'mes'>('orcar')
   const [showParams, setShowParams] = useState(false)
 
-  // parâmetros e pesos — editáveis, salvos no navegador
   const [params, setParams] = useState<PricingParams>(DEFAULT_PARAMS)
-  const [pesos, setPesos] = useState<Record<string, number>>(DEFAULT_PESOS)
+  const [catalog, setCatalog] = useState<CatItem[]>(DEFAULT_CATALOG)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     try {
       const p = localStorage.getItem(PARAMS_KEY)
       if (p) setParams({ ...DEFAULT_PARAMS, ...JSON.parse(p) })
-      const w = localStorage.getItem(PESOS_KEY)
-      if (w) setPesos({ ...DEFAULT_PESOS, ...JSON.parse(w) })
+      const c = localStorage.getItem(CATALOG_KEY)
+      if (c) {
+        const parsed = JSON.parse(c)
+        if (Array.isArray(parsed) && parsed.length) setCatalog(parsed)
+      }
     } catch {}
     setLoaded(true)
   }, [])
@@ -80,19 +90,24 @@ export default function PricingCalculator() {
     if (!loaded) return
     try {
       localStorage.setItem(PARAMS_KEY, JSON.stringify(params))
-      localStorage.setItem(PESOS_KEY, JSON.stringify(pesos))
+      localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog))
     } catch {}
-  }, [params, pesos, loaded])
+  }, [params, catalog, loaded])
 
-  function resetParams() {
-    if (!confirm('Restaurar parâmetros e pesos para o padrão do modelo?')) return
+  // mapa chave→vagas pra alimentar as fórmulas puras
+  const pesos = useMemo(
+    () => Object.fromEntries(catalog.map((c) => [c.key, c.vagas])),
+    [catalog]
+  )
+
+  function resetAll() {
+    if (!confirm('Restaurar parâmetros e catálogo para o padrão?')) return
     setParams(DEFAULT_PARAMS)
-    setPesos(DEFAULT_PESOS)
+    setCatalog(DEFAULT_CATALOG)
   }
 
   return (
     <div className="max-w-5xl">
-      {/* modo + botão parâmetros */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
           {([
@@ -118,16 +133,18 @@ export default function PricingCalculator() {
           className="flex items-center gap-1.5 text-[12px] font-bold px-3 py-2 rounded-lg ml-auto"
           style={{ background: showParams ? '#141414' : '#FFFFFF', color: showParams ? '#D6F23C' : '#141414', border: '1px solid ' + (showParams ? '#141414' : '#E6E6E1') }}
         >
-          <SlidersHorizontal size={14} /> Parâmetros
+          <SlidersHorizontal size={14} /> Catálogo & parâmetros
         </button>
       </div>
 
-      {showParams && <ParamsEditor params={params} setParams={setParams} pesos={pesos} setPesos={setPesos} onReset={resetParams} />}
+      {showParams && (
+        <ParamsEditor params={params} setParams={setParams} catalog={catalog} setCatalog={setCatalog} onReset={resetAll} />
+      )}
 
       {mode === 'orcar' ? (
-        <OrcarPanel params={params} pesos={pesos} />
+        <OrcarPanel params={params} pesos={pesos} catalog={catalog} />
       ) : (
-        <FecharMesPanel params={params} pesos={pesos} />
+        <FecharMesPanel params={params} />
       )}
     </div>
   )
@@ -135,9 +152,18 @@ export default function PricingCalculator() {
 
 /* ─────────────────────────── ORÇAR PROJETO ─────────────────────────── */
 
-function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<string, number> }) {
-  const tipos = Object.keys(pesos)
-  const [itens, setItens] = useState<ItemRow[]>([{ id: nid(), tipo: 'landing page', qtd: '1' }])
+function OrcarPanel({
+  params,
+  pesos,
+  catalog,
+}: {
+  params: PricingParams
+  pesos: Record<string, number>
+  catalog: CatItem[]
+}) {
+  const catMap = useMemo(() => Object.fromEntries(catalog.map((c) => [c.key, c])), [catalog])
+  const first = catalog[0]?.key || 'landing page'
+  const [itens, setItens] = useState<ItemRow[]>([{ id: nid(), tipo: first, qtd: '1' }])
   const [custoDireto, setCustoDireto] = useState('350')
   const [precoNeg, setPrecoNeg] = useState('')
   const [copied, setCopied] = useState(false)
@@ -154,24 +180,29 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
   )
 
   const sugerido = r.precoAlvo != null ? roundUp100(r.precoAlvo) : null
+
+  // preço de tabela = soma dos preços que a Karine cobra por cada item
+  const precoTabela = useMemo(
+    () => itens.reduce((a, i) => a + num(i.qtd) * (catMap[i.tipo]?.preco || 0), 0),
+    [itens, catMap]
+  )
+  const tabelaMargem = precoTabela > 0 ? margemDoPreco(precoTabela, r.custo, params).margem : null
+
   const precoNegVal = num(precoNeg)
   const teste = precoNeg.trim() ? margemDoPreco(precoNegVal, r.custo, params) : null
 
-  function addItem() {
-    setItens((xs) => [...xs, { id: nid(), tipo: tipos[0] || 'landing page', qtd: '1' }])
-  }
   function copyResumo() {
     const linhas = itens
       .filter((i) => num(i.qtd) > 0)
-      .map((i) => `• ${num(i.qtd)}× ${tipoLabel(i.tipo)}`)
+      .map((i) => `• ${num(i.qtd)}× ${catMap[i.tipo]?.label || i.tipo}`)
       .join('\n')
     const txt =
-      `Orçamento — precificação Fysi\n${linhas}\n` +
-      `\nVagas do mês: ${r.vagas.toFixed(2)} (${pct(r.ocupacaoDoMes)} da capacidade)` +
+      `Precificação Fysi\n${linhas}\n` +
       `\nCusto do projeto: ${brl(r.custo)}` +
       `\nPreço mínimo (empata): ${brl(r.precoMinimo)}` +
+      (precoTabela > 0 ? `\nSeu preço de tabela: ${brl(precoTabela)}` : '') +
       (sugerido != null ? `\nPreço sugerido (margem ${pct(params.margemAlvo)}): ${brl(sugerido)}` : '') +
-      (teste ? `\nPreço testado: ${brl(precoNegVal)} → margem ${pct(teste.margem)}` : '')
+      `\nOcupação do mês: ${pct(r.ocupacaoDoMes)}`
     navigator.clipboard.writeText(txt).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
@@ -197,9 +228,9 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
                   className="flex-1 min-w-0 text-[13px] px-2.5 py-2 rounded-lg outline-none"
                   style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
                 >
-                  {tipos.map((t) => (
-                    <option key={t} value={t}>
-                      {tipoLabel(t)} ({pesos[t]} vg)
+                  {catalog.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label} · {c.vagas} vg{c.preco ? ` · ${brl(c.preco)}` : ''}
                     </option>
                   ))}
                 </select>
@@ -212,7 +243,7 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
                   className="w-16 text-[13px] text-center px-2 py-2 rounded-lg outline-none"
                   style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
                 />
-                <span className="text-[11px] w-16 text-right tabular-nums" style={{ color: '#9B9B9B' }}>
+                <span className="text-[11px] w-14 text-right tabular-nums" style={{ color: '#9B9B9B' }}>
                   {vagasItem.toFixed(2)} vg
                 </span>
                 <button
@@ -228,14 +259,13 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
           })}
         </div>
         <button
-          onClick={addItem}
+          onClick={() => setItens((xs) => [...xs, { id: nid(), tipo: first, qtd: '1' }])}
           className="mt-3 flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-lg"
           style={{ background: '#F4F3EF', color: '#141414', border: '1px solid #E6E6E1' }}
         >
           <Plus size={13} /> Adicionar item
         </button>
 
-        {/* custo direto */}
         <div className="mt-5 pt-4" style={{ borderTop: '1px solid #F0F0EC' }}>
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
             Custo direto do projeto (R$)
@@ -257,17 +287,16 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
           </p>
         </div>
 
-        {/* teste de preço */}
         <div className="mt-5 pt-4" style={{ borderTop: '1px solid #F0F0EC' }}>
           <label className="block text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#9B9B9B' }}>
-            Testar um preço negociado (R$) — opcional
+            Testar outro preço (R$) — opcional
           </label>
           <input
             type="text"
             inputMode="decimal"
             value={precoNeg}
             onChange={(e) => setPrecoNeg(e.target.value)}
-            placeholder="Ex: 2300"
+            placeholder="Ex: 2000"
             className="w-full text-[15px] font-semibold px-3 py-2 rounded-lg outline-none"
             style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
           />
@@ -288,24 +317,32 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
 
       {/* resultado */}
       <div className="flex flex-col gap-3">
-        <div className="rounded-2xl p-5" style={{ background: '#141414' }}>
-          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'rgba(214,242,60,0.7)' }}>
-            Preço sugerido
-          </p>
-          <p className="text-[34px] font-bold leading-tight mt-1" style={{ color: '#D6F23C' }}>
-            {sugerido != null ? brl(sugerido) : '—'}
-          </p>
-          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            margem-alvo {pct(params.margemAlvo)}
-            {r.precoAlvo != null && sugerido != null && sugerido !== r.precoAlvo
-              ? ` · exato ${brl(r.precoAlvo)}`
-              : ''}
-          </p>
-          {r.precoAlvo == null && (
-            <p className="text-[12px] mt-2 font-semibold" style={{ color: '#F4A0A0' }}>
-              Margem inviável — ajuste a margem-alvo nos parâmetros.
+        {/* dois preços lado a lado */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9B9B9B' }}>
+              Sua tabela
             </p>
-          )}
+            <p className="text-[22px] font-bold leading-tight mt-1" style={{ color: '#141414' }}>
+              {precoTabela > 0 ? brl(precoTabela) : '—'}
+            </p>
+            {tabelaMargem != null && (
+              <p className="text-[11px] mt-0.5 font-semibold" style={{ color: tabelaMargem < 0 ? '#B42318' : tabelaMargem < 0.15 ? '#B4780A' : '#137A3F' }}>
+                margem {pct(tabelaMargem)}
+              </p>
+            )}
+          </div>
+          <div className="rounded-2xl p-4" style={{ background: '#141414' }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(214,242,60,0.7)' }}>
+              Modelo sugere
+            </p>
+            <p className="text-[22px] font-bold leading-tight mt-1" style={{ color: '#D6F23C' }}>
+              {sugerido != null ? brl(sugerido) : '—'}
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              margem {pct(params.margemAlvo)}
+            </p>
+          </div>
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
@@ -317,9 +354,13 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
           <Line label="Custo total" value={brl(r.custo)} strong />
           <div className="my-2" style={{ borderTop: '1px solid #F0F0EC' }} />
           <Line label="Preço mínimo (empata)" value={brl(r.precoMinimo)} />
+          {r.precoAlvo != null && sugerido != null && sugerido !== r.precoAlvo && (
+            <Line label="Preço-alvo exato" value={brl(r.precoAlvo)} sub />
+          )}
         </div>
 
-        {/* avisos */}
+        <Comparacao precoTabela={precoTabela} sugerido={sugerido} precoMinimo={r.precoMinimo} />
+
         <Warnings
           ocupacao={r.ocupacaoDoMes}
           precoMinimo={r.precoMinimo}
@@ -336,6 +377,37 @@ function OrcarPanel({ params, pesos }: { params: PricingParams; pesos: Record<st
           {copied ? 'Copiado!' : 'Copiar resumo'}
         </button>
       </div>
+    </div>
+  )
+}
+
+function Comparacao({
+  precoTabela,
+  sugerido,
+  precoMinimo,
+}: {
+  precoTabela: number
+  sugerido: number | null
+  precoMinimo: number
+}) {
+  if (precoTabela <= 0 || sugerido == null) return null
+  let tone: 'red' | 'amber' | 'green'
+  let text: string
+  if (precoTabela < precoMinimo) {
+    tone = 'red'
+    text = `Sua tabela dá prejuízo: faltam ${brl(precoMinimo - precoTabela)} só pra empatar o custo.`
+  } else if (precoTabela < sugerido) {
+    tone = 'amber'
+    text = `Sua tabela cobre o custo, mas está ${brl(sugerido - precoTabela)} abaixo do preço-alvo (margem cheia).`
+  } else {
+    tone = 'green'
+    text = `Sua tabela está no alvo — ${brl(precoTabela - sugerido)} acima do sugerido. 👏`
+  }
+  const bg = tone === 'red' ? '#FBE9E7' : tone === 'amber' ? '#FBF4E0' : '#DCF3E4'
+  const fg = tone === 'red' ? '#B42318' : tone === 'amber' ? '#8A5A00' : '#137A3F'
+  return (
+    <div className="text-[12px] rounded-xl p-3 leading-relaxed" style={{ background: bg, color: fg }}>
+      {text}
     </div>
   )
 }
@@ -377,8 +449,6 @@ function Warnings({
       items.push({ tone: 'red', text: `Abaixo do mínimo. Faltam ${brl(precoMinimo - precoNeg)} para empatar.` })
     else if (margem != null && margem >= 0 && margem < 0.15)
       items.push({ tone: 'amber', text: 'Margem abaixo do mínimo saudável (15%).' })
-    if (precoNeg < PISO_LP)
-      items.push({ tone: 'red', text: `Abaixo do piso de uma landing page (${brl(PISO_LP)}). Abaixo disso a peça dá prejuízo sozinha.` })
   }
   if (items.length === 0) return null
   return (
@@ -387,10 +457,7 @@ function Warnings({
         <div
           key={i}
           className="flex items-start gap-2 text-[12px] rounded-xl p-3 leading-relaxed"
-          style={{
-            background: w.tone === 'red' ? '#FBE9E7' : '#FBF4E0',
-            color: w.tone === 'red' ? '#B42318' : '#8A5A00',
-          }}
+          style={{ background: w.tone === 'red' ? '#FBE9E7' : '#FBF4E0', color: w.tone === 'red' ? '#B42318' : '#8A5A00' }}
         >
           <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
           <span>{w.text}</span>
@@ -402,8 +469,7 @@ function Warnings({
 
 /* ─────────────────────────── FECHAR O MÊS ─────────────────────────── */
 
-function FecharMesPanel({ params, pesos }: { params: PricingParams; pesos: Record<string, number> }) {
-  void pesos
+function FecharMesPanel({ params }: { params: PricingParams }) {
   const [linhas, setLinhas] = useState<MesRow[]>([
     { id: nid(), qtd: '5', preco: '1800', vagasUnit: '1', custoDiretoUnit: '350' },
     { id: nid(), qtd: '10', preco: '2300', vagasUnit: '1', custoDiretoUnit: '350' },
@@ -521,22 +587,35 @@ function MesInput({ value, onChange }: { value: string; onChange: (v: string) =>
   )
 }
 
-/* ─────────────────────────── PARÂMETROS ─────────────────────────── */
+/* ─────────────────────────── CATÁLOGO & PARÂMETROS ─────────────────────────── */
 
 function ParamsEditor({
   params,
   setParams,
-  pesos,
-  setPesos,
+  catalog,
+  setCatalog,
   onReset,
 }: {
   params: PricingParams
   setParams: (p: PricingParams) => void
-  pesos: Record<string, number>
-  setPesos: (p: Record<string, number>) => void
+  catalog: CatItem[]
+  setCatalog: (c: CatItem[]) => void
   onReset: () => void
 }) {
-  const [novoTipo, setNovoTipo] = useState('')
+  const [novo, setNovo] = useState('')
+
+  function upRow(key: string, patch: Partial<CatItem>) {
+    setCatalog(catalog.map((c) => (c.key === key ? { ...c, ...patch } : c)))
+  }
+  function addRow() {
+    const label = novo.trim()
+    if (!label) return
+    const key = label.toLowerCase()
+    if (catalog.some((c) => c.key === key)) return
+    setCatalog([...catalog, { key, label, vagas: 0.5, preco: undefined }])
+    setNovo('')
+  }
+
   return (
     <div className="rounded-2xl p-4 md:p-5 mb-4" style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}>
       <div className="flex items-center justify-between mb-3">
@@ -559,43 +638,66 @@ function ParamsEditor({
       </p>
 
       <p className="text-[11px] font-bold uppercase tracking-wider mt-5 mb-2" style={{ color: '#9B9B9B' }}>
-        Pesos (vagas por tipo)
+        Catálogo — produto · vagas (esforço) · preço de tabela
       </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {Object.keys(pesos).map((k) => (
-          <div key={k} className="flex items-center gap-2">
-            <span className="text-[12px] flex-1 min-w-0 truncate" style={{ color: '#4A5A56' }} title={tipoLabel(k)}>
-              {tipoLabel(k)}
-            </span>
+      <div className="grid grid-cols-[1fr_64px_92px_28px] gap-2 mb-1 px-1">
+        {['Produto', 'Vagas', 'Preço', ''].map((h, i) => (
+          <span key={i} className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9B9B9B' }}>
+            {h}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {catalog.map((c) => (
+          <div key={c.key} className="grid grid-cols-[1fr_64px_92px_28px] gap-2 items-center">
+            <input
+              value={c.label}
+              onChange={(e) => upRow(c.key, { label: e.target.value })}
+              className="text-[12.5px] px-2.5 py-1.5 rounded-lg outline-none"
+              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
+            />
             <input
               type="text"
               inputMode="decimal"
-              value={String(pesos[k])}
-              onChange={(e) => setPesos({ ...pesos, [k]: num(e.target.value) })}
-              className="w-16 text-[13px] text-center px-2 py-1.5 rounded-lg outline-none tabular-nums"
+              value={String(c.vagas)}
+              onChange={(e) => upRow(c.key, { vagas: num(e.target.value) })}
+              className="text-[12.5px] text-center px-2 py-1.5 rounded-lg outline-none tabular-nums"
               style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
             />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={c.preco != null ? String(c.preco) : ''}
+              placeholder={c.interno ? 'interno' : '—'}
+              onChange={(e) => {
+                const t = e.target.value.trim()
+                upRow(c.key, { preco: t === '' ? undefined : num(t) })
+              }}
+              className="text-[12.5px] text-center px-2 py-1.5 rounded-lg outline-none tabular-nums"
+              style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
+            />
+            <button
+              onClick={() => setCatalog(catalog.length > 1 ? catalog.filter((x) => x.key !== c.key) : catalog)}
+              className="p-1 rounded hover:bg-[#FBE0E0]"
+              style={{ color: '#C86B6B' }}
+              title="Remover"
+            >
+              <Trash2 size={12} />
+            </button>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2 mt-3">
         <input
-          value={novoTipo}
-          onChange={(e) => setNovoTipo(e.target.value)}
-          placeholder="Novo tipo (ex: e-mail marketing)"
+          value={novo}
+          onChange={(e) => setNovo(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addRow()}
+          placeholder="Novo produto (ex: E-mail marketing)"
           className="flex-1 text-[12px] px-3 py-2 rounded-lg outline-none"
           style={{ background: '#F4F3EF', border: '1px solid #E6E6E1', color: '#141414' }}
         />
-        <button
-          onClick={() => {
-            const t = novoTipo.trim().toLowerCase()
-            if (t && !(t in pesos)) setPesos({ ...pesos, [t]: 0.5 })
-            setNovoTipo('')
-          }}
-          className="text-[12px] font-bold px-3 py-2 rounded-lg"
-          style={{ background: '#141414', color: '#D6F23C' }}
-        >
-          Adicionar peso
+        <button onClick={addRow} className="text-[12px] font-bold px-3 py-2 rounded-lg" style={{ background: '#141414', color: '#D6F23C' }}>
+          Adicionar produto
         </button>
       </div>
     </div>
