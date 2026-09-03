@@ -13,6 +13,7 @@ import { BannerEmocional } from './cliente/BannerEmocional'
 import { FAQSection } from './cliente/FAQSection'
 import { PlansSection } from './proposta/PlansSection'
 import { InfraSection } from './proposta/InfraSection'
+import { ClaritySection } from './proposta/ClaritySection'
 import { FasesSection } from './proposta/FasesSection'
 import { CasesCarousel } from './cliente/CasesCarousel'
 import { JackMarqueeSection } from './proposta/JackMarqueeSection'
@@ -114,7 +115,6 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
       <div ref={casesRef}>
         <CasesCarousel />
       </div>
-      <DepoimentosSection testimonials={proposal.testimonials} />
 
       <FasesSection />
 
@@ -130,6 +130,7 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
           exchangeRate={proposal.exchange_rate}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
+        <ClaritySection />
         {proposal.agency_settings.experts && proposal.agency_settings.experts.length > 0 && (
           <ExpertsSection experts={proposal.agency_settings.experts} />
         )}
@@ -143,6 +144,9 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
           features={[]}
         />
       </div>
+
+      {/* depoimentos mais pra baixo: prova social depois da oferta */}
+      <DepoimentosSection testimonials={proposal.testimonials} />
 
       <QuemSection settings={proposal.agency_settings} />
 <FAQSection

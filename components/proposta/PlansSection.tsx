@@ -114,6 +114,7 @@ function SinglePlanCard({
   const symbol = currencySymbol(currency)
   const hasInstallments = plan.price_installments_count > 0 && plan.price_installment_value > 0
   const hairline = '1px solid rgba(184,212,208,0.12)'
+  const PADX = 'clamp(1.75rem, 5vw, 3.5rem)'
 
   return (
     <motion.div
@@ -127,11 +128,13 @@ function SinglePlanCard({
       <div
         style={{
           borderRadius: 24,
+          overflow: 'hidden',
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(184,212,208,0.12)',
-          padding: 'clamp(1.75rem, 5vw, 3.5rem)',
         }}
       >
+        {/* ── cabeçalho ── */}
+        <div style={{ padding: `clamp(2.25rem, 5vw, 3.25rem) ${PADX} clamp(1.75rem, 4vw, 2.5rem)` }}>
         {/* nome — título grande em Helvetica (reto) */}
         <h3
           style={{
@@ -188,10 +191,11 @@ function SinglePlanCard({
           {plan.delivery_label?.trim() || 'Primeira versão em'}{' '}
           <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_days} dias úteis</strong>
         </p>
+        </div>
 
-        {/* escopo */}
-        <div style={{ borderTop: hairline, marginTop: '2.25rem', paddingTop: '2.25rem' }}>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        {/* ── escopo (divisória de largura cheia) ── */}
+        <div style={{ borderTop: hairline, padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}` }}>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
             {plan.features.map((f, i) => {
               const trimmed = f.trim()
               const isHeading = trimmed.endsWith(':') && trimmed.length > 1
@@ -232,11 +236,9 @@ function SinglePlanCard({
           </ul>
         </div>
 
-        {/* investimento — o desfecho */}
-        <div
-          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6"
-          style={{ borderTop: hairline, marginTop: '2.25rem', paddingTop: '2.25rem' }}
-        >
+        {/* ── investimento — o desfecho (divisória de largura cheia) ── */}
+        <div style={{ borderTop: hairline, padding: `clamp(1.75rem, 4vw, 2.5rem) ${PADX}` }}>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div>
             <p
               style={{
@@ -319,10 +321,11 @@ function SinglePlanCard({
         </div>
 
         {plan.highlight_phrase && (
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1.5rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1.25rem' }}>
             {plan.highlight_phrase}
           </p>
         )}
+        </div>
       </div>
     </motion.div>
   )
