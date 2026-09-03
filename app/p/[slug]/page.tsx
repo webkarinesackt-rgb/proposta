@@ -45,6 +45,8 @@ export default async function ProposalSlugPage({ params, searchParams }: PagePro
 
   const proposal = await fetchProposal(slug)
   if (!proposal) notFound()
+  // modelo é material interno: nunca abre pra cliente
+  if (proposal.is_template) notFound()
 
   return <ProposalPage proposal={proposal} initialTab={initialTab} />
 }

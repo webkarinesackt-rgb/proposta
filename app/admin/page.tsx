@@ -344,18 +344,23 @@ function ProposalCard({
   onCopy,
   onPublish,
   onSetStatus,
+  onToggleTemplate,
+  onUseTemplate,
 }: {
   proposal: Proposal
   onDelete: (id: string) => void
   onCopy: (p: Proposal) => void
   onPublish: (id: string) => void
   onSetStatus: (id: string, status: ProposalStatus) => void
+  onToggleTemplate: (p: Proposal) => void
+  onUseTemplate: (p: Proposal) => void
 }) {
   const router = useRouter()
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const meta = STATUS_META[proposal.status] ?? STATUS_META.draft
   const expired = isExpired(proposal.valid_until)
   const isDraft = proposal.status === 'draft'
+  const isTemplate = !!proposal.is_template
 
   return (
     <div
@@ -521,6 +526,24 @@ function ProposalCard({
             Publicar
           </button>
         )}
+        {isTemplate && (
+          <button
+            onClick={() => onUseTemplate(proposal)}
+            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all"
+            style={{ background: T.accent, color: T.accentBright }}
+          >
+            <Copy size={11} />
+            Usar como modelo
+          </button>
+        )}
+        <button
+          onClick={() => onToggleTemplate(proposal)}
+          title={isTemplate ? 'Deixar de ser modelo' : 'Guardar como modelo pra duplicar depois'}
+          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F4F3EF]"
+          style={{ color: isTemplate ? T.textPrimary : T.textMuted }}
+        >
+          {isTemplate ? 'Não é modelo' : 'Guardar como modelo'}
+        </button>
         <button
           onClick={() => onDelete(proposal.id)}
           className="ml-auto flex items-center gap-1 text-[11px] px-2 py-1.5 rounded-lg transition-colors hover:bg-[#F7EDE9]"
@@ -578,7 +601,11 @@ export default function AdminDashboard() {
     return d.getTime()
   })()
   const startOfLastWeek = startOfWeek - 7 * 86400 * 1000
+  // modelos ficam numa faixa própria acima da lista (nunca misturados com clientes)
+  const templates = proposals.filter((p) => p.is_template)
   const filtered = proposals.filter((p) => {
+    // modelo não é proposta de cliente: fora da lista, dos contadores e do CSV
+    if (p.is_template) return false
     // filtro por status (chips)
     if (filter !== 'all') {
       const okStatus =
@@ -643,10 +670,34 @@ export default function AdminDashboard() {
   }, [proposals])
 
   async function handleDelete(id: string) {
-    if (!confirm('Deletar esta proposta?')) return
+    const alvo = proposals.find((p) => p.id === id)
+    const aviso = alvo?.is_template
+      ? 'Este é um MODELO. Apagar remove o padrão usado pra criar propostas novas. Apagar mesmo assim?'
+      : 'Deletar esta proposta?'
+    if (!confirm(aviso)) return
     await proposalStore.remove(id)
     await refresh()
     showToast('Proposta deletada')
+  }
+
+  /** Marca/desmarca uma proposta como modelo pra duplicar depois. Modelo fica
+   *  fora dos relatórios e do CSV, e não abre no link público. */
+  async function handleToggleTemplate(p: Proposal) {
+    const virandoModelo = !p.is_template
+    await proposalStore.save({ ...p, is_template: virandoModelo })
+    await refresh()
+    showToast(
+      virandoModelo
+        ? 'Guardada como modelo — use "Usar como modelo" pra criar uma proposta a partir dela'
+        : 'Não é mais um modelo'
+    )
+  }
+
+  /** Cria uma proposta nova a partir do modelo, pedindo o nome do cliente. */
+  async function handleUseTemplate(p: Proposal) {
+    const nome = prompt('Nome do cliente para a nova proposta:')?.trim()
+    if (!nome) return
+    await quickDuplicate(p.id, nome)
   }
 
   async function handleCopy(p: Proposal) {
@@ -737,6 +788,9 @@ export default function AdminDashboard() {
   async function quickDuplicate(sourceId: string, clientName: string) {
     const source = proposals.find((p) => p.id === sourceId)
     if (!source) return
+    // o texto do hero pode citar o cliente de origem: troca pelo novo nome
+    const trocaNome = (txt: string) =>
+      source.client_name ? txt.split(source.client_name).join(clientName) : txt
     const copy: Proposal = {
       ...source,
       id: '',
@@ -745,8 +799,13 @@ export default function AdminDashboard() {
       client_email: '',
       client_company: '',
       client_whatsapp: '',
+      hero_title: trocaNome(source.hero_title || ''),
+      hero_subtitle: trocaNome(source.hero_subtitle || ''),
+      hero_description: trocaNome(source.hero_description || ''),
       valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'draft',
+      // a cópia é uma proposta de verdade, nunca outro modelo
+      is_template: false,
     }
     const saved = await proposalStore.save(copy)
     showToast(`Duplicada de "${source.client_name}"`, { kind: 'info' })
@@ -999,6 +1058,34 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* modelos: base pra criar proposta nova em 2 cliques */}
+        {templates.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-baseline gap-3 mb-3">
+              <h2 className="text-[13px] font-bold" style={{ color: T.textPrimary }}>
+                Modelos
+              </h2>
+              <p className="text-[11px]" style={{ color: T.textMuted }}>
+                base pronta pra criar uma proposta nova. Editar um modelo não muda as propostas já criadas.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {templates.map((p) => (
+                <ProposalCard
+                  key={p.id}
+                  proposal={p}
+                  onDelete={handleDelete}
+                  onCopy={handleCopy}
+                  onPublish={handlePublish}
+                  onSetStatus={handleSetStatus}
+                  onToggleTemplate={handleToggleTemplate}
+                  onUseTemplate={handleUseTemplate}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* list */}
         {filtered.length === 0 ? (
           <div
@@ -1032,6 +1119,8 @@ export default function AdminDashboard() {
                 onCopy={handleCopy}
                 onPublish={handlePublish}
                 onSetStatus={handleSetStatus}
+                onToggleTemplate={handleToggleTemplate}
+                onUseTemplate={handleUseTemplate}
               />
             ))}
           </div>

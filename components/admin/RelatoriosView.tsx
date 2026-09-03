@@ -290,7 +290,9 @@ export default function RelatoriosView() {
   const [specificMonth, setSpecificMonth] = useState('')
 
   const filteredProposals = useMemo(() => {
-    if (!specificMonth && period === 'all') return proposals
+    // modelos são material interno: nunca entram em métrica nem em receita
+    const real = proposals.filter((p) => !p.is_template)
+    if (!specificMonth && period === 'all') return real
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime()
@@ -302,7 +304,7 @@ export default function RelatoriosView() {
       return d.getTime()
     })()
     const startOfLastWeek = startOfWeek - 7 * 86400 * 1000
-    return proposals.filter((p) => {
+    return real.filter((p) => {
       const created = p.created_at ? new Date(p.created_at) : null
       if (!created || isNaN(created.getTime())) return false
       const t = created.getTime()

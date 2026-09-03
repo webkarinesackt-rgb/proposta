@@ -146,4 +146,7 @@ export interface Proposal {
   created_at?: string
   /** ISO timestamp da última atualização (proxy da data do aceite). */
   updated_at?: string
+  /** proposta guardada só como modelo pra duplicar: não é cliente real, fica
+   *  fora dos relatórios/CSV e não abre no link público. */
+  is_template?: boolean
 }
