@@ -135,6 +135,15 @@ function PlanEditor({
               Recomendado
             </span>
           )}
+          {plan.recurring && (
+            <span
+              className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{ background: '#141414', color: '#D6F23C' }}
+              title="Esta proposta tem etapa mensal"
+            >
+              + mensal{plan.recurring.price_monthly ? ` R$ ${plan.recurring.price_monthly}` : ''}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           {/* toggle recommended */}
@@ -315,19 +324,36 @@ function PlanEditor({
 
           {/* ── etapa mensal (opcional): aparece como bloco próprio abaixo do
                preço na proposta. Não é forma de pagamento do projeto. ── */}
-          <div className="mt-6 pt-5 border-t border-[#E6E6E1]">
+          <div
+            className="mt-6 rounded-xl p-4"
+            style={{ background: '#FFFFFF', border: '1px solid #E6E6E1' }}
+          >
             {!plan.recurring ? (
-              <button
-                type="button"
-                onClick={() => onChange(plan.id, 'recurring', { name: 'Plano mensal', price_monthly: 0 })}
-                className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E6E6E1] hover:bg-[#F5F5F2]"
-              >
-                + Adicionar etapa mensal
-              </button>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[13px] font-bold text-[#141414]">Etapa mensal</p>
+                  <p className="text-[11px] text-[#9B9B9B]">
+                    Mensalidade cobrada depois da entrega, como gestão de conteúdo e SEO. Vira um bloco próprio na proposta.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onChange(plan.id, 'recurring', { name: 'Plano mensal', price_monthly: 0 })}
+                  className="flex-shrink-0 text-[11px] font-bold px-3.5 py-2 rounded-lg transition-all"
+                  style={{ background: '#141414', color: '#D6F23C' }}
+                >
+                  + Adicionar
+                </button>
+              </div>
             ) : (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">Etapa mensal</p>
+                  <div>
+                    <p className="text-[13px] font-bold text-[#141414]">Etapa mensal</p>
+                    <p className="text-[11px] text-[#9B9B9B]">
+                      Aparece na proposta como bloco próprio, abaixo do preço do projeto.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => onChange(plan.id, 'recurring', undefined)}
