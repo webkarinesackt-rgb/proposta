@@ -390,35 +390,63 @@ function PriceBand({
     Math.abs(plan.price_installments_count * plan.price_installment_value - plan.price_cash) <= 1
   return (
     <div
-      className="flex flex-col md:flex-row md:items-end md:justify-between gap-8"
-      style={{ borderTop: HAIR, marginTop: '3.5rem', paddingTop: '2.75rem' }}
+      style={{
+        marginTop: '3.5rem',
+        borderRadius: 28,
+        overflow: 'hidden',
+        position: 'relative',
+        background:
+          'linear-gradient(135deg, rgba(184,212,208,0.13) 0%, rgba(139,183,175,0.06) 42%, rgba(255,255,255,0.02) 100%)',
+        border: '1px solid rgba(184,212,208,0.26)',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+        padding: 'clamp(2rem, 4vw, 2.75rem) clamp(1.75rem, 4vw, 3rem)',
+      }}
     >
+      {/* brilho no canto — dá volume à superfície sem virar card colorido */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none"
+        style={{
+          top: -140,
+          right: -80,
+          width: 420,
+          height: 300,
+          background: 'radial-gradient(ellipse at center, rgba(184,212,208,0.22) 0%, transparent 70%)',
+          filter: 'blur(10px)',
+        }}
+      />
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8" style={{ position: 'relative' }}>
       <div>
-        <Eyebrow color="var(--text-muted)" mb="1rem">Investimento</Eyebrow>
-        {/* Valor alto entra pela parcela: "12× no cartão" anuncia a forma numa
-            linha própria, o número grande fica limpo (só cifrão + valor) e o
-            total à vista vem logo abaixo. Sem parcelamento, o total assume. */}
+        <Eyebrow color="var(--green-pastel)" mb="1rem">Investimento</Eyebrow>
+        {/* Valor alto entra pela parcela: a forma de pagamento vem numa pílula
+            acima, o número grande fica limpo (cifrão + parcela) e as demais
+            formas aparecem abaixo. Sem parcelamento, o total assume. */}
         {hasInstallments && (
-          <p
+          <span
+            className="inline-block"
             style={{
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              color: 'var(--teal)',
-              marginBottom: '0.5rem',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: '#071F20',
+              background: 'var(--green-pastel)',
+              borderRadius: 999,
+              padding: '0.35rem 0.8rem',
+              marginBottom: '0.9rem',
             }}
           >
-            {plan.price_installments_count}× no cartão{semJuros ? ', sem juros' : ''}
-          </p>
+            {plan.price_installments_count}× no cartão{semJuros ? ' · sem juros' : ''}
+          </span>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
           <span
             style={{
               fontFamily: HELV,
-              fontSize: '1.35rem',
+              fontSize: '1.4rem',
               fontWeight: 600,
-              color: 'var(--text-secondary)',
-              marginTop: '0.7rem',
+              color: 'var(--green-pastel)',
+              marginTop: '0.75rem',
             }}
           >
             {symbol}
@@ -427,10 +455,10 @@ function PriceBand({
             style={{
               fontFamily: HELV,
               fontWeight: 700,
-              fontSize: 'clamp(3.25rem, 7.5vw, 4.75rem)',
+              fontSize: 'clamp(3.5rem, 8vw, 5.25rem)',
               lineHeight: 1,
               letterSpacing: '-0.045em',
-              color: 'var(--text-primary)',
+              color: '#FFFFFF',
             }}
           >
             {formatNumber(
@@ -438,19 +466,25 @@ function PriceBand({
             )}
           </span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.9rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '1.1rem' }}>
           {hasInstallments && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              ou{' '}
-              <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
-                {symbol} {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
-              </strong>{' '}
-              à vista
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {dot}
+              <span>
+                ou{' '}
+                <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {symbol} {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
+                </strong>{' '}
+                à vista
+              </span>
             </p>
           )}
           {plan.payment_options?.map((opt, i) => (
-            <p key={i} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              ou <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{opt}</strong>
+            <p key={i} style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {dot}
+              <span>
+                ou <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{opt}</strong>
+              </span>
             </p>
           ))}
         </div>
@@ -464,35 +498,39 @@ function PriceBand({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.55rem',
-            padding: '1rem 2rem',
+            padding: '1.05rem 2.1rem',
             borderRadius: 999,
-            background: 'var(--green-pastel)',
+            background: 'linear-gradient(135deg, #D2E9E4 0%, var(--green-pastel) 55%, #9FC7C1 100%)',
             color: '#071F20',
             border: 'none',
             fontFamily: 'var(--font-inter)',
             fontWeight: 700,
-            fontSize: '0.74rem',
+            fontSize: '0.76rem',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
             cursor: 'pointer',
-            transition: 'transform 0.25s ease, opacity 0.25s ease',
+            boxShadow: '0 10px 30px rgba(184,212,208,0.22)',
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
             flexShrink: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.opacity = '0.92'
+            e.currentTarget.style.boxShadow = '0 16px 40px rgba(184,212,208,0.34)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'none'
-            e.currentTarget.style.opacity = '1'
+            e.currentTarget.style.boxShadow = '0 10px 30px rgba(184,212,208,0.22)'
           }}
         >
           Aceitar proposta
           <ArrowRight size={15} />
         </button>
         {plan.highlight_phrase && (
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{plan.highlight_phrase}</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', maxWidth: '32ch', textAlign: 'left' }} className="md:text-right">
+            {plan.highlight_phrase}
+          </p>
         )}
+      </div>
       </div>
     </div>
   )
