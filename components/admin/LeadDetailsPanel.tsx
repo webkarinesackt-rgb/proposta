@@ -164,6 +164,8 @@ export default function LeadDetailsPanel({
   const [tags, setTags] = useState<string[]>(chat.tags || [])
   const [value, setValue] = useState<string>(chat.value ? String(chat.value) : '')
   const [source, setSource] = useState(chat.source || '')
+  // "Outro…" na origem: abre o campo de texto livre
+  const [customOpen, setCustomOpen] = useState(false)
   const [email, setEmail] = useState(chat.email || '')
   const [notes, setNotes] = useState(chat.notes || '')
   const [nextAction, setNextAction] = useState(chat.nextAction || '')
@@ -302,28 +304,65 @@ export default function LeadDetailsPanel({
           </div>
         </Field>
 
-        {/* de onde veio */}
+        {/* de onde veio — chips: um toque seleciona (sem digitar) */}
         <Field label="De onde veio">
-          <input
-            list="source-list"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            onBlur={() => source !== chat.source && patch({ source })}
-            placeholder="Ex.: Instagram, Campanha Advogados, Link na bio…"
-            className={INPUT}
-            style={INPUT_STYLE}
-          />
-          <datalist id="source-list">
-            {LEAD_SOURCES.map((s) => (
-              <option key={s} value={s} />
-            ))}
-            {/* etiquetas do próprio WhatsApp dessa conversa também viram sugestão */}
-            {tags
-              .filter((t) => !t.startsWith('resp:') && t !== 'followup' && !LEAD_SOURCES.includes(t as (typeof LEAD_SOURCES)[number]))
-              .map((t) => (
-                <option key={'tag-' + t} value={t} />
-              ))}
-          </datalist>
+          {(() => {
+            const isCustom = !!source && !LEAD_SOURCES.includes(source as (typeof LEAD_SOURCES)[number])
+            return (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {LEAD_SOURCES.map((s) => {
+                    const active = source === s
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          const next = active ? '' : s // tocar de novo desmarca
+                          setSource(next)
+                          setCustomOpen(false)
+                          patch({ source: next })
+                        }}
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors"
+                        style={{
+                          background: active ? '#141414' : '#F4F3EF',
+                          color: active ? '#D6F23C' : '#4A5A56',
+                          border: '1px solid ' + (active ? '#141414' : '#E6E6E1'),
+                        }}
+                      >
+                        {s}
+                      </button>
+                    )
+                  })}
+                  {/* valor livre */}
+                  <button
+                    type="button"
+                    onClick={() => setCustomOpen((o) => !o)}
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors"
+                    style={{
+                      background: isCustom ? '#141414' : '#F4F3EF',
+                      color: isCustom ? '#D6F23C' : '#4A5A56',
+                      border: '1px dashed ' + (isCustom ? '#141414' : '#C9C9C2'),
+                    }}
+                    title="Digitar uma origem que não está na lista"
+                  >
+                    {isCustom ? source : 'Outro…'}
+                  </button>
+                </div>
+                {(customOpen || isCustom) && (
+                  <input
+                    autoFocus={customOpen}
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    onBlur={() => source !== chat.source && patch({ source })}
+                    placeholder="Digite a origem…"
+                    className={INPUT + ' mt-1.5'}
+                    style={INPUT_STYLE}
+                  />
+                )}
+              </>
+            )
+          })()}
           {/* puxar a origem de uma etiqueta do WhatsApp com 1 clique */}
           {(() => {
             const etq = tags.filter(
