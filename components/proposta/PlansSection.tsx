@@ -704,8 +704,9 @@ export function PlansSection({
   const isCustom = projectType === 'custom'
   // Para custom: cada card horizontal (escopo/preço lado a lado), empilhados.
   const isSingle = plans.length === 1 || isCustom
-  // Plano único "normal" (não orçamento, não custom) → layout dedicado minimalista.
-  const single = plans.length === 1 && !isOrcamento && !isCustom
+  // Qualquer proposta com UM só plano (inclusive custom) → layout dedicado
+  // minimalista (escopo primeiro, preço depois). Orçamento tem bloco próprio.
+  const single = plans.length === 1 && !isOrcamento
   const gridCols = isCustom
     ? 'grid-cols-1 max-w-5xl mx-auto'
     : plans.length === 3
