@@ -14,6 +14,9 @@ import {
   GraduationCap,
   Sparkles,
   ChevronDown,
+  FileText,
+  MapPin,
+  Wrench,
 } from 'lucide-react'
 import { Plan, ProjectType, Currency, PageItem } from '@/lib/types'
 import { currencySymbol, convertFromBRL, formatNumber } from '@/lib/format'
@@ -136,10 +139,13 @@ function parseScope(features: string[]): ScopeGroup[] {
 /* ícone por grupo: diz o que é antes de a pessoa ler */
 function groupIcon(title: string) {
   const t = title.toLowerCase()
+  if (/post|conte[úu]do|blog|pauta/.test(t)) return FileText
+  if (/local|perfil|mapa|neg[óo]cio/.test(t)) return MapPin
+  if (/relat[óo]rio|medi|analytics|dados|m[ée]trica/.test(t)) return BarChart3
+  if (/manuten|hospedag/.test(t)) return Wrench
   if (/design|estrat/.test(t)) return PenTool
   if (/desenvolv|c[óo]digo|wordpress/.test(t)) return Code2
   if (/seo|performance|velocidade/.test(t)) return Gauge
-  if (/medi|analytics|dados|m[ée]trica/.test(t)) return BarChart3
   if (/segur|backup/.test(t)) return ShieldCheck
   if (/entrega|autonomia|suporte|treinamento/.test(t)) return GraduationCap
   return Sparkles
@@ -242,7 +248,7 @@ function Chip({ children }: { children: ReactNode }) {
 /* ── Etapas: grupos lado a lado, separados por hairline (CSS em
    globals.css: .scope-phases). No desktop o título de cada etapa desce
    em escada em relação à anterior — lê como linha do tempo, não tabela. */
-function ScopePhases({ groups }: { groups: ScopeGroup[] }) {
+function ScopePhases({ groups, numbered = true }: { groups: ScopeGroup[]; numbered?: boolean }) {
   // até 5 etapas cabem numa linha; acima disso quebra em linhas de 3
   const cols = groups.length > 4 ? 3 : Math.max(groups.length, 1)
   return (
@@ -266,17 +272,19 @@ function ScopePhases({ groups }: { groups: ScopeGroup[] }) {
               >
                 <Icon size={14} style={{ color: 'var(--green-pastel)' }} />
               </span>
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.14em',
-                  color: 'var(--text-muted)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {String(i + 1).padStart(2, '0')}
-              </span>
+              {numbered && (
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.14em',
+                    color: 'var(--text-muted)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+              )}
             </div>
             <div className="scope-phase-step" aria-hidden />
             <h4
@@ -590,17 +598,10 @@ function RecurringBand({
       )}
 
       {grupos.length > 0 && (
-        <div className="grid gap-x-10 gap-y-7 sm:grid-cols-2" style={{ marginTop: '1.75rem' }}>
-          {grupos.map((g, i) => (
-            <div key={i}>
-              {g.title && <Eyebrow mb="0.7rem">{g.title}</Eyebrow>}
-              <div className="flex flex-wrap gap-1.5">
-                {g.items.map((it, ii) => (
-                  <Chip key={ii}>{it}</Chip>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div style={{ marginTop: '2.25rem' }}>
+          {/* mesmas colunas do escopo do projeto (ícone, título serifado,
+              chips), sem numeração — a mensalidade não é a etapa 06 do site */}
+          <ScopePhases groups={grupos} numbered={false} />
         </div>
       )}
 
