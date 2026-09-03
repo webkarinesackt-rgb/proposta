@@ -34,7 +34,9 @@ const CONTRATAR_URL = 'https://app.fysilabdigital.com.br/contratar'
 
 // Propostas que mostram o escopo como seção própria (etapas em colunas) com
 // um preço único abaixo, em vez do card do plano + card de preço.
-const SCOPE_SECTION_SLUGS = ['viaje-com-araya', 'marya-cavalcanti-site']
+// Legado: hoje o layout é decidido pelo DADO (ver scopeLayout abaixo). Esta
+// lista só atende propostas antigas que não têm etapa mensal.
+const SCOPE_SECTION_SLUGS = ['viaje-com-araya']
 
 interface ProposalPageProps {
   proposal: Proposal
@@ -132,7 +134,13 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
           projectType={proposal.project_type}
           currency={proposal.currency}
           exchangeRate={proposal.exchange_rate}
-          scopeLayout={SCOPE_SECTION_SLUGS.includes(proposal.slug) ? 'section' : 'card'}
+          // o layout segue o dado, não o nome do cliente: proposta com etapa
+          // mensal PRECISA da seção — o card de plano não renderiza recurring
+          scopeLayout={
+            SCOPE_SECTION_SLUGS.includes(proposal.slug) || !!proposal.selected_plans?.[0]?.recurring
+              ? 'section'
+              : 'card'
+          }
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
         <ClaritySection />
