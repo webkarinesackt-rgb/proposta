@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { waServer, WaChat, WaMessage, WaSnippet, STATUS_META } from '@/lib/waServer'
-import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip, CornerUpLeft } from 'lucide-react'
+import { Search, Send, Users, Zap, FileText, PanelLeftClose, PanelLeftOpen, Info, Archive, ArchiveRestore, Tag, X, ChevronDown, ArrowDown, Copy, Check, Paperclip, CornerUpLeft, Filter } from 'lucide-react'
 import { LEAD_STATUSES } from '@/lib/waServer'
 import { useSearchParams } from 'next/navigation'
 import ModelsPanel from './ModelsPanel'
@@ -885,6 +885,9 @@ export default function InboxView() {
   const [respFilter, setRespFilter] = useState<string | null>(null)
   const [respMenuOpen, setRespMenuOpen] = useState(false)
   const [respFilterMenuOpen, setRespFilterMenuOpen] = useState(false)
+  // Filtro por fase do funil (status) ou por follow-up.
+  const [phaseFilter, setPhaseFilter] = useState<string | null>(null)
+  const [phaseMenuOpen, setPhaseMenuOpen] = useState(false)
   const [listOpen, setListOpen] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -1499,9 +1502,10 @@ export default function InboxView() {
 
   // Uma única passada calcula contadores + tags. Antes: 4 filter() + IIFE,
   // todos rodando em cada render (qualquer keystroke).
-  const { unansweredCount, archivedCount, groupsCount, allTags } = useMemo(() => {
+  const { unansweredCount, archivedCount, groupsCount, allTags, phaseCounts } = useMemo(() => {
     let unanswered = 0, archived = 0, groups = 0
     const tagCount = new Map<string, number>()
+    const phases: Record<string, number> = {}
     for (const c of chats) {
       if (c.archived) {
         archived++
@@ -1510,6 +1514,9 @@ export default function InboxView() {
       if (c.isGroup) groups++
       else if (!c.fromMeLast && !c.ignored && !(c.tags || []).includes('pessoal'))
         unanswered++
+      // contagem por fase do funil (ignora pessoais, como o resto da lista)
+      if (!(c.tags || []).includes('pessoal') && c.status)
+        phases[c.status] = (phases[c.status] || 0) + 1
       // "resp:*" é responsável e "followup" é coluna do Kanban — nenhum é
       // etiqueta comum, então não entram na lista de etiquetas.
       for (const t of c.tags || [])
@@ -1520,6 +1527,7 @@ export default function InboxView() {
       archivedCount: archived,
       groupsCount: groups,
       allTags: [...tagCount.entries()].sort((a, b) => b[1] - a[1]) as [string, number][],
+      phaseCounts: phases,
     }
   }, [chats])
 
@@ -1541,13 +1549,19 @@ export default function InboxView() {
         const r = getResponsavel(c)
         if (respFilter === '__none__' ? r !== null : r !== respFilter) return false
       }
+      if (phaseFilter) {
+        // 'followup' é etiqueta (coluna do Kanban); as demais são o status do funil
+        if (phaseFilter === 'followup') {
+          if (!(c.tags || []).includes('followup')) return false
+        } else if (c.status !== phaseFilter) return false
+      }
       if (chatFilter === 'archived') return !!c.archived
       if (c.archived) return false
       if (chatFilter === 'groups') return c.isGroup
       if (chatFilter === 'unanswered' && (c.isGroup || c.fromMeLast || c.ignored || (c.tags || []).includes('pessoal'))) return false
       return true
     })
-  }, [chats, search, searchHits, tagFilter, chatFilter, respFilter])
+  }, [chats, search, searchHits, tagFilter, chatFilter, respFilter, phaseFilter])
 
   // paginação da lista: renderiza aos poucos. Sem isso, 5000+ conversas viram
   // 5000+ componentes React e trocar de aba/conversa engasga. Carrega mais ao
@@ -1974,6 +1988,93 @@ export default function InboxView() {
                       >
                         Sem responsável
                       </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Dropdown de Fase do funil (status) + Follow-up */}
+              <div className="relative">
+                <button
+                  onClick={() => setPhaseMenuOpen((o) => !o)}
+                  className="py-1.5 px-3 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1"
+                  style={{
+                    background: phaseFilter ? T.accent : T.bgSubtle,
+                    color: phaseFilter ? T.accentBright : T.textMuted,
+                    border: `1px solid ${phaseFilter ? T.accent : T.border}`,
+                  }}
+                >
+                  <Filter size={10} />
+                  {phaseFilter === 'followup'
+                    ? 'Follow-up'
+                    : phaseFilter
+                      ? STATUS_META[phaseFilter]?.label || 'Fase'
+                      : 'Fase'}
+                </button>
+                {phaseMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setPhaseMenuOpen(false)} />
+                    <div
+                      className="absolute z-40 top-full mt-1.5 left-0 w-56 rounded-xl py-1 max-h-80 overflow-y-auto thin-scroll"
+                      style={{
+                        background: '#FFFFFF',
+                        border: `1px solid ${T.border}`,
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      {phaseFilter && (
+                        <button
+                          onClick={() => {
+                            setPhaseFilter(null)
+                            setPhaseMenuOpen(false)
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] font-bold flex items-center gap-2"
+                          style={{ color: T.accent, borderBottom: `1px solid ${T.borderSubtle}` }}
+                        >
+                          <X size={11} />
+                          Todas as fases
+                        </button>
+                      )}
+                      {/* Follow-up (etiqueta) em destaque no topo */}
+                      <button
+                        onClick={() => {
+                          setPhaseFilter('followup')
+                          setPhaseMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#FAFAF8] transition-colors"
+                        style={{ background: phaseFilter === 'followup' ? '#FAFAF8' : 'transparent' }}
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ background: '#7A2FA0' }} />
+                        <span className="text-[12px]" style={{ color: T.textPrimary }}>
+                          ⏰ Follow-up
+                        </span>
+                      </button>
+                      {LEAD_STATUSES.map((s) => {
+                        const n = phaseCounts[s.id] || 0
+                        return (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              setPhaseFilter(s.id)
+                              setPhaseMenuOpen(false)
+                            }}
+                            className="w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-[#FAFAF8] transition-colors"
+                            style={{ background: phaseFilter === s.id ? '#FAFAF8' : 'transparent' }}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                              <span className="text-[12px] truncate" style={{ color: T.textPrimary }}>
+                                {s.label}
+                              </span>
+                            </span>
+                            {n > 0 && (
+                              <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: '#A8B5B0' }}>
+                                {n}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
                     </div>
                   </>
                 )}
