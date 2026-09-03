@@ -389,22 +389,40 @@ function PriceBand({
       style={{ borderTop: HAIR, marginTop: '3.5rem', paddingTop: '2.75rem' }}
     >
       <div>
-        <Eyebrow color="var(--text-muted)" mb="0.75rem">Investimento</Eyebrow>
-        {/* valor alto entra pela parcela: ela vira o número grande e o total
-            à vista fica logo abaixo, em linha discreta. Sem parcelamento,
-            o total assume o destaque. */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
-          {hasInstallments && (
-            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-muted)', fontFamily: HELV }}>
-              {plan.price_installments_count}×
-            </span>
-          )}
-          <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-muted)', fontFamily: HELV }}>{symbol}</span>
+        <Eyebrow color="var(--text-muted)" mb="1rem">Investimento</Eyebrow>
+        {/* Valor alto entra pela parcela: "12× no cartão" anuncia a forma numa
+            linha própria, o número grande fica limpo (só cifrão + valor) e o
+            total à vista vem logo abaixo. Sem parcelamento, o total assume. */}
+        {hasInstallments && (
+          <p
+            style={{
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              color: 'var(--teal)',
+              marginBottom: '0.5rem',
+            }}
+          >
+            {plan.price_installments_count}× no cartão
+          </p>
+        )}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem' }}>
+          <span
+            style={{
+              fontFamily: HELV,
+              fontSize: '1.35rem',
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              marginTop: '0.7rem',
+            }}
+          >
+            {symbol}
+          </span>
           <span
             style={{
               fontFamily: HELV,
               fontWeight: 700,
-              fontSize: 'clamp(3rem, 7vw, 4.5rem)',
+              fontSize: 'clamp(3.25rem, 7.5vw, 4.75rem)',
               lineHeight: 1,
               letterSpacing: '-0.045em',
               color: 'var(--text-primary)',
@@ -414,15 +432,23 @@ function PriceBand({
               convertFromBRL(hasInstallments ? plan.price_installment_value : plan.price_cash, currency, exchangeRate)
             )}
           </span>
-          {hasInstallments && (
-            <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>no cartão</span>
-          )}
         </div>
-        {hasInstallments && (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
-            ou {symbol} {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))} à vista
-          </p>
-        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.9rem' }}>
+          {hasInstallments && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              ou{' '}
+              <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                {symbol} {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
+              </strong>{' '}
+              à vista
+            </p>
+          )}
+          {plan.payment_options?.map((opt, i) => (
+            <p key={i} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              ou <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{opt}</strong>
+            </p>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col items-start md:items-end gap-3">

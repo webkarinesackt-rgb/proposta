@@ -32,6 +32,9 @@ export interface Plan {
   terms_note?: string
   /** 2ª etapa do prazo, além de delivery_days (ex.: "Projeto completo em 30 dias") */
   delivery_full_label?: string
+  /** formas de pagamento extras, uma por linha, além do à vista e do cartão
+   *  (ex.: "2 pagamentos de R$ 4.500") */
+  payment_options?: string[]
 }
 
 export interface Case {
