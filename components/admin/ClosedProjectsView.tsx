@@ -15,6 +15,7 @@ import { mockProposal } from '@/lib/mockData'
 import { Proposal } from '@/lib/types'
 import { LEAD_SOURCES } from '@/lib/waServer'
 import { useToast } from '@/lib/useToast'
+import { DEFAULT_PARAMS, PricingParams } from '@/lib/pricing'
 
 /* ── opções coloridas (espelham a planilha atual) ─────── */
 
@@ -68,6 +69,14 @@ export default function ClosedProjectsView() {
   const [creatingId, setCreatingId] = useState<string | null>(null)
   // filtro por mês do fechamento (closed_date): 'all' | 'this' | 'last' | 'YYYY-MM'
   const [period, setPeriod] = useState<'all' | 'this' | 'last'>('this')
+  // parâmetros de precificação (custo fixo, imposto) — mesmos da calculadora
+  const [pricing, setPricing] = useState<PricingParams>(DEFAULT_PARAMS)
+  useEffect(() => {
+    try {
+      const p = localStorage.getItem('fysi.pricing.params')
+      if (p) setPricing({ ...DEFAULT_PARAMS, ...JSON.parse(p) })
+    } catch {}
+  }, [])
   const [specificMonth, setSpecificMonth] = useState('')
   const { show: showToast, Toast } = useToast()
 
@@ -234,6 +243,20 @@ export default function ClosedProjectsView() {
     return { fechado, negociacao, recebido, aReceber: Math.max(0, fechado - recebido), count }
   }, [periodFiltered])
 
+  // fechamento do mês (fórmulas do "fechar o mês"): faturamento fechado do mês
+  // menos imposto e custo fixo = sobra. Só faz sentido num mês específico.
+  const monthClose = useMemo(() => {
+    const faturamento = totals.fechado
+    const imposto = faturamento * pricing.imposto
+    const custoFixo = pricing.custoFixoMensal
+    const sobra = faturamento - imposto - custoFixo
+    const margem = faturamento ? sobra / faturamento : 0
+    // faturamento pra empatar o custo fixo (sobra = 0)
+    const breakeven = custoFixo / (1 - pricing.imposto)
+    const faltaEmpatar = Math.max(0, breakeven - faturamento)
+    return { faturamento, imposto, custoFixo, sobra, margem, breakeven, faltaEmpatar }
+  }, [totals.fechado, pricing])
+
   return (
     <div className="flex flex-col h-full" style={{ background: '#EDEDEA' }}>
       <Toast />
@@ -320,6 +343,40 @@ export default function ClosedProjectsView() {
           <StatCard label="Projetos fechados" value={String(totals.count)} accent="#141414" />
           <StatCard label="Em negociação" value={fmtBRL(totals.negociacao)} accent="#8A6A2A" />
         </div>
+
+        {/* fechamento do mês — só num mês específico (custo fixo é mensal) */}
+        {targetMonth && (
+          <div
+            className="mt-3 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4"
+            style={{ background: '#141414' }}
+          >
+            <div className="md:min-w-[180px]">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(214,242,60,0.7)' }}>
+                Fechamento do mês · sobra
+              </p>
+              <p
+                className="text-[30px] font-bold leading-tight mt-0.5"
+                style={{ color: monthClose.sobra < 0 ? '#F4A0A0' : '#D6F23C' }}
+              >
+                {fmtBRL(monthClose.sobra)}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                margem {(monthClose.margem * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% · depois de
+                imposto e custo fixo
+              </p>
+            </div>
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MiniStat label="Faturamento" value={fmtBRL(monthClose.faturamento)} />
+              <MiniStat label={`Imposto (${(pricing.imposto * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%)`} value={'– ' + fmtBRL(monthClose.imposto)} />
+              <MiniStat label="Custo fixo" value={'– ' + fmtBRL(monthClose.custoFixo)} />
+              <MiniStat
+                label={monthClose.faltaEmpatar > 0 ? 'Falta pra empatar' : 'Passou do empate'}
+                value={monthClose.faltaEmpatar > 0 ? fmtBRL(monthClose.faltaEmpatar) : fmtBRL(monthClose.faturamento - monthClose.breakeven)}
+                tone={monthClose.faltaEmpatar > 0 ? 'warn' : 'ok'}
+              />
+            </div>
+          </div>
+        )}
 
         {/* busca */}
         <div className="relative mt-4 max-w-[320px]">
@@ -705,6 +762,21 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
         {label}
       </p>
       <p className="text-[19px] font-bold mt-0.5" style={{ color: accent }}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+// mini-stat pro card escuro de fechamento do mês
+function MiniStat({ label, value, tone }: { label: string; value: string; tone?: 'ok' | 'warn' }) {
+  const color = tone === 'warn' ? '#F4C15A' : tone === 'ok' ? '#9BE6B4' : 'rgba(255,255,255,0.92)'
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        {label}
+      </p>
+      <p className="text-[15px] font-bold mt-0.5 tabular-nums" style={{ color }}>
         {value}
       </p>
     </div>
