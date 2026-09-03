@@ -32,6 +32,10 @@ const PORTFOLIO_IMAGES = [
 // Aceitar a proposta leva direto pro fluxo de contratação (outro app).
 const CONTRATAR_URL = 'https://app.fysilabdigital.com.br/contratar'
 
+// Propostas que mostram o escopo como seção própria (etapas em colunas) com
+// um preço único abaixo, em vez do card do plano + card de preço.
+const SCOPE_SECTION_SLUGS = ['viaje-com-araya']
+
 interface ProposalPageProps {
   proposal: Proposal
   initialTab?: 'cliente' | 'proposta'
@@ -128,6 +132,7 @@ export function ProposalPage({ proposal, isPreview }: ProposalPageProps) {
           projectType={proposal.project_type}
           currency={proposal.currency}
           exchangeRate={proposal.exchange_rate}
+          scopeLayout={SCOPE_SECTION_SLUGS.includes(proposal.slug) ? 'section' : 'card'}
         />
         <InfraSection blocks={proposal.agency_settings.infra_blocks} />
         <ClaritySection />

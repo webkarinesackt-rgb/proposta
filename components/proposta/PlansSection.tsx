@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
   Clock,
@@ -29,6 +29,9 @@ interface PlansSectionProps {
   projectType?: ProjectType
   currency?: Currency
   exchangeRate?: number
+  /** 'section': escopo como seção própria + preço único abaixo (ligado por
+   *  proposta em ProposalPage). 'card' (padrão): card do plano + card de preço. */
+  scopeLayout?: 'card' | 'section'
 }
 
 /* ── bloco de Orçamento: serviços somados (nome · escopo · valor + total) ── */
@@ -108,10 +111,11 @@ function OrcamentoBlock({
   )
 }
 
-/* ── Escopo em módulos ──
+/* ── Escopo ──
    Faz o parse das features em grupos (linha terminada em ':' = título).
-   O grupo de "páginas" vira tiles com contador; os demais viram painéis
-   lado a lado. O olho escaneia blocos, não uma coluna comprida de bullets. */
+   O grupo de "páginas" vira tiles com contador; os demais viram etapas
+   lado a lado — colunas separadas por hairline, todos os itens em chips.
+   O olho escaneia colunas, não uma coluna comprida de bullets. */
 type ScopeGroup = { title: string; items: string[] }
 
 function parseScope(features: string[]): ScopeGroup[] {
@@ -139,6 +143,35 @@ function groupIcon(title: string) {
   if (/segur|backup/.test(t)) return ShieldCheck
   if (/entrega|autonomia|suporte|treinamento/.test(t)) return GraduationCap
   return Sparkles
+}
+
+const HAIR = '1px solid rgba(184,212,208,0.12)'
+const SERIF = '"ivypresto-display", "ivypresto-headline", Georgia, serif'
+
+/* rótulo pequeno em caixa alta — abre cada bloco do escopo */
+function Eyebrow({
+  children,
+  color = 'var(--teal)',
+  mb = '0.85rem',
+}: {
+  children: ReactNode
+  color?: string
+  mb?: string
+}) {
+  return (
+    <p
+      style={{
+        fontSize: '0.6rem',
+        fontWeight: 700,
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color,
+        marginBottom: mb,
+      }}
+    >
+      {children}
+    </p>
+  )
 }
 
 /* "Home · Sobre · Atacama (17) · …" → tiles com nome + contador */
@@ -187,6 +220,366 @@ function PageTiles({ line }: { line: string }) {
   )
 }
 
+/* item do escopo em chip — pílula curta, várias por linha */
+function Chip({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        padding: '0.4rem 0.75rem',
+        borderRadius: 999,
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(184,212,208,0.10)',
+        fontSize: '0.78rem',
+        color: 'var(--text-primary)',
+        lineHeight: 1.3,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+/* ── Etapas: grupos lado a lado, separados por hairline (CSS em
+   globals.css: .scope-phases). No desktop o título de cada etapa desce
+   em escada em relação à anterior — lê como linha do tempo, não tabela. */
+function ScopePhases({ groups }: { groups: ScopeGroup[] }) {
+  // até 5 etapas cabem numa linha; acima disso quebra em linhas de 3
+  const cols = groups.length > 5 ? 3 : Math.max(groups.length, 1)
+  return (
+    <div className="scope-phases" style={{ '--cols': cols } as CSSProperties}>
+      {groups.map((g, i) => {
+        const Icon = groupIcon(g.title)
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        return (
+          <div
+            key={i}
+            className="scope-phase"
+            data-col={col}
+            data-row={row}
+            style={{ '--i': col } as CSSProperties}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="flex items-center justify-center flex-shrink-0"
+                style={{ width: 38, height: 38, borderRadius: '50%', border: '1px solid rgba(139,183,175,0.35)' }}
+              >
+                <Icon size={14} style={{ color: 'var(--green-pastel)' }} />
+              </span>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  color: 'var(--text-muted)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+            </div>
+            <div className="scope-phase-step" aria-hidden />
+            <h4
+              style={{
+                fontFamily: SERIF,
+                fontStyle: 'italic',
+                fontWeight: 300,
+                fontSize: 'clamp(1.4rem, 2.2vw, 1.75rem)',
+                lineHeight: 1.1,
+                letterSpacing: '-0.01em',
+                color: 'var(--text-primary)',
+                marginTop: '1.75rem',
+              }}
+            >
+              {g.title || 'Incluído'}
+            </h4>
+            <div className="flex flex-wrap gap-1.5" style={{ marginTop: '1.1rem' }}>
+              {g.items.map((it, ii) => (
+                <Chip key={ii}>{it}</Chip>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Escopo claro: não incluso / você entrega / prazo e revisões
+   (só os que existem), em colunas planas ── */
+function FinePrint({ plan }: { plan: Plan }) {
+  const blocks: ReactNode[] = []
+  if (plan.not_included?.length) {
+    // frase inteira (termina em '.') no fim da lista = nota, não item
+    const raw = plan.not_included
+    const last = raw[raw.length - 1]
+    const isNote = raw.length > 1 && last.trim().endsWith('.')
+    const items = isNote ? raw.slice(0, -1) : raw
+    blocks.push(
+      <div key="ni">
+        <Eyebrow color="var(--text-muted)">Não incluso</Eyebrow>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          {items.map((t, i) => (
+            <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+              {/* traço = fica de fora */}
+              <span aria-hidden style={{ width: 10, height: 1, flexShrink: 0, background: 'var(--text-muted)', transform: 'translateY(-4px)' }} />
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{t}</span>
+            </li>
+          ))}
+        </ul>
+        {isNote && (
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6, marginTop: '1rem', fontStyle: 'italic', maxWidth: '40ch' }}>
+            {last}
+          </p>
+        )}
+      </div>
+    )
+  }
+  if (plan.client_delivers?.length) {
+    blocks.push(
+      <div key="cd">
+        <Eyebrow>Você entrega</Eyebrow>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          {plan.client_delivers.map((t, i) => (
+            <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+              {/* círculo vazado = vem do cliente */}
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, border: '1px solid var(--teal)', transform: 'translateY(-1px)' }} />
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+  if (plan.terms_note) {
+    blocks.push(
+      <div key="tn">
+        <Eyebrow color="var(--text-muted)" mb="0.6rem">Prazo e revisões</Eyebrow>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '52ch' }}>{plan.terms_note}</p>
+      </div>
+    )
+  }
+  if (!blocks.length) return null
+  const cols = blocks.length === 3 ? 'md:grid-cols-3' : blocks.length === 2 ? 'md:grid-cols-2' : ''
+  return (
+    <div className={`grid gap-8 ${cols}`} style={{ borderTop: HAIR, marginTop: '3rem', paddingTop: '2.5rem' }}>
+      {blocks}
+    </div>
+  )
+}
+
+/* ── Investimento: um preço só, em faixa plana logo abaixo do escopo.
+   Sem card — o escopo acima já disse tudo; aqui é o desfecho. ── */
+function PriceBand({
+  plan,
+  onAccept,
+  currency,
+  exchangeRate,
+}: {
+  plan: Plan
+  onAccept: (id: string) => void
+  currency: Currency
+  exchangeRate: number
+}) {
+  const symbol = currencySymbol(currency)
+  const hasInstallments = plan.price_installments_count > 0 && plan.price_installment_value > 0
+  return (
+    <div
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-8"
+      style={{ borderTop: HAIR, marginTop: '3.5rem', paddingTop: '2.75rem' }}
+    >
+      <div>
+        <Eyebrow color="var(--text-muted)" mb="0.75rem">Investimento</Eyebrow>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-muted)', fontFamily: HELV }}>{symbol}</span>
+          <span
+            style={{
+              fontFamily: HELV,
+              fontWeight: 700,
+              fontSize: 'clamp(3rem, 7vw, 4.5rem)',
+              lineHeight: 1,
+              letterSpacing: '-0.045em',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {formatNumber(convertFromBRL(plan.price_cash, currency, exchangeRate))}
+          </span>
+        </div>
+        {hasInstallments && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.7rem' }}>
+            ou {plan.price_installments_count}× de {symbol}{' '}
+            {formatNumber(convertFromBRL(plan.price_installment_value, currency, exchangeRate))} no cartão
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col items-start md:items-end gap-3">
+        <button
+          onClick={() => onAccept(plan.id)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.55rem',
+            padding: '1rem 2rem',
+            borderRadius: 999,
+            background: 'var(--green-pastel)',
+            color: '#071F20',
+            border: 'none',
+            fontFamily: 'var(--font-inter)',
+            fontWeight: 700,
+            fontSize: '0.74rem',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            transition: 'transform 0.25s ease, opacity 0.25s ease',
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.opacity = '0.92'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'none'
+            e.currentTarget.style.opacity = '1'
+          }}
+        >
+          Aceitar proposta
+          <ArrowRight size={15} />
+        </button>
+        {plan.highlight_phrase && (
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{plan.highlight_phrase}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Plano único: escopo como seção própria, preço como desfecho ──
+   Sem card. Cabeçalho (nome à esquerda, descrição e prazo à direita),
+   páginas em tiles, etapas em colunas, escopo claro, e por fim um preço
+   só. Superfície plana, hairlines, muito respiro. */
+function SinglePlanLayout({
+  plan,
+  onAccept,
+  currency = 'BRL',
+  exchangeRate = 1,
+}: {
+  plan: Plan
+  onAccept: (id: string) => void
+  currency?: Currency
+  exchangeRate?: number
+}) {
+  const groups = parseScope(plan.features)
+  const isPages = (g: ScopeGroup) => /p[áa]gina/i.test(g.title) && g.items.length >= 1 && g.items[0].includes('·')
+  const pages = groups.find(isPages)
+  const rest = groups.filter((g) => g !== pages)
+  // plano simples sem grupos → nuvem de chips (compatível com propostas antigas)
+  const flat = rest.length === 1 && !rest[0].title
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {/* ── cabeçalho: nome à esquerda, descrição e prazo à direita ── */}
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:items-end">
+        <div>
+          <Eyebrow mb="1.25rem">Escopo do projeto</Eyebrow>
+          <h3
+            style={{
+              fontFamily: HELV,
+              fontStyle: 'normal',
+              fontWeight: 700,
+              fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+              lineHeight: 1.0,
+              letterSpacing: '-0.035em',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {plan.name}
+            <sup style={{ fontSize: '0.36em', color: 'var(--teal)', fontWeight: 500, verticalAlign: 'super' }}>™</sup>
+          </h3>
+          {plan.tagline && (
+            <p
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'var(--teal)',
+                marginTop: '1rem',
+              }}
+            >
+              {plan.tagline}
+            </p>
+          )}
+        </div>
+        <div>
+          {plan.description && (
+            <p style={{ fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--text-secondary)', maxWidth: '46ch' }}>
+              {plan.description}
+            </p>
+          )}
+          <p
+            className="inline-flex items-center gap-2 flex-wrap"
+            style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1.25rem' }}
+          >
+            <Clock size={12} style={{ color: 'var(--teal)' }} />
+            {plan.delivery_label?.trim() || 'Primeira versão em'}{' '}
+            <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_days} dias úteis</strong>
+            {plan.delivery_full_label && (
+              <>
+                <span aria-hidden style={{ opacity: 0.4 }}>·</span>
+                <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{plan.delivery_full_label}</strong>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* ── páginas ── */}
+      {pages && (
+        <div style={{ borderTop: HAIR, marginTop: '3rem', paddingTop: '2.5rem' }}>
+          <Eyebrow>{pages.title}</Eyebrow>
+          <PageTiles line={pages.items[0]} />
+          {/* linhas extras do grupo = nota de apoio (ex.: como os templates se replicam) */}
+          {pages.items.length > 1 && (
+            <p style={{ fontSize: '0.85rem', lineHeight: 1.7, color: 'var(--text-secondary)', maxWidth: '56ch', marginTop: '1.25rem' }}>
+              {pages.items.slice(1).join(' ')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── etapas ── */}
+      {(flat || rest.length > 0) && (
+        <div style={{ borderTop: HAIR, marginTop: pages ? '2.5rem' : '3rem', paddingTop: '2.5rem' }}>
+          {flat ? (
+            <>
+              <Eyebrow>O que está incluído</Eyebrow>
+              <div className="flex flex-wrap gap-2">
+                {rest[0].items.map((it, i) => (
+                  <Chip key={i}>{it}</Chip>
+                ))}
+              </div>
+            </>
+          ) : (
+            <ScopePhases groups={rest} />
+          )}
+        </div>
+      )}
+
+      <FinePrint plan={plan} />
+
+      {/* ── um preço só, logo abaixo ── */}
+      <PriceBand plan={plan} onAccept={onAccept} currency={currency} exchangeRate={exchangeRate} />
+    </motion.div>
+  )
+}
+
 const dot = (
   <span
     aria-hidden
@@ -205,7 +598,7 @@ function ScopeGroups({ features }: { features: string[] }) {
       else next.add(i)
       return next
     })
-  const isPages = (g: ScopeGroup) => /p[áa]gina/i.test(g.title) && g.items.length === 1 && g.items[0].includes('·')
+  const isPages = (g: ScopeGroup) => /p[áa]gina/i.test(g.title) && g.items.length >= 1 && g.items[0].includes('·')
   const pages = groups.find(isPages)
   const rest = groups.filter((g) => g !== pages)
   // plano simples sem grupos → lista chapada, largura cheia (compatível com propostas antigas)
@@ -970,6 +1363,7 @@ export function PlansSection({
   projectType,
   currency = 'BRL',
   exchangeRate = 1,
+  scopeLayout = 'card',
 }: PlansSectionProps) {
   const isOrcamento = projectType === 'orcamento' && !!items && items.length > 0
   const isCustom = projectType === 'custom'
@@ -978,6 +1372,8 @@ export function PlansSection({
   // Qualquer proposta com UM só plano (inclusive custom) → layout dedicado
   // minimalista (escopo primeiro, preço depois). Orçamento tem bloco próprio.
   const single = plans.length === 1 && !isOrcamento
+  // escopo como seção própria (sem card) + preço único — só onde foi ligado
+  const sectionLayout = single && scopeLayout === 'section'
   const gridCols = isCustom
     ? 'grid-cols-1 max-w-5xl mx-auto'
     : plans.length === 3
@@ -999,51 +1395,60 @@ export function PlansSection({
           zIndex: 0,
         }}
       />
-      {/* Section header — título grande em Helvetica, minimalista */}
-      <div
-        className={`max-w-6xl mx-auto px-4 ${single ? 'text-left md:px-6' : 'text-center'}`}
-        style={{ marginBottom: single ? '2.5rem' : '3.5rem', maxWidth: single ? 660 : undefined }}
-      >
-        <motion.h1
-          style={{
-            fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
-            fontStyle: 'italic',
-            fontWeight: 300,
-            fontSize: single ? 'clamp(2.5rem, 6vw, 4rem)' : 'clamp(2.25rem, 5vw, 3.5rem)',
-            lineHeight: 1.08,
-            letterSpacing: '-0.01em',
-            color: 'var(--text-primary)',
-          }}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.55 }}
+      {/* Section header (o layout de seção tem cabeçalho próprio no escopo) */}
+      {!sectionLayout && (
+        <div
+          className={`max-w-6xl mx-auto px-4 ${single ? 'text-left md:px-6' : 'text-center'}`}
+          style={{ marginBottom: single ? '2.5rem' : '3.5rem', maxWidth: single ? 660 : undefined }}
         >
-          {single ? 'O investimento' : 'Um investimento que traz resultados'}
-        </motion.h1>
+          <motion.h1
+            style={{
+              fontFamily: '"ivypresto-display", "ivypresto-headline", Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: single ? 'clamp(2.5rem, 6vw, 4rem)' : 'clamp(2.25rem, 5vw, 3.5rem)',
+              lineHeight: 1.08,
+              letterSpacing: '-0.01em',
+              color: 'var(--text-primary)',
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+          >
+            {single ? 'O investimento' : 'Um investimento que traz resultados'}
+          </motion.h1>
 
-        <motion.p
-          className={`${single ? '' : 'mx-auto'} text-lg`}
-          style={{ color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '38ch', marginTop: '1.25rem' }}
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          {single
-            ? 'Tudo o que está incluído no seu projeto — e o investimento pra tirar do papel.'
-            : 'Seu projeto precisa de um visual que passe credibilidade e gere resultado. Escolha o plano ideal para o seu momento.'}
-        </motion.p>
-      </div>
+          <motion.p
+            className={`${single ? '' : 'mx-auto'} text-lg`}
+            style={{ color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '38ch', marginTop: '1.25rem' }}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            {single
+              ? 'Tudo o que está incluído no seu projeto — e o investimento pra tirar do papel.'
+              : 'Seu projeto precisa de um visual que passe credibilidade e gere resultado. Escolha o plano ideal para o seu momento.'}
+          </motion.p>
+        </div>
+      )}
 
       {/* Cards grid */}
       <div
-        className="max-w-6xl mx-auto px-4"
+        className={`max-w-6xl mx-auto px-4 ${sectionLayout ? 'md:px-6' : ''}`}
         style={{ paddingBottom: '2rem' }}
       >
         {isOrcamento ? (
           <OrcamentoBlock
             items={items!}
+            plan={plans[0]}
+            onAccept={onAccept}
+            currency={currency}
+            exchangeRate={exchangeRate}
+          />
+        ) : sectionLayout ? (
+          <SinglePlanLayout
             plan={plans[0]}
             onAccept={onAccept}
             currency={currency}

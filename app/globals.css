@@ -552,3 +552,29 @@ p {
   background-clip: padding-box;
   border: 2px solid transparent;
 }
+
+/* ─── Escopo em etapas (proposta de plano único) ──────────
+   Colunas lado a lado no desktop, separadas por hairline; empilhadas no
+   mobile. --cols vem do componente (ScopePhases); --i é a coluna, usada
+   pra descer o título em escada, etapa a etapa. */
+.scope-phases {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  --hair: 1px solid rgba(184,212,208,0.12);
+}
+.scope-phase {
+  min-width: 0;
+  padding: 1.5rem 0;
+}
+.scope-phase:first-child { padding-top: 0; }
+.scope-phase + .scope-phase { border-top: var(--hair); }
+.scope-phase-step { height: 0; }
+@media (min-width: 1024px) {
+  .scope-phases { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+  .scope-phase { padding: 0 1.5rem; }
+  .scope-phase + .scope-phase { border-top: none; }
+  .scope-phase[data-col="0"] { padding-left: 0; }
+  .scope-phase:not([data-col="0"]) { border-left: var(--hair); }
+  .scope-phase:not([data-row="0"]) { border-top: var(--hair); margin-top: 2.5rem; padding-top: 2.5rem; }
+  .scope-phase-step { height: calc(var(--i, 0) * 2.5rem); }
+}
