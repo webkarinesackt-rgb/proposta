@@ -1,0 +1,48 @@
+{
+  "name": "Fysi — Painel",
+  "short_name": "Fysi",
+  "description": "Propostas, conversas e leads da Fysi Lab Digital.",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EDEDEA",
+  "theme_color": "#141414",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Inbox",
+      "short_name": "Inbox",
+      "url": "/admin/inbox"
+    },
+    {
+      "name": "Propostas",
+      "short_name": "Propostas",
+      "url": "/admin"
+    },
+    {
+      "name": "Leads",
+      "short_name": "Leads",
+      "url": "/admin/leads"
+    }
+  ]
+}
